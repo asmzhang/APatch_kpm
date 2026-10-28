@@ -42,9 +42,12 @@ def git(args):
 
 
 def top_level_module_dirs():
-    """含 Makefile 的顶层目录 = 会被 CI 构建的模块源码。"""
+    """modules/ 下含 Makefile 的目录 = 会被 CI 构建的模块源码。"""
     dirs = set()
-    for path in REPO.iterdir():
+    root = REPO / "modules"
+    if not root.is_dir():
+        return dirs
+    for path in root.iterdir():
         if path.is_dir() and (path / "Makefile").is_file():
             dirs.add(path.name)
     return dirs

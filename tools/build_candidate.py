@@ -118,14 +118,14 @@ def main():
         kp_commit = ident.git(["rev-parse", "HEAD"], cwd=REPO / "KernelPatch")
         if kind == "candidate" and (not kp_commit or ident.git(["status", "--porcelain"], cwd=REPO / "KernelPatch")):
             die("KernelPatch 依赖必须是已初始化的干净提交")
-        build_cmd = shlex.join(["make", "-C", args.module] + shlex.split(args.target))
+        build_cmd = shlex.join(["make", "-C", str(mdir)] + shlex.split(args.target))
         before_recipe = ident.capture_build_recipe(build_cmd, args.env)
         if kind == "candidate" and before_recipe.get("captured") is not True:
             die("有效编译参数捕获失败，未开始候选构建")
         print(f"输入冻结: {len(inputs)} 个文件, tree={before_tree[:16]}")
 
         # 受保护集合：构建输入（含模块里的 .s 源码）+ Git 已跟踪文件
-        protected_rel = set(inputs) | tracked_in(args.module)
+        protected_rel = set(inputs) | tracked_in(str(mdir.relative_to(REPO)))
         to_move, skipped = plan_cleanup(mdir, protected_rel)
         if skipped:
             print(f"保护 {len(skipped)} 个文件（构建输入/已跟踪，不清理）：{', '.join(sorted(skipped))}")

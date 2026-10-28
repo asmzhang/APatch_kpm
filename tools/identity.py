@@ -244,9 +244,14 @@ def sanitize(text):
 
 # ---------------------------------------------------------------- 构建输入
 def module_dir(module):
-    path = REPO / module
+    """模块源码目录：统一放在 modules/ 下。
+
+    允许传入 modules/<name> 形式，避免调用方各自拼路径。
+    """
+    name = module.split("/")[-1]
+    path = REPO / "modules" / name
     if not path.is_dir():
-        die(f"模块目录不存在: {module}")
+        die(f"模块目录不存在: modules/{name}")
     return path
 
 

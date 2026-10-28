@@ -89,10 +89,11 @@ jobs:
         run: |
           mkdir target
 
-          # 只构建「有 Makefile 且未被 archive 标记」的顶层目录：
+          # 只构建「modules/ 下有 Makefile 且未被 archive 标记」的模块目录：
           #   * 没有 Makefile 的目录（文档/工具/用户数据/子模块）天然跳过，无需任何标记；
           #   * 有 Makefile 但不想让它进 CI 的模块目录，放一个空的 archive 文件。
-          for dir in */; do
+          for dir in modules/*/; do
+            name=$(basename "${dir}")
             if [ -f "${dir}archive" ]; then
               echo "skip ${dir} (archive)"
               continue
@@ -101,8 +102,8 @@ jobs:
               continue
             fi
             echo "build ${dir}"
-            printf "%s\n" "${dir%/}" >> target/modules.txt
-            if [ "${dir%/}" = "re_kernel_x" ] || [ "${dir%/}" = "re_kernel" ] || [ "${dir%/}" = "run_cmd_demo" ] || [ "${dir%/}" = "zram_zstd" ] || [ "${dir%/}" = "nomount" ]; then
+            printf "%s\n" "${name}" >> target/modules.txt
+            if [ "${name}" = "re_kernel_x" ] || [ "${name}" = "re_kernel" ] || [ "${name}" = "run_cmd_demo" ] || [ "${name}" = "zram_zstd" ] || [ "${name}" = "nomount" ]; then
               make -C "${dir}" all
               if grep -Eq '^debug[[:space:]]*:' "${dir}Makefile"; then
                 make -C "${dir}" debug

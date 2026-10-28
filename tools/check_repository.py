@@ -18,6 +18,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)          # 仓库根（可被夹具改写）
@@ -1054,24 +1055,37 @@ def check_hygiene(rep):
 def main():
     ap = argparse.ArgumentParser(description="仓库门禁")
     ap.add_argument("--strict", action="store_true", help="产物必须在场且哈希可复算")
+    ap.add_argument("--skip", default="", help="跳过指定检查（逗号分隔函数名，如 check_identity_hashes）")
+    ap.add_argument("--timing", action="store_true", help="逐项打印耗时")
     args = ap.parse_args()
 
     os.chdir(REPO)
     rep = Report()
-    check_structure(rep)
-    check_ci_markers(rep)
-    check_doc_links(rep)
-    check_metadata_schema(rep)
-    check_report_integrity(rep, args.strict)
-    check_identity_hashes(rep, args.strict)
-    check_version_consistency(rep)
-    check_acceptance(rep)
-    check_delivery_binding(rep)
-    check_tool_selftest(rep)
-    check_developer_artifacts(rep)
-    check_handoff_registration(rep)
-    check_auditor_independence(rep)
-    check_hygiene(rep)
+    skip = {s.strip() for s in args.skip.split(",") if s.strip()}
+    plan = [
+        ("check_structure", lambda: check_structure(rep)),
+        ("check_ci_markers", lambda: check_ci_markers(rep)),
+        ("check_doc_links", lambda: check_doc_links(rep)),
+        ("check_metadata_schema", lambda: check_metadata_schema(rep)),
+        ("check_report_integrity", lambda: check_report_integrity(rep, args.strict)),
+        ("check_identity_hashes", lambda: check_identity_hashes(rep, args.strict)),
+        ("check_version_consistency", lambda: check_version_consistency(rep)),
+        ("check_acceptance", lambda: check_acceptance(rep)),
+        ("check_delivery_binding", lambda: check_delivery_binding(rep)),
+        ("check_tool_selftest", lambda: check_tool_selftest(rep)),
+        ("check_developer_artifacts", lambda: check_developer_artifacts(rep)),
+        ("check_handoff_registration", lambda: check_handoff_registration(rep)),
+        ("check_auditor_independence", lambda: check_auditor_independence(rep)),
+        ("check_hygiene", lambda: check_hygiene(rep)),
+    ]
+    for name, fn in plan:
+        if name in skip:
+            print(f"跳过 {name}", file=sys.stderr)
+            continue
+        t0 = time.time()
+        fn()
+        if args.timing:
+            print(f"[{name}] {time.time() - t0:.1f}s", file=sys.stderr)
     print(f"门禁模式：{'strict（验收/发布）' if args.strict else 'regular'}")
     print()
     return rep.summary()

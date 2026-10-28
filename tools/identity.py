@@ -31,7 +31,14 @@
 import argparse
 import contextlib
 import copy
-import fcntl
+try:                       # POSIX：flock 是首选
+    import fcntl
+except ImportError:        # Windows 开发机没有 flock，退到 msvcrt 的单字节独占锁
+    fcntl = None
+    try:
+        import msvcrt
+    except ImportError:    # 两者皆无时只能不加锁，仅影响并发写入，不影响校验
+        msvcrt = None
 import hashlib
 import json
 import os
@@ -556,17 +563,42 @@ def expand_handoff(payload):
     return result
 
 
+def _lock_acquire(handle):
+    """非阻塞独占锁；抢不到抛 OSError（调用方负责重试）。"""
+    if fcntl is not None:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return
+    if msvcrt is None:
+        return
+    handle.seek(0, os.SEEK_END)
+    if handle.tell() == 0:
+        handle.write(b"L")
+        handle.flush()
+    handle.seek(0)
+    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+
+
+def _lock_release(handle):
+    if fcntl is not None:
+        _lock_release(handle)
+        return
+    if msvcrt is None:
+        return
+    handle.seek(0)
+    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 @contextlib.contextmanager
 def module_lock(module, timeout=30):
     """模块级文件锁：避免两个角色同时追加导致记录丢失。"""
     # 运行期锁文件放 local/（不进版本库、也不污染 metadata/）
     lock_path = REPO / "local" / "locks" / f"{module}.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    handle = open(lock_path, "w")
+    handle = open(lock_path, "a+b")
     deadline = time.time() + timeout
     while True:
         try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _lock_acquire(handle)
             break
         except OSError:
             if time.time() > deadline:

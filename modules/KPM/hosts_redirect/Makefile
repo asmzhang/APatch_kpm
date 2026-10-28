@@ -1,7 +1,7 @@
 MYKPM_VERSION := 2.0.0
 
 ifndef KP_DIR
-    KP_DIR = ../../KernelPatch
+    KP_DIR = ../../../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)

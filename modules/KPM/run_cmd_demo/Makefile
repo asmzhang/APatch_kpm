@@ -1,7 +1,7 @@
 MYKPM_VERSION := 1.3.0
 
 ifndef KP_DIR
-    KP_DIR = ../../KernelPatch
+    KP_DIR = ../../../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
@@ -36,7 +36,7 @@ INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include l
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
 objs := run_cmd.c
-headers := run_cmd.h rc_offsets.c rc_utils.h ../../kpm_utils.h ../../patch_offsets.py
+headers := run_cmd.h rc_offsets.c rc_utils.h ../../../kpm_utils.h ../../../patch_offsets.py
 
 kpm := $(OUT_DIR)/run_cmd_demo_$(MYKPM_VERSION)
 kpms := $(kpm).kpm $(kpm)_baselines.kpm
@@ -54,7 +54,7 @@ $(kpms): ${objs} ${headers} Makefile
 	@mkdir -p $(OUT_DIR) $(LAYOUT_DIR)
 	@test ! -e $@
 	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $(objs) -r -o $@
-	$(if $(filter %_baselines.kpm,$@),$(PYTHON) ../../patch_offsets.py baseline $@ --source rc_offsets.c --output $(LAYOUT_DIR)/$(notdir $@).json)
+	$(if $(filter %_baselines.kpm,$@),$(PYTHON) ../../../patch_offsets.py baseline $@ --source rc_offsets.c --output $(LAYOUT_DIR)/$(notdir $@).json)
 
 .PHONY: all base baselines static dynamic clean
 clean:

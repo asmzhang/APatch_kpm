@@ -13,9 +13,9 @@
 
 以前是「想要什么，自己写」，现在是「想要什么，自己写」。你负责提需求，AI 负责敲键盘，测试机负责看它有没有吹牛。
 
-[`zram_zstd`](modules/zram_zstd/README.md) 已经把这套流程跑了一遍：AI 开发、独立审计、实机测试，最后由维护者验收签名。一只负责写，一只负责挑刺，另一只上机验收。
+[`zram_zstd`](modules/KPM/zram_zstd/README.md) 已经把这套流程跑了一遍：AI 开发、独立审计、实机测试，最后由维护者验收签名。一只负责写，一只负责挑刺，另一只上机验收。
 
-[`nomount`](modules/nomount/README.md) 则是彻底放飞, 让 AI 自己多 Agent 合作，自动完成。
+[`nomount`](modules/KPM/nomount/README.md) 则是彻底放飞, 让 AI 自己多 Agent 合作，自动完成。
 > `nomount` 通过 codex 向 ChatGPT 6 Astra 许愿完成，同时也负责项目维护。codex 对于长任务上传量非常恐怖，哪怕只是开着软件不进行对话都在不断上传，所以协调任务分了出去。<br />
 > 计算限额协调工作为 DeepSeek V4.1 Flash，因为工具最开放，多 agent 协调比较容易。但小模型注意力非常差，需要维护者不停纠错，更新了 1017 依然如此，无法独立维护项目。<br />
 > 开发为 ChatGPT 6.1 Sol，防御性编程拉满，即便在内核里拉屎也要把厕所先建起来。有条件的也可以尝试 Claude，看一下能否优雅的在内核里拉屎。<br />

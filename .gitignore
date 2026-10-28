@@ -46,3 +46,6 @@ __pycache__/
 
 # zram_zstd 由 tools/prepare_codec.py 生成的编解码源码（构建中间物）
 /modules/zram_zstd/out/
+
+# 生成物（zram_zstd 的 codec 生成代码）
+out/

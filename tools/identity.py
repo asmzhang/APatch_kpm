@@ -256,7 +256,9 @@ def module_dir(module):
     允许传入 modules/<name> 形式，避免调用方各自拼路径。
     """
     name = module.split("/")[-1]
-    for cand in (REPO / "modules" / name, REPO / name):
+    cands = sorted(p for p in (REPO / "modules").glob("*/" + name) if p.is_dir())
+    cands += [REPO / "modules" / name, REPO / name]
+    for cand in cands:
         if cand.is_dir():
             return cand
     die(f"模块目录不存在: modules/{name}（由参数 '{module}' 解析而来）")

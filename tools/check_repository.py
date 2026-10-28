@@ -227,9 +227,23 @@ def check_ci_markers(rep):
     build, archived, skipped = [], [], []
     # 模块目录统一在 modules/ 下（2026-10-28 结构收拢）；顶层不再放模块。
     mod_root = os.path.join(REPO, "modules")
-    names = sorted(os.listdir(mod_root)) if os.path.isdir(mod_root) else sorted(os.listdir(REPO))
-    for name in names:
-        path = os.path.join(mod_root, name) if os.path.isdir(mod_root) else os.path.join(REPO, name)
+    # 候选目录：一层 modules/<模块>，或两层 modules/<形态>/<模块>（形态 = KPM/LKM）。
+    cands = []
+    if os.path.isdir(mod_root):
+        for name in sorted(os.listdir(mod_root)):
+            path = os.path.join(mod_root, name)
+            if not os.path.isdir(path):
+                continue
+            cands.append((name, path))
+            if os.path.isfile(os.path.join(path, "Makefile")):
+                continue
+            for sub in sorted(os.listdir(path)):
+                subpath = os.path.join(path, sub)
+                if os.path.isdir(subpath):
+                    cands.append((sub, subpath))
+    else:
+        cands = [(n, os.path.join(REPO, n)) for n in sorted(os.listdir(REPO))]
+    for name, path in cands:
         if not os.path.isdir(path) or name.startswith(".") or name in ("artifacts", "target", "local") or name in subs:
             continue
         if os.path.isfile(os.path.join(path, "archive")):

@@ -1,5 +1,5 @@
 MYKPM_VERSION := 1.0.0
-KP_DIR ?= ../../KernelPatch
+KP_DIR ?= ../../../KernelPatch
 
 OS_NAME = $(shell uname | tr A-Z a-z)
 MACHINE = $(shell uname -m)
@@ -54,10 +54,10 @@ $(CODEC_DIR)/%.o: $(GENERATED_DIR)/%.c $(GENERATED_DIR)/MANIFEST.json $(wildcard
 
 $(kpm)_baselines.kpm: MODE_FLAGS += -DCONFIG_KPM_BASELINES
 
-$(kpms): zram_zstd.c zs_structs.h zs_offsets.c zs_btf.c zs_display.c zs_runtime.c $(codec_objs) ../../kpm_utils.h ../../patch_offsets.py Makefile
+$(kpms): zram_zstd.c zs_structs.h zs_offsets.c zs_btf.c zs_display.c zs_runtime.c $(codec_objs) ../../../kpm_utils.h ../../../patch_offsets.py Makefile
 	@mkdir -p $(OUT_DIR) $(LAYOUT_DIR)
 	@test ! -e $@
 	$(CC) $(CFLAGS) $(CFLAG) $(MODE_FLAGS) -DMYKPM_VERSION=\"$(MYKPM_VERSION)\" $(INCLUDE_FLAGS) $(CODEC_FLAGS) zram_zstd.c zs_runtime.c $(codec_objs) -r -o $@
-	$(if $(filter %_baselines.kpm,$@),$(PYTHON) ../../patch_offsets.py baseline $@ --source zs_offsets.c --output $(LAYOUT_DIR)/$(notdir $@).json)
+	$(if $(filter %_baselines.kpm,$@),$(PYTHON) ../../../patch_offsets.py baseline $@ --source zs_offsets.c --output $(LAYOUT_DIR)/$(notdir $@).json)
 
 .PHONY: all dynamic static baselines

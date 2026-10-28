@@ -1,7 +1,7 @@
-MYKPM_VERSION := 1.0.12
+QBC_VERSION := 1.0.2
 
 ifndef KP_DIR
-    KP_DIR = ../../KernelPatch
+    KP_DIR = ../../../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
@@ -25,27 +25,28 @@ else ifdef NDK_PATH
     LD := $(NDK_PATH)/ld.lld
 endif
 
-CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\"$(MYKPM_VERSION)$(MYKPM_VER)\"
+CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DQBC_VERSION=\"$(QBC_VERSION)$(QBC_VER)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := cgroupv2_freeze.c
+objs := qti_battery_charger.o
 
-all: base
+all: qti_battery_charger_$(QBC_VERSION).kpm
 
-base: cgroupv2_freeze_$(MYKPM_VERSION).kpm
+debug: CFLAGS += -DDEBUG
+debug: QBC_VER := _d
+debug: qti_battery_charger_$(QBC_VERSION)_debug.kpm
 
-debug: CFLAGS += -DCONFIG_DEBUG
-debug: MYKPM_VER := _d
-debug: cgroupv2_freeze_$(MYKPM_VERSION)_debug.kpm
+qti_battery_charger_$(QBC_VERSION).kpm: ${objs}
+	${CC} -r -o $@ $^
 
-cgroupv2_freeze_$(MYKPM_VERSION).kpm: ${objs}
-	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
+qti_battery_charger_$(QBC_VERSION)_debug.kpm: ${objs}
+	${CC} -r -o $@ $^
 
-cgroupv2_freeze_$(MYKPM_VERSION)_debug.kpm: ${objs}
-	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
+%.o: %.c
+	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<
 
 .PHONY: clean
 clean:

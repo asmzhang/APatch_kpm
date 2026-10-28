@@ -1,5 +1,5 @@
 MYKPM_VERSION := 2.1.1-20261014
-KP_DIR ?= ../../KernelPatch
+KP_DIR ?= ../../../KernelPatch
 
 OS_NAME = $(shell uname | tr A-Z a-z)
 MACHINE = $(shell uname -m)
@@ -29,7 +29,7 @@ PYTHON ?= python3
 CFLAGS = $(WARN_FLAGS) -O2 -fno-strict-aliasing -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -mgeneral-regs-only -mno-outline-atomics -ffixed-x18 -fno-builtin
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
-headers := $(wildcard nm*.[ch]) ../../kpm_utils.h ../../patch_offsets.py
+headers := $(wildcard nm*.[ch]) ../../../kpm_utils.h ../../../patch_offsets.py
 kpm := $(OUT_DIR)/NoMount_$(MYKPM_VERSION)
 kpms := $(kpm).kpm $(kpm)_baselines.kpm
 
@@ -44,6 +44,6 @@ $(kpms): nomount.c $(headers) Makefile
 	@mkdir -p $(OUT_DIR) $(LAYOUT_DIR)
 	@test ! -e $@
 	$(CC) $(CFLAGS) $(CFLAG) $(MODE_FLAGS) -DMYKPM_VERSION=\"$(MYKPM_VERSION)\" $(INCLUDE_FLAGS) nomount.c -r -o $@
-	$(if $(filter %_baselines.kpm,$@),$(PYTHON) ../../patch_offsets.py baseline $@ --source nm_offsets.c --output $(LAYOUT_DIR)/$(notdir $@).json)
+	$(if $(filter %_baselines.kpm,$@),$(PYTHON) ../../../patch_offsets.py baseline $@ --source nm_offsets.c --output $(LAYOUT_DIR)/$(notdir $@).json)
 
 .PHONY: all dynamic static baselines

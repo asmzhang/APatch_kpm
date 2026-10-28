@@ -15,11 +15,11 @@ on:
       - "**/*.mk"
       - "**/Makefile"
       - "**/archive"
-      - "modules/re_kernel_x/tools/**"
-      - "modules/nomount/module/**"
-      - "modules/nomount/README.md"
-      - "modules/nomount/tools/**"
-      - "modules/nomount/nomount"
+      - "modules/KPM/re_kernel_x/tools/**"
+      - "modules/KPM/nomount/module/**"
+      - "modules/KPM/nomount/README.md"
+      - "modules/KPM/nomount/tools/**"
+      - "modules/KPM/nomount/nomount"
       - "KernelPatch"
       - ".gitmodules"
 
@@ -37,11 +37,11 @@ on:
       - "**/*.mk"
       - "**/Makefile"
       - "**/archive"
-      - "modules/re_kernel_x/tools/**"
-      - "modules/nomount/module/**"
-      - "modules/nomount/README.md"
-      - "modules/nomount/tools/**"
-      - "modules/nomount/nomount"
+      - "modules/KPM/re_kernel_x/tools/**"
+      - "modules/KPM/nomount/module/**"
+      - "modules/KPM/nomount/README.md"
+      - "modules/KPM/nomount/tools/**"
+      - "modules/KPM/nomount/nomount"
       - "KernelPatch"
       - ".gitmodules"
 
@@ -92,7 +92,14 @@ jobs:
           # 只构建「modules/ 下有 Makefile 且未被 archive 标记」的模块目录：
           #   * 没有 Makefile 的目录（文档/工具/用户数据/子模块）天然跳过，无需任何标记；
           #   * 有 Makefile 但不想让它进 CI 的模块目录，放一个空的 archive 文件。
-          for dir in modules/*/; do
+          # 模块目录可能是一层（modules/<模块>/）或两层（modules/<形态>/<模块>/，形态 = KPM/LKM）。
+          for top in modules/*/; do
+            if [ -f "${top}Makefile" ]; then
+              candidates="${top}"
+            else
+              candidates=$(for sub in "${top}"*/; do [ -f "${sub}Makefile" ] && printf "%s\n" "${sub}"; done)
+            fi
+            for dir in $candidates; do
             name=$(basename "${dir}")
             if [ -f "${dir}archive" ]; then
               echo "skip ${dir} (archive)"
@@ -113,6 +120,7 @@ jobs:
               make -C "${dir}"
               mv "${dir}"*.kpm target
             fi
+            done
           done
 
       - name: Validate compiled artifacts

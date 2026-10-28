@@ -4,8 +4,8 @@
 	path = KernelPatch
 	url = https://github.com/bmax121/KernelPatch/
 [submodule "zram_zstd/upstream/zstd"]
-	path = modules/zram_zstd/zstd
+	path = modules/KPM/zram_zstd/zstd
 	url = https://github.com/facebook/zstd.git
 [submodule "nomount/nomount"]
-	path = modules/nomount/nomount
+	path = modules/KPM/nomount/nomount
 	url = https://github.com/maxsteeel/nomount.git

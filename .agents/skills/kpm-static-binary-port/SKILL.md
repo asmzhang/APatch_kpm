@@ -11,13 +11,13 @@ description: 获取 ARM64 KPM 的 baselines 静态预编译基线，离线分析
 
 rek（`re_kernel`）与 rekx（`re_kernel_x`）分别提供动态普通版 `<模块>_<版本>.kpm` 与静态 `<模块>_<版本>_baselines.kpm`，debug 在末尾增加 `_debug`。`CONFIG_KPM_BASELINES` 选择静态实现，未定义时为动态。两版管理名称相同，每次选择一种加载；仅静态版生成同名布局 JSON，动态版使用加载时 BTF/函数推导。
 
-两模块保留独立 Makefile、结构定义和业务实现，共用根目录 `patch_offsets.py`。静态表的字段定义、实例、访问器及条件编译的动态推导集中于本模块 `re_offsets.c`。run_cmd（`run_cmd_demo`）也提供这两种模式，偏移实现为 `rc_offsets.c`，字段含义见 [模块开发约定](../../../modules/run_cmd_demo/AGENTS.md)。普通偏移表使用 schema 3，既有 Binder 表继续使用 schema 1/2。全项目逐步接入这一规范，无偏移依赖的模块继续生成通用 KPM。
+两模块保留独立 Makefile、结构定义和业务实现，共用根目录 `patch_offsets.py`。静态表的字段定义、实例、访问器及条件编译的动态推导集中于本模块 `re_offsets.c`。run_cmd（`run_cmd_demo`）也提供这两种模式，偏移实现为 `rc_offsets.c`，字段含义见 [模块开发约定](../../../modules/KPM/run_cmd_demo/AGENTS.md)。普通偏移表使用 schema 3，既有 Binder 表继续使用 schema 1/2。全项目逐步接入这一规范，无偏移依赖的模块继续生成通用 KPM。
 
 ## 分清 ABI 与布局
 
 - 调用配置编号表示实际函数签名，不能按 Linux 主版本号选择。通过目标源码、BTF 或调用点寄存器和被调用函数的参数使用确认。
 - 同一份代码可保留多种准确签名，由静态配置选择；不能因为函数参数不同就默认多编译一份。调用语义或共同布局确实无法共用时才增加基线分支。
-- `re_kernel_x` 的统一基线通过 `re_offsets.c` 末项 `binder_release_abi` 选择 3/4/5/6；默认模板为 6，移植时必须核对实际调用。签名见 [模块开发说明](../../../modules/re_kernel_x/AGENTS.md)，5.15 也可能使用 5。Genl 接收入口共用，不再通过编译宏区分四份产物。
+- `re_kernel_x` 的统一基线通过 `re_offsets.c` 末项 `binder_release_abi` 选择 3/4/5/6；默认模板为 6，移植时必须核对实际调用。签名见 [模块开发说明](../../../modules/KPM/re_kernel_x/AGENTS.md)，5.15 也可能使用 5。Genl 接收入口共用，不再通过编译宏区分四份产物。
 - `re_kernel.h` 放模块自己的协议和定义，`re_structs.h` 放核对过的内核定义，`re_utils.h` 放 KP 风格封装；公共宏在 `kpm_utils.h`。缩进遵循仓库 `.clang-format`。
 
 ## 获取公开基准（用户侧）
@@ -85,6 +85,6 @@ python3 patch_offsets.py legacy-kp local/target.kpm --output local/target-legacy
 - 主机 ASan/UBSan 验证业务、边界和失败路径，目标锁、hook、真实 ACK、卸载和应用响应需单独验证。不得把离线检查写成 Android 实机通过。
 - 记录完整 commit、构建实例和产物 SHA-256；脏树只记探索，附源树指纹。原报告、清单和归档产物保留。
 
-自检入口：`python3 modules/re_kernel_x/tools/test_static.py --baselines <基准目录>`。
+自检入口：`python3 modules/KPM/re_kernel_x/tools/test_static.py --baselines <基准目录>`。
 
 遇到旧 Binder 没有数据复制函数时，先阅读 [旧 Binder 数据读取经验](../kernel-offset-derivation/references/legacy-binder-data.md)，不要将用户地址当作内核指针，也不要因符号缺失直接认定功能无法移植。

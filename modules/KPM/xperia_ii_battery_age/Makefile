@@ -1,7 +1,7 @@
-QBC_VERSION := 1.0.2
+XIIBA_VERSION := 1.1.2
 
 ifndef KP_DIR
-    KP_DIR = ../../KernelPatch
+    KP_DIR = ../../../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
@@ -25,24 +25,24 @@ else ifdef NDK_PATH
     LD := $(NDK_PATH)/ld.lld
 endif
 
-CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DQBC_VERSION=\"$(QBC_VERSION)$(QBC_VER)\"
+CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DXIIBA_VERSION=\"$(XIIBA_VERSION)$(XIIBA_VER)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := qti_battery_charger.o
+objs := xperia_ii_battery_age.o
 
-all: qti_battery_charger_$(QBC_VERSION).kpm
+all: xperia_ii_battery_age_$(XIIBA_VERSION).kpm
 
 debug: CFLAGS += -DDEBUG
-debug: QBC_VER := _d
-debug: qti_battery_charger_$(QBC_VERSION)_debug.kpm
+debug: XIIBA_VER := _d
+debug: xperia_ii_battery_age_$(XIIBA_VERSION)_debug.kpm
 
-qti_battery_charger_$(QBC_VERSION).kpm: ${objs}
+xperia_ii_battery_age_$(XIIBA_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-qti_battery_charger_$(QBC_VERSION)_debug.kpm: ${objs}
+xperia_ii_battery_age_$(XIIBA_VERSION)_debug.kpm: ${objs}
 	${CC} -r -o $@ $^
 
 %.o: %.c

@@ -1,7 +1,7 @@
-MYKPM_VERSION := 1.0.2
+MYKPM_VERSION := 1.0.12
 
 ifndef KP_DIR
-    KP_DIR = ../../KernelPatch
+    KP_DIR = ../../../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
@@ -31,20 +31,20 @@ INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include l
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := dont_kill_freeze.c
+objs := cgroupv2_freeze.c
 
 all: base
 
-base: dont_kill_freeze_$(MYKPM_VERSION).kpm
+base: cgroupv2_freeze_$(MYKPM_VERSION).kpm
 
 debug: CFLAGS += -DCONFIG_DEBUG
 debug: MYKPM_VER := _d
-debug: dont_kill_freeze_$(MYKPM_VERSION)_debug.kpm
+debug: cgroupv2_freeze_$(MYKPM_VERSION)_debug.kpm
 
-dont_kill_freeze_$(MYKPM_VERSION).kpm: ${objs}
+cgroupv2_freeze_$(MYKPM_VERSION).kpm: ${objs}
 	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
 
-dont_kill_freeze_$(MYKPM_VERSION)_debug.kpm: ${objs}
+cgroupv2_freeze_$(MYKPM_VERSION)_debug.kpm: ${objs}
 	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
 
 .PHONY: clean

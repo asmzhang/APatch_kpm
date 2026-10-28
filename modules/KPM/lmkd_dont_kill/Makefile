@@ -1,7 +1,7 @@
-XIIBA_VERSION := 1.1.2
+MYKPM_VERSION := 1.0.0
 
 ifndef KP_DIR
-    KP_DIR = ../../KernelPatch
+    KP_DIR = ../../../KernelPatch
 endif
 
 OS_NAME = $(shell uname | tr A-Z a-z)
@@ -25,28 +25,27 @@ else ifdef NDK_PATH
     LD := $(NDK_PATH)/ld.lld
 endif
 
-CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DXIIBA_VERSION=\"$(XIIBA_VERSION)$(XIIBA_VER)\"
+CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\"$(MYKPM_VERSION)$(MYKPM_VER)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
-objs := xperia_ii_battery_age.o
+objs := lmkd_dont_kill.c
 
-all: xperia_ii_battery_age_$(XIIBA_VERSION).kpm
+all: base
 
-debug: CFLAGS += -DDEBUG
-debug: XIIBA_VER := _d
-debug: xperia_ii_battery_age_$(XIIBA_VERSION)_debug.kpm
+base: lmkd_dont_kill_$(MYKPM_VERSION).kpm
 
-xperia_ii_battery_age_$(XIIBA_VERSION).kpm: ${objs}
-	${CC} -r -o $@ $^
+debug: CFLAGS += -DCONFIG_DEBUG
+debug: MYKPM_VER := _d
+debug: lmkd_dont_kill_$(MYKPM_VERSION)_debug.kpm
 
-xperia_ii_battery_age_$(XIIBA_VERSION)_debug.kpm: ${objs}
-	${CC} -r -o $@ $^
+lmkd_dont_kill_$(MYKPM_VERSION).kpm: ${objs}
+	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
 
-%.o: %.c
-	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<
+lmkd_dont_kill_$(MYKPM_VERSION)_debug.kpm: ${objs}
+	${CC} $(CFLAGS) $(CFLAG) $(INCLUDE_FLAGS) $^ -r -o $@
 
 .PHONY: clean
 clean:

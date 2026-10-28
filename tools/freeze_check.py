@@ -48,8 +48,15 @@ def top_level_module_dirs():
     if not root.is_dir():
         return dirs
     for path in root.iterdir():
-        if path.is_dir() and (path / "Makefile").is_file():
+        if not path.is_dir():
+            continue
+        if (path / "Makefile").is_file():
             dirs.add(path.name)
+            continue
+        # modules/<形态>/<模块>：形态层没有 Makefile，模块层才有
+        for sub in path.iterdir():
+            if sub.is_dir() and (sub / "Makefile").is_file():
+                dirs.add(sub.name)
     return dirs
 
 

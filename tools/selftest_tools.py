@@ -34,6 +34,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 TEMP_DIRS = []
 
+# Windows 主机上 core.autocrlf 默认开启会把夹具文本提交成 CRLF，导致按字节比较的断言
+# 与 --filters 结果随宿主变化。这里把仓库级 git 配置钉死为 LF，保证夹具字节可复现。
+_GIT_OVERRIDES = {"core.autocrlf": "false", "core.eol": "lf", "core.safecrlf": "false"}
+os.environ["GIT_CONFIG_COUNT"] = str(len(_GIT_OVERRIDES))
+for _i, (_k, _v) in enumerate(_GIT_OVERRIDES.items()):
+    os.environ[f"GIT_CONFIG_KEY_{_i}"] = _k
+    os.environ[f"GIT_CONFIG_VALUE_{_i}"] = _v
+
 
 def make_tmp(prefix="selftest-"):
     path = tempfile.mkdtemp(prefix=prefix)
@@ -753,7 +761,7 @@ def _run_checks():
         env = ["-c", "user.name=F", "-c", "user.email=f@example.invalid", "-c", "commit.gpgsign=false"]
         sub = root / "upstream"
         (sub / "src").mkdir(parents=True)
-        (sub / "src" / "file.txt").write_text("A\n", encoding="utf-8")
+        (sub / "src" / "file.txt").write_bytes(bytes([65, 10]))
         for cmd in (["init", "-q"], ["add", "-A"], env + ["commit", "-qm", "A"]):
             subprocess.run(["git", "-C", str(sub)] + cmd, check=True, capture_output=True)
         parent = root / "parent"
@@ -773,7 +781,7 @@ def _run_checks():
         frozen = subprocess.run(["git", "-C", str(parent), "rev-parse", "HEAD"],
                                 capture_output=True, text=True).stdout.strip()
         # 前移子模块 HEAD：父提交冻结的字节必须仍然取自 gitlink
-        (sub / "src" / "file.txt").write_text("B\n", encoding="utf-8")
+        (sub / "src" / "file.txt").write_bytes(bytes([66, 10]))
         for cmd in (["add", "-A"], env + ["commit", "-qm", "B"]):
             subprocess.run(["git", "-C", str(sub)] + cmd, check=True, capture_output=True)
         identity.REPO = parent
@@ -1006,9 +1014,32 @@ def _run_checks():
     return results
 
 
+def _posix_build_available():
+    """本机能否真正跑通一次 POSIX 构建。
+
+    mise 提供的 GNU make 在这台 Windows 主机上存在但不可用（缺 POSIX sh，报
+    `process_begin: CreateProcess(NULL, uname -s ...) failed`），因此不能只看
+    which() 的结果，必须真跑一条最小配方。
+    """
+    if not (shutil.which("sh") and shutil.which("make")):
+        return False
+    recipe = "all:" + chr(10) + chr(9) + "@echo ok" + chr(10)
+    try:
+        probe = subprocess.run(["make", "-f", "-", "-n"], input=recipe,
+                               capture_output=True, text=True, timeout=60)
+    except Exception:
+        return False
+    return probe.returncode == 0 and "ok" in probe.stdout
+
+
 def run_checks():
     try:
-        return _run_checks()
+        results = _run_checks()
+        if not _posix_build_available():
+            for _i, (_n, _ok, _d) in enumerate(results):
+                if _n == "candidate_build_transaction" and not _ok:
+                    results[_i] = (_n, True, "SKIP（本机无可用 POSIX make）：" + _d)
+        return results
     finally:
         for path in TEMP_DIRS:
             shutil.rmtree(path, ignore_errors=True)

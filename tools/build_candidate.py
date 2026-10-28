@@ -58,13 +58,18 @@ def tracked_in(module):
 
 
 def plan_cleanup(mdir, protected_rel):
-    """返回 (要移走的文件, 被保护而跳过的文件)。"""
+    """返回 (要移走的文件, 被保护而跳过的文件)。
+
+    CLEAN_PATTERNS 与 AMBIGUOUS_PATTERNS 会重叠（`*.s` 同时命中两侧），因此按路径去重：
+    同一个受保护文件只应报告一次，否则调用方读到的 skipped 会重复。
+    """
     protected = {str(Path(p).name) for p in protected_rel}
-    to_move, skipped = [], []
+    to_move, skipped, seen = [], [], set()
     for pattern in CLEAN_PATTERNS + AMBIGUOUS_PATTERNS:
         for path in sorted(mdir.glob(pattern)):
-            if not path.is_file():
+            if not path.is_file() or path in seen:
                 continue
+            seen.add(path)
             if path.name in protected:
                 skipped.append(path.name)
                 continue

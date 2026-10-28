@@ -203,7 +203,7 @@ def submodule_paths():
 
 
 def check_ci_markers(rep):
-    """CI 只构建「有 Makefile 且未被 archive 标记」的顶层目录。
+    """CI 只构建「modules/ 下有 Makefile 且未被 archive 标记」的模块目录。
 
     规则（.github/workflows/build-kpm.yml）:
       * 没有 Makefile 的目录天然跳过——文档/工具/用户数据/子模块不需要任何标记文件；
@@ -224,8 +224,11 @@ def check_ci_markers(rep):
 
     subs = submodule_paths()
     build, archived, skipped = [], [], []
-    for name in sorted(os.listdir(REPO)):
-        path = os.path.join(REPO, name)
+    # 模块目录统一在 modules/ 下（2026-10-28 结构收拢）；顶层不再放模块。
+    mod_root = os.path.join(REPO, "modules")
+    names = sorted(os.listdir(mod_root)) if os.path.isdir(mod_root) else sorted(os.listdir(REPO))
+    for name in names:
+        path = os.path.join(mod_root, name) if os.path.isdir(mod_root) else os.path.join(REPO, name)
         if not os.path.isdir(path) or name.startswith(".") or name in ("artifacts", "target", "local") or name in subs:
             continue
         if os.path.isfile(os.path.join(path, "archive")):

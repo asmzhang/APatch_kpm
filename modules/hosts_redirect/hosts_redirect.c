@@ -4,7 +4,6 @@
  * Copyright (C) 2024 lzghzr. All Rights Reserved.
  */
 
-#include <accctl.h>
 #include <compiler.h>
 #include <hook.h>
 #include <kpmodule.h>
@@ -79,7 +78,6 @@ static void do_filp_open_before(hook_fargs3_t* args, void* udata) {
   if (unlikely(!strcmp(pathname->name, hosts_source))) {
     args->local.data0 = (uint64_t)pathname->name;
     pathname->name = hosts_target;
-    set_priv_sel_allow(current, true);
   } else if (unlikely(endWith(pathname->name, "hosts"))) {
     struct task_struct* task = current;
     spinlock_t task_lock = *(spinlock_t*)((uintptr_t)task + task_struct_alloc_lock_offset);
@@ -120,7 +118,6 @@ static void do_filp_open_before(hook_fargs3_t* args, void* udata) {
           if (likely(!IS_ERR(hosts_name) && !strcmp(hosts_name, hosts_source))) {
             args->local.data0 = (uint64_t)pathname->name;
             pathname->name = hosts_target;
-            set_priv_sel_allow(task, true);
           }
         }
       }
@@ -132,7 +129,6 @@ static void do_filp_open_before(hook_fargs3_t* args, void* udata) {
 
 static void do_filp_open_after(hook_fargs3_t* args, void* udata) {
   if (unlikely(args->local.data0)) {
-    set_priv_sel_allow(current, false);
     struct filename* pathname = (struct filename*)args->arg1;
     pathname->name = (char*)args->local.data0;
   }

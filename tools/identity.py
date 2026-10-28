@@ -256,10 +256,10 @@ def module_dir(module):
     允许传入 modules/<name> 形式，避免调用方各自拼路径。
     """
     name = module.split("/")[-1]
-    path = REPO / "modules" / name
-    if not path.is_dir():
-        die(f"模块目录不存在: modules/{name}")
-    return path
+    for cand in (REPO / "modules" / name, REPO / name):
+        if cand.is_dir():
+            return cand
+    die(f"模块目录不存在: modules/{name}（由参数 '{module}' 解析而来）")
 
 
 def parse_makefile_version(mdir):

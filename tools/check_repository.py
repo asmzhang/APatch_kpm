@@ -496,7 +496,10 @@ def check_version_consistency(rep):
         archived = record.get("status") == "archived"
         if archived:
             successor = record.get("superseded_by", "")
-            if os.path.lexists(os.path.join(REPO, module)):
+            module_dir_path = os.path.join(REPO, "modules", module)
+            if not os.path.exists(module_dir_path):
+                module_dir_path = os.path.join(REPO, module)
+            if os.path.lexists(module_dir_path):
                 problems.append(f"{module}: 已归档模块的源码目录仍在工作树中")
             if (not re.fullmatch(r"[A-Za-z0-9_-]+", successor)
                     or successor == module

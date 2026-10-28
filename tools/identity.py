@@ -580,7 +580,7 @@ def _lock_acquire(handle):
 
 def _lock_release(handle):
     if fcntl is not None:
-        _lock_release(handle)
+        fcntl.flock(handle, fcntl.LOCK_UN)
         return
     if msvcrt is None:
         return
@@ -608,7 +608,7 @@ def module_lock(module, timeout=30):
     try:
         yield
     finally:
-        fcntl.flock(handle, fcntl.LOCK_UN)
+        _lock_release(handle)
         handle.close()
 
 

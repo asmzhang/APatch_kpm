@@ -25,7 +25,7 @@
 
 本项目是通用流程在本仓库的落地实现：
 
-- 模块源码与构建器：`re_kernel/`、`hosts_redirect/`、`cgroupv2_freeze/` 等各模块目录（Developer）
+- 模块源码与构建器：`modules/re_kernel/`、`modules/hosts_redirect/`、`modules/cgroupv2_freeze/` 等各模块目录（Developer）
 - 离线内核镜像与 offset harness：`kernel_img/`（用户放置 img；工具在 `kernel_img/offset_harness/`；提取产物在 `local/`）（Developer）
 - 独立审计工具与报告：`Auditor/`（Auditor）
 - 真机工具与实机报告：`Tester/`（Tester）

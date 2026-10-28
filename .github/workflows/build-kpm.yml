@@ -15,11 +15,11 @@ on:
       - "**/*.mk"
       - "**/Makefile"
       - "**/archive"
-      - "re_kernel_x/tools/**"
-      - "nomount/module/**"
-      - "nomount/README.md"
-      - "nomount/tools/**"
-      - "nomount/nomount"
+      - "modules/re_kernel_x/tools/**"
+      - "modules/nomount/module/**"
+      - "modules/nomount/README.md"
+      - "modules/nomount/tools/**"
+      - "modules/nomount/nomount"
       - "KernelPatch"
       - ".gitmodules"
 
@@ -37,11 +37,11 @@ on:
       - "**/*.mk"
       - "**/Makefile"
       - "**/archive"
-      - "re_kernel_x/tools/**"
-      - "nomount/module/**"
-      - "nomount/README.md"
-      - "nomount/tools/**"
-      - "nomount/nomount"
+      - "modules/re_kernel_x/tools/**"
+      - "modules/nomount/module/**"
+      - "modules/nomount/README.md"
+      - "modules/nomount/tools/**"
+      - "modules/nomount/nomount"
       - "KernelPatch"
       - ".gitmodules"
 
@@ -243,15 +243,15 @@ jobs:
 
       - name: Check ZIP publishing
         run: |
-          python3 nomount/tools/test_release_zip.py
-          python3 nomount/tools/test_update_json.py
+          python3 modules/nomount/tools/test_release_zip.py
+          python3 modules/nomount/tools/test_update_json.py
 
       - name: Build NoMount ZIP
         id: build_zip
         run: |
           mkdir -p local
-          python3 nomount/tools/build_zip.py --ndk "$ANDROID_HOME/ndk/26.3.11579264" --host-tag linux-x86_64 > local/nomount-zip-result.json
-          python3 nomount/tools/release_zip.py prepare --result local/nomount-zip-result.json --output target_zip
+          python3 modules/nomount/tools/build_zip.py --ndk "$ANDROID_HOME/ndk/26.3.11579264" --host-tag linux-x86_64 > local/nomount-zip-result.json
+          python3 modules/nomount/tools/release_zip.py prepare --result local/nomount-zip-result.json --output target_zip
           (cd target_zip && sha256sum --check SHA256SUMS)
           python3 -c 'import json; print("zip_name=" + json.load(open("local/nomount-zip-result.json"))["artifact"]["name"])' >> "$GITHUB_OUTPUT"
 
@@ -296,7 +296,7 @@ jobs:
         run: |
           (cd release && sha256sum --check SHA256SUMS)
           (cd target_zip && sha256sum --check SHA256SUMS)
-          python3 nomount/tools/release_zip.py merge --zip-dir target_zip --release-dir release --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
+          python3 modules/nomount/tools/release_zip.py merge --zip-dir target_zip --release-dir release --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY"
           (cd release && sha256sum --check SHA256SUMS)
 
       - name: Upload release

@@ -43,3 +43,6 @@ __pycache__/
 /kernel_img/*
 !/kernel_img/README.md
 !/kernel_img/offset_harness/
+
+# zram_zstd 由 tools/prepare_codec.py 生成的编解码源码（构建中间物）
+/modules/zram_zstd/out/

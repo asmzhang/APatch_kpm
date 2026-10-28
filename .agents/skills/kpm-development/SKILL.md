@@ -28,7 +28,7 @@ KPM 是由 KernelPatch 加载到内核空间的 ARM64 可重定位 ELF，不使�
 
 新模块默认不生成单独 debug 件。只有明确需要且有独立调试用途时才添加 `_debug`，模式在 `.kpm.info` 中记为 `offset_mode=dynamic/static`。两种产物使用同一模块管理名称，每次选择一种加载；这是编译产物的选择，不是运行时模式切换。
 
-各项目保留独立 Makefile、协议与偏移实现。run_cmd 的四字段配置与静态 SID 语义见 [模块开发约定](../../../run_cmd_demo/AGENTS.md)。rek、rekx 不互相包含源码；公共指令宏和 BTF 成员查询放根目录 `kpm_utils.h`，静态补丁工具为根目录 `patch_offsets.py`。通用部分以 rekx 为准核对后分别维护。
+各项目保留独立 Makefile、协议与偏移实现。run_cmd 的四字段配置与静态 SID 语义见 [模块开发约定](../../../modules/run_cmd_demo/AGENTS.md)。rek、rekx 不互相包含源码；公共指令宏和 BTF 成员查询放根目录 `kpm_utils.h`，静态补丁工具为根目录 `patch_offsets.py`。通用部分以 rekx 为准核对后分别维护。
 
 在新的空输出目录运行 `all` 生成两份普通版；已有且确有用途的 `debug` 目标按模块约定保留；`static`、`dynamic` 可单独选择，`baselines` 按模块约定生成静态件。静态 JSON 默认与 KPM 同目录，也可用 `LAYOUT_DIR` 单独指定。正式候选使用仓库统一构建入口，捕获 `--extra-input patch_offsets.py` 及实际工具链、输出参数。
 
@@ -177,7 +177,7 @@ syscall 使用 [syscall.h](../../../KernelPatch/kernel/patch/include/syscall.h) 
 
 `get_task_ext`、`get_current_task_ext`、`reg_task_local` 等必须同时核对定义、底层依赖、导出和运行端。不能假定 `current->task_ext` 存在，也不能从栈尾自行拼扩展地址。当前 SDK 的 get_task_ext 包装依赖 `kf_get_task_ext`；源码里有该实现不等于 KPM 可链接该导入。未核实运行端导出和容量语义之前，不使用该接口存放模块业务状态。
 
-仅需同一 hook 调用的 before/after 状态时，使用 `args->local`。跨 hook 短期读取参数时，可用模块自己的任务/调用映射；本项目 [Binder 调用上下文](../../../re_kernel_x/re_kernel.c) 按任务和参数地址登记，支持嵌套，after 删除，分配失败时跳过相应读取。上下文不能在 after 之后继续引用调用参数；任务隔离、并发、嵌套及失败路径都需核对。
+仅需同一 hook 调用的 before/after 状态时，使用 `args->local`。跨 hook 短期读取参数时，可用模块自己的任务/调用映射；本项目 [Binder 调用上下文](../../../modules/re_kernel_x/re_kernel.c) 按任务和参数地址登记，支持嵌套，after 删除，分配失败时跳过相应读取。上下文不能在 after 之后继续引用调用参数；任务隔离、并发、嵌套及失败路径都需核对。
 
 ## 锁、回调与退出
 
@@ -196,7 +196,7 @@ ARM64 构建使用 `-mgeneral-regs-only -ffixed-x18 -mno-outline-atomics -fno-bu
 - 检查真实反汇编的 FP/SIMD/SVE 指令、x18 使用及意外的编译器辅助调用。
 - 枚举全部 ELF 未定义导入，与实际 KP 导出表逐项比较；加载器不会把任意内核 kallsyms 自动用作 ELF 导入。
 - 检查 `.kpm.info`、init/exit 回调节与重定位。动态模块检查推导状态、越界扫描和失败路径；静态模块核对配置段、基准 ABI 标记及配套布局文件。
-- `-fno-builtin` 仍可能产生裸 `memcpy` / `memset` 导入。需要时按 [re_runtime.c](../../../re_kernel_x/re_runtime.c) 提供模块本地转接，并确认它依赖的 `kf_*` 已导出；不能改成同名递归包装。
+- `-fno-builtin` 仍可能产生裸 `memcpy` / `memset` 导入。需要时按 [re_runtime.c](../../../modules/re_kernel_x/re_runtime.c) 提供模块本地转接，并确认它依赖的 `kf_*` 已导出；不能改成同名递归包装。
 
 探索输出用新的空目录。正式候选按仓库统一构建入口从冻结提交生成；记录提交、实例和产物哈希，不覆盖旧产物。动态算法的离线回归、静态补丁往返与主机 ASan/UBSan 都是实现方自检；运行时推导、目标锁、hook、ACK 和应用响应由独立真机测试核验。
 

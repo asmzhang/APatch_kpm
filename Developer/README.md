@@ -22,7 +22,7 @@ Developer 拥有「让功能在目标内核上跑起来」的全部工作：内�
 
 | 路径 | 说明 |
 | --- | --- |
-| `re_kernel/`、`hosts_redirect/`、`cgroupv2_freeze/`、`dont_kill_freeze/`、`lmkd_dont_kill/`、`qti_battery_charger/`、`xperia_*/` … | 各模块源码、Makefile、模块 README |
+| `modules/re_kernel/`、`modules/hosts_redirect/`、`modules/cgroupv2_freeze/`、`modules/dont_kill_freeze/`、`modules/lmkd_dont_kill/`、`modules/qti_battery_charger/`、`xperia_*/` … | 各模块源码、Makefile、模块 README |
 | `kpm_utils.h` | 仓库级共享工具宏（所有模块共用） |
 | `kernel_img/offset_harness/` | 离线偏移推导回归 harness：解包 img、推导偏移、输出矩阵（自检用途） |
 | `kernel_img/<大版本>/<小版本>/` | 用户放置的原始 img 与符号表（**不入库**） |

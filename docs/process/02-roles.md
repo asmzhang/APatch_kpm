@@ -19,7 +19,7 @@
 | 共享门禁调整 | **判据归维护者**：什么算合格（身份语义、命名契约、检查范围与阈值）由维护者定，Tester/Auditor/Developer 提补丁建议与复现证据 | 调整检查范围需记录理由与正反回归；各类报告和修复响应中的产物身份引用统一核验 |
 | 共享工具机制适配（标准授权） | **机制归需要它的角色**：让共享工具支持模块的合法结构变化（子模块迁移/改名、新增产物元信息字段、转换支持等）**无需逐次请示**，由该角色直接实现 | 五个条件：① 不改变任何判据/阈值/检查范围；② 在维护者自检文件（`tools/selftest_tools.py`／`tools/selftest_artifact_gate.py`）补正反夹具；③ 同轮留下提案记录（patch + 说明 + 复现证据）；④ 维护者同轮逐字节复核并采纳或回退；⑤ 一旦涉及判据即回到上一条。**本条本身即是授权，用户不必逐次批准** |
 | 读取权 | **所有角色都可以读任何角色的工具、报告与原始证据**（用于本地诊断、复现问题、准备修复） | 读取不等于修改：修改权、结论权、真机设备操作权仍分别归属；引用他人结论时必须标注来源与是否独立复现 |
-| Auditor 隔离构建 | 可在 `local/auditor-scratch/`（已被 `.gitignore` 覆盖）或仓库外工作树里独立重编译 | 不在共享工作树内 `make`；产物不回写 `re_kernel/` 与 `artifacts/`；不清理 `local/stale/` |
+| Auditor 隔离构建 | 可在 `local/auditor-scratch/`（已被 `.gitignore` 覆盖）或仓库外工作树里独立重编译 | 不在共享工作树内 `make`；产物不回写 `modules/re_kernel/` 与 `artifacts/`；不清理 `local/stale/` |
 | Auditor 自建语料 | 可自建**独立**的 kallsyms 提取（不得调用 `kernel_img/offset_harness`），用于降低「语料由 Developer 提供」的同源风险 | 提取产物放 `local/kallsyms_audit/`；报告里要说明提取器与实现方无关、并声明残余同源风险 |
 | 语料范围 | 以使用者当前放在 `kernel_img/` 的镜像/符号表为准；harness 取不到符号表时按 **SKIP（未覆盖）** 记录，不算失败、也不算缺陷 | **不得把"本 harness 提取失败"写成"内核不含 kallsyms"**，定性需独立提取器；结论要写明实际语料清单 |
 | Auditor 只读网络 | 可以为上游核对（KernelPatch 导出符号、内核源码）拉取公开仓库与文档 | 仅读；不上传、不外发语料/设备数据；引用外部结论要标 URL 与访问时间 |
@@ -31,14 +31,14 @@
 
 | 角色 | 拥有 | 明确不拥有 |
 | --- | --- | --- |
-| Developer | 各模块目录（`re_kernel/`、`hosts_redirect/`、`cgroupv2_freeze/`、`dont_kill_freeze/` …）、`kpm_utils.h`、`kernel_img/offset_harness/`（离线偏移 harness）、`Developer/`（含 `reports/handoffs/`、`reports/responses/`）；`kernel_img/` 里的镜像与 `local/` 中开发运行产物是本地数据（不入库），角色专属子目录按表内边界分配 | `Auditor/`、`Tester/`、`metadata/` 的结论字段、`docs/`、`tools/` |
+| Developer | 各模块目录（`modules/re_kernel/`、`modules/hosts_redirect/`、`modules/cgroupv2_freeze/`、`modules/dont_kill_freeze/` …）、`kpm_utils.h`、`kernel_img/offset_harness/`（离线偏移 harness）、`Developer/`（含 `reports/handoffs/`、`reports/responses/`）；`kernel_img/` 里的镜像与 `local/` 中开发运行产物是本地数据（不入库），角色专属子目录按表内边界分配 | `Auditor/`、`Tester/`、`metadata/` 的结论字段、`docs/`、`tools/` |
 | Auditor | `Auditor/`（独立工具、快照、报告） | 模块源码（发现问题只提问题单，不代改）、`Tester/` |
 | Tester | `Tester/`（真机脚本、实机报告） | 模块源码、`Auditor/` |
 | 维护者 | `metadata/`、`docs/`、`tools/`、`AGENTS.md`、`README.md`、`.github/`、`.gitignore`、`.agents/`（技能与流程类文档）、根目录交付物 | 角色目录内的结论性内容 |
 
 CI 构建规则（`.github/workflows/build-kpm.yml`）：**只构建「有 Makefile 且未被 `archive` 标记」的顶层目录**。
 没有 Makefile 的目录（`docs/`、`tools/`、`metadata/`、`Auditor/`、`Tester/`、`Developer/`、`kernel_img/`、`local/`、子模块…）
-天然跳过，**不需要任何标记文件**；`archive` 空文件只用于「有 Makefile 但不想让 CI 构建」的模块目录（如 `lmkd_dont_kill/`）。
+天然跳过，**不需要任何标记文件**；`archive` 空文件只用于「有 Makefile 但不想让 CI 构建」的模块目录（如 `modules/lmkd_dont_kill/`）。
 因此新增文档/工具目录时什么都不用加；要归档某个模块才放 `archive`。
 
 ### Auditor 运行约束

@@ -97,6 +97,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     char temp[512];
     int temp_len;
     unsigned int map_count, path_count, ptrace_count;
+    unsigned int range_count, regs_count;
 
     if (*pos > 0) {
         return 0;
@@ -116,6 +117,8 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     map_count = shared_data_get_count_by_type(SHARED_DATA_TYPE_PATH_MAPPING);
     path_count = shared_data_get_count_by_type(SHARED_DATA_TYPE_SINGLE_PATH);
     ptrace_count = shared_data_get_count_by_type(SHARED_DATA_TYPE_PTRACE_UID);
+    range_count = shared_data_get_count_by_type(SHARED_DATA_TYPE_ADDR_RANGE);
+    regs_count = shared_data_get_count_by_type(SHARED_DATA_TYPE_PTRACE_REGS);
 
     temp_len = snprintf(temp, sizeof(temp), "[MAPPINGS:%u]\n", map_count);
     if (total_len + temp_len < count) {
@@ -191,6 +194,56 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
         }
     }
 
+    temp_len = snprintf(temp, sizeof(temp), "[RANGES:%u]\n", range_count);
+    if (total_len + temp_len < count) {
+        strcat(kernel_buf + total_len, temp);
+        total_len += temp_len;
+    } else {
+        goto buffer_full;
+    }
+
+    for (i = 0; i < range_count && total_len < count - 512; i++) {
+        ret = shared_data_get_type_entry_info(SHARED_DATA_TYPE_ADDR_RANGE, i,
+                                              &global_index, &entry);
+        if (ret == SHARED_DATA_SUCCESS) {
+            temp_len = snprintf(temp, sizeof(temp), "%u:%lx:%lx\n",
+                                entry.data.range.uid,
+                                entry.data.range.start,
+                                entry.data.range.end);
+
+            if (total_len + temp_len < count) {
+                strcat(kernel_buf + total_len, temp);
+                total_len += temp_len;
+            } else {
+                goto buffer_full;
+            }
+        }
+    }
+
+    temp_len = snprintf(temp, sizeof(temp), "[REGS:%u]\n", regs_count);
+    if (total_len + temp_len < count) {
+        strcat(kernel_buf + total_len, temp);
+        total_len += temp_len;
+    } else {
+        goto buffer_full;
+    }
+
+    for (i = 0; i < regs_count && total_len < count - 512; i++) {
+        ret = shared_data_get_type_entry_info(SHARED_DATA_TYPE_PTRACE_REGS, i,
+                                              &global_index, &entry);
+        if (ret == SHARED_DATA_SUCCESS) {
+            temp_len = snprintf(temp, sizeof(temp), "%u\n",
+                                entry.data.ptrace_uid.uid);
+
+            if (total_len + temp_len < count) {
+                strcat(kernel_buf + total_len, temp);
+                total_len += temp_len;
+            } else {
+                goto buffer_full;
+            }
+        }
+    }
+
     temp_len = snprintf(temp, sizeof(temp), "[END]\n");
     if (total_len + temp_len < count) {
         strcat(kernel_buf + total_len, temp);
@@ -199,9 +252,10 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     buffer_full:
 
-    if (total_len == 0 || (map_count == 0 && path_count == 0 && ptrace_count == 0)) {
+    if (total_len == 0 || (map_count == 0 && path_count == 0 && ptrace_count == 0 &&
+                           range_count == 0 && regs_count == 0)) {
         temp_len = snprintf(kernel_buf, count,
-                            "[MAPPINGS:0]\n[PATHS:0]\n[PTRACE:0]\n[END]\n");
+                            "[MAPPINGS:0]\n[PATHS:0]\n[PTRACE:0]\n[RANGES:0]\n[REGS:0]\n[END]\n");
         total_len = temp_len;
     }
 
@@ -271,4 +325,4 @@ long ioctl_exit() {
     shared_data_exit();
     pr_info("[yuuki] komm unloaded\n");
     return 0;
-}
+}

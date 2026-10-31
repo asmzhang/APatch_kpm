@@ -4,7 +4,7 @@
 
 按规则改写内核对进程的可见输出，用于绕过内存 CRC 校验与隐藏自身痕迹。上游意图见 [memcrc](https://github.com/yuuki-kokoro/memcrc)。
 
-四类规则：
+五类规则：
 
 | 规则 | 格式 | 作用 |
 | --- | --- | --- |
@@ -12,6 +12,7 @@
 | 路径过滤 | `PATH:path` | 从 `/proc/*/maps`、`mountinfo`、`mountstats` 输出中抹掉含该路径的整行（`mountinfo` 逐字符打码，保留 `/`） |
 | 状态伪装与拦截 | `PTRACE:uid` | 把该 uid 进程的 `State:` 改成 `R (running)`、`TracerPid:` 压成 `0`；并拒绝其 `ptrace` 请求（`-EPERM`） |
 | 地址区间隐藏 | `RANGE:uid:start:end` | 从 `/proc/*/maps` 抹掉与该区间有交集的整行；`uid` 为 `0` 表示所有进程，地址为十六进制，可带 `0x` |
+| 调试寄存器伪装 | `REGS:uid` | 对该 uid 的 `PTRACE_GETREGSET`/`SETREGSET` + `NT_ARM_HW_BREAK`/`NT_ARM_HW_WATCH` 返回伪造的硬件断点视图：`SET` 被吞掉（内核里不留断点），`GET` 回放这份假账本；`uid` 为 `0` 表示所有调用者 |
 
 ## 注入通道
 
@@ -36,7 +37,7 @@ echo 'CMD:CLEAR' > /dev/yuuki_misc   # 清空规则
 `getcwd` 通道对所有进程开放，因此按调用者 uid 限权：
 
 - 受信 uid（默认 `0`、`2000`）：可给任意 uid 下规则，可加全局 `PATH` 规则。
-- 非受信 uid：只能给自己下规则（`MAP`/`PTRACE`/`RANGE` 的 uid 必须等于调用者），不能加 `PATH`。
+- 非受信 uid：只能给自己下规则（`MAP`/`PTRACE`/`REGS`/`RANGE` 的 uid 必须等于调用者），不能加 `PATH`。
 - 受信列表可用 `ALLOW:<uid>`、`DENY:<uid>` 维护，`ALLOWLIST` 查看；`0` 不可移除。
 
 规则对所有进程生效，不需要 root，也不经过 APatch 的 supercall 通道；加载模块本身仍需管理器或超级密钥。
@@ -57,6 +58,12 @@ echo 'CMD:CLEAR' > /dev/yuuki_misc   # 清空规则
 - 进程状态伪装只改 `/proc/<pid>/status` 与 `/proc/<pid>/stat` 的状态字符，不改调度行为。
 
 ## 更新记录
+
+### 0.2.0
+
+新增 `REGS` 调试寄存器伪装规则（`NT_ARM_HW_BREAK`/`NT_ARM_HW_WATCH` 的 `GETREGSET`/`SETREGSET`）<br />
+`GETREGSET` 改为放行真实调用后覆盖寄存器数组，`dbg_info`/`iov_len` 与真实内核一致<br />
+设备读端 dump 增加 `[RANGES]`、`[REGS]` 两段
 
 ### 0.1.0
 

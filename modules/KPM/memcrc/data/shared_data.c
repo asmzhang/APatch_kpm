@@ -13,7 +13,7 @@ struct internal_entry {
 static struct {
     struct internal_entry entries[SHARED_DATA_MAX_ENTRIES];
     unsigned int count;
-    unsigned int count_by_type[SHARED_DATA_TYPE_ADDR_RANGE + 1];
+    unsigned int count_by_type[SHARED_DATA_TYPE_MAX + 1];
     spinlock_t lock;
     bool initialized;
 } shared_data = {
@@ -270,6 +270,17 @@ int shared_data_add_parsed_scoped(const char *str, uid_t caller_uid, bool privil
         return shared_data_add_ptrace_uid(uid);
     }
 
+    if (strncmp(buffer, "REGS:", 5) == 0) {
+        if (shared_data_parse_ptrace_uid(buffer + 5, &uid) != 0) {
+            return SHARED_DATA_ERR_PARSE;
+        }
+        if (!privileged && uid != caller_uid) {
+            pr_warn("shared_data: uid %u denied REGS for uid %u\n", caller_uid, uid);
+            return SHARED_DATA_ERR_INVALID;
+        }
+        return shared_data_add_ptrace_regs(uid);
+    }
+
     if (strncmp(buffer, "RANGE:", 6) == 0) {
         if (shared_data_parse_addr_range(buffer + 6, &uid, &start, &end) != 0) {
             return SHARED_DATA_ERR_PARSE;
@@ -487,7 +498,7 @@ unsigned int shared_data_get_count_by_type(enum shared_data_type type) {
     unsigned long flags;
     unsigned int count;
 
-    if (!shared_data.initialized || type < 1 || type > SHARED_DATA_TYPE_ADDR_RANGE) {
+    if (!shared_data.initialized || type < 1 || type > SHARED_DATA_TYPE_MAX) {
         return 0;
     }
 
@@ -514,6 +525,7 @@ void shared_data_dump(void) {
     pr_info("  Single paths: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_SINGLE_PATH]);
     pr_info("  PTRACE UIDs: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_PTRACE_UID]);
     pr_info("  Address ranges: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_ADDR_RANGE]);
+    pr_info("  Ptrace regs: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_PTRACE_REGS]);
 
     for (i = 0; i < SHARED_DATA_MAX_ENTRIES; i++) {
         if (shared_data.entries[i].valid) {
@@ -537,6 +549,10 @@ void shared_data_dump(void) {
                             shared_data.entries[i].entry.data.range.uid,
                             shared_data.entries[i].entry.data.range.start,
                             shared_data.entries[i].entry.data.range.end);
+                    break;
+                case SHARED_DATA_TYPE_PTRACE_REGS:
+                    pr_info("  [%d] REGS: %u\n", i,
+                            shared_data.entries[i].entry.data.ptrace_uid.uid);
                     break;
                 default:
                     pr_info("  [%d] UNKNOWN TYPE: %d\n", i,
@@ -568,7 +584,7 @@ void shared_data_clear_by_type(enum shared_data_type type) {
     unsigned long flags;
     int i;
 
-    if (!shared_data.initialized || type < 1 || type > SHARED_DATA_TYPE_ADDR_RANGE) {
+    if (!shared_data.initialized || type < 1 || type > SHARED_DATA_TYPE_MAX) {
         return;
     }
 
@@ -738,6 +754,69 @@ int shared_data_add_ptrace_uid(uid_t uid) {
     pr_info("shared_data: added PTRACE UID [%u]: %u\n", slot, uid);
 
     return SHARED_DATA_SUCCESS;
+}
+
+int shared_data_add_ptrace_regs(uid_t uid) {
+    unsigned long flags;
+    int slot;
+
+    if (!shared_data.initialized) {
+        return SHARED_DATA_ERR_INVALID;
+    }
+
+    flags = kf_raw_spin_lock_irqsave(&shared_data.lock);
+
+    if (shared_data.count >= SHARED_DATA_MAX_ENTRIES) {
+        kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+        return SHARED_DATA_ERR_FULL;
+    }
+
+    slot = find_free_slot();
+    if (slot < 0) {
+        kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+        return SHARED_DATA_ERR_FULL;
+    }
+
+    shared_data.entries[slot].entry.type = SHARED_DATA_TYPE_PTRACE_REGS;
+    shared_data.entries[slot].entry.data.ptrace_uid.uid = uid;
+    shared_data.entries[slot].valid = true;
+
+    shared_data.count++;
+    shared_data.count_by_type[SHARED_DATA_TYPE_PTRACE_REGS]++;
+
+    kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+
+    pr_info("shared_data: added PTRACE_REGS UID [%u]: %u\n", slot, uid);
+
+    return SHARED_DATA_SUCCESS;
+}
+
+int shared_data_find_ptrace_regs_uid(uid_t uid) {
+    unsigned long flags;
+    int i, result = -1;
+
+    if (!shared_data.initialized) {
+        return -1;
+    }
+
+    flags = kf_raw_spin_lock_irqsave(&shared_data.lock);
+
+    for (i = 0; i < SHARED_DATA_MAX_ENTRIES; i++) {
+        if (!shared_data.entries[i].valid ||
+            shared_data.entries[i].entry.type != SHARED_DATA_TYPE_PTRACE_REGS) {
+            continue;
+        }
+        /* uid 0 的规则对任何调用者都生效 */
+        if (shared_data.entries[i].entry.data.ptrace_uid.uid == uid ||
+            shared_data.entries[i].entry.data.ptrace_uid.uid == 0) {
+            result = i;
+            break;
+        }
+    }
+
+    kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+
+    return result;
 }
 
 int shared_data_find_ptrace_uid(uid_t uid) {

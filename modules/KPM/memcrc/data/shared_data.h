@@ -15,10 +15,11 @@ enum shared_data_type {
     SHARED_DATA_TYPE_PATH_MAPPING,  // 类型1: UID + 原始路径 + 目标路径
     SHARED_DATA_TYPE_SINGLE_PATH,   // 类型2: 单个路径
     SHARED_DATA_TYPE_PTRACE_UID,    // 类型3: PTRACE UID
-    SHARED_DATA_TYPE_ADDR_RANGE,    // 类型4: PID + 地址区间（隐藏 /proc/<pid>/maps 里的行）
+    SHARED_DATA_TYPE_ADDR_RANGE,    // 类型4: UID + 地址区间（隐藏 /proc/<pid>/maps 里的行）
+    SHARED_DATA_TYPE_PTRACE_REGS,   // 类型5: UID（伪造该 uid 看到的 NT_ARM_HW_* 调试寄存器）
 };
 
-#define SHARED_DATA_TYPE_MAX   SHARED_DATA_TYPE_ADDR_RANGE
+#define SHARED_DATA_TYPE_MAX   SHARED_DATA_TYPE_PTRACE_REGS
 
 struct path_mapping_data {
     uid_t uid;
@@ -69,6 +70,13 @@ int shared_data_add_path_mapping(uid_t uid, const char *src_path, const char *ds
 int shared_data_add_single_path(const char *path);
 
 int shared_data_add_ptrace_uid(uid_t uid);
+
+/* 类型5：对该 uid 发起的 PTRACE_GETREGSET/SETREGSET(NT_ARM_HW_*) 返回/接收假数据。
+ * uid=0 表示所有调用者。 */
+int shared_data_add_ptrace_regs(uid_t uid);
+
+/* 命中返回槽位下标（>=0），未命中返回 -1；uid=0 的规则对任何 uid 都命中。 */
+int shared_data_find_ptrace_regs_uid(uid_t uid);
 
 // 解析并添加数据
 // 格式1: "MAP:uid:src_path:dst_path"

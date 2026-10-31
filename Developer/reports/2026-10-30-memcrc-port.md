@@ -1,16 +1,18 @@
-# 开发报告：memcrc 0.0.1 → 0.1.0
+# 开发报告：memcrc 0.0.1 → 0.2.0
 
 ## 身份
 
 | 项 | 值 |
 | --- | --- |
-| commit | `91c941819e728d85289ece965005887fdd4f4d45`（0.0.1 模块落地）；`91f3c0c`（行尾统一为 LF，无逻辑改动）；`d0e6b2a`（0.1.0 RANGE + 权限门） |
+| commit | `91c941819e728d85289ece965005887fdd4f4d45`（0.0.1 模块落地）；`91f3c0c`（行尾统一为 LF，无逻辑改动）；`d0e6b2a`（0.1.0 RANGE + 权限门）；`<0.2.0 提交>`（0.2.0 REGS 调试寄存器伪装） |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（子模块） |
 | Build ID / instance_id | 未登记（探索构建，未走 `tools/build_candidate.py`） |
 | 配方指纹 | 未登记 |
 | 构建事务 | 手工 `make -C modules/KPM/memcrc all debug`（未登记） |
 | 工具链 | clang 17.0.2（NDK 26.1.10909125，`aarch64-linux-android31-clang`） |
-| 产物（0.1.0，当前源码） | `memcrc_0.1.0.kpm` `sha256=ec083df1ea4ceeca52db46b7fe4a52b0f4428a2b013c5ff947e7d29c851c58e0` `size=85584`；`memcrc_0.1.0_debug.kpm` `sha256=93116fc1c5ca0c83629197c1952c99b90e8562a9a5c62d0d8aa378f873b0ccbd` `size=85584` |
+| 产物（0.2.0，当前源码） | `memcrc_0.2.0.kpm` `sha256=c813676cbcb4ecd6dcb40d10d44b6e42f93e391197557284077b07a8e634c21f` `size=93024`；`memcrc_0.2.0_debug.kpm` `sha256=c4e5ffdcc1c67e0e637a81f4a88db04f0adc1cd36dc420ff749da62fb0e3781c` `size=93024` |
+| 产物（0.1.0，历史） | `memcrc_0.1.0.kpm` `sha256=ec083df1ea4ceeca52db46b7fe4a52b0f4428a2b013c5ff947e7d29c851c58e0` `size=85584`；`memcrc_0.1.0_debug.kpm` `sha256=93116fc1c5ca0c83629197c1952c99b90e8562a9a5c62d0d8aa378f873b0ccbd` `size=85584` |
+| 产物（0.1.0，旧版行） | `memcrc_0.1.0.kpm` `sha256=ec083df1ea4ceeca52db46b7fe4a52b0f4428a2b013c5ff947e7d29c851c58e0` `size=85584`；`memcrc_0.1.0_debug.kpm` `sha256=93116fc1c5ca0c83629197c1952c99b90e8562a9a5c62d0d8aa378f873b0ccbd` `size=85584` |
 | 产物（0.0.1，历史） | `memcrc_0.0.1.kpm` `sha256=29cd7c9273451231bfd845de6d022a05094f7e60d5159bcf4a792a47dd6dd1c6` `size=75032`；`memcrc_0.0.1_debug.kpm` `sha256=2a9f9e46d0a74db948b5d7e65b7932ee61f6fc059697720f993ad97160860d33` `size=75040` |
 
 ## 变更点
@@ -44,6 +46,18 @@
 - **`ctl0` 复用同一套命令**：`mod_control0` 先试 `control_handle_command()`（`ALLOW:`/`DENY:`/`ALLOWLIST`），再走 `parser_is_command()` / `shared_data_add_parsed()`，回写内容带上 `ALLOWLIST` 与 `rc=<n>`。
 
 改动文件：`data/shared_data.h`、`data/shared_data.c`、`data/parser.c`、`feature/feature.c`、`control/control.c`（整体重写）、`control/control.h`、`mod_main.c`、`Makefile`（版本 0.1.0）。
+
+## 相对上游的功能扩展（0.2.0）
+
+0.2.0 并入 `xiaojianbang-stealth-hook` 的 `ptrace_spoof` 能力：让「读调试寄存器」的检测看到一份干净视图。
+
+- **新增第五类规则 `REGS:uid`**（`SHARED_DATA_TYPE_PTRACE_REGS`，`uid` 为 `0` 表示所有调用者）。与 `PTRACE:uid`（直接阻断）解耦：阻断会连 `PTRACE_ATTACH` 都挡掉，容易被反作弊当成异常；`REGS` 只伪造 `NT_ARM_HW_BREAK`/`NT_ARM_HW_WATCH` 的视图，其它 ptrace 请求照常放行。
+- **不做 pid 解析**：上游按 `spoof_pids[]` + `find_task_by_vpid` + `__task_pid_nr_ns` 求 tgid；本移植直接用**调用者 uid** 匹配规则（反作弊跑在应用自己进程里，uid 相同即可），既省两个符号依赖，也避开 `tgid_offset` 恒为 `-1` 的坑（见 0.1.0 那条教训）。
+- **`SETREGSET` 在 before 吞掉并记账**：`mc_handle_set()` → `mc_set_regs()`，只保留前 `min(requested, 6/4)` 个寄存器，超过上限返回 `-ENOSPC`，读用户内存用 kallsyms 解析的 `__arch_copy_from_user`（KP 只导出 `compat_copy_to_user`，没有 `copy_from_user`）。
+- **`GETREGSET` 改成「放行真实调用 + after 覆盖」**：上游在 before 里整包伪造，`dbg_info` 硬编码成 6/4；实测本机真实 `dbg_info=2054 (0x806)`、`iov_len=264`，硬编码值一比对就露。本移植在 before 只打标记（`args->local.data0..data2`），让内核原样填好 `user_hwdebug_state`，after 再用假账本覆盖寄存器数组——`dbg_info`/`iov_len` 与真实内核逐位一致。
+- **账本是静态数组**：`static struct mc_regs_slot mc_slots[32]`（按 tid 索引，满了覆盖游标位），不用 vmalloc，`exit` 时 `mc_slots_clear()`。
+
+改动文件：`data/shared_data.h`、`data/shared_data.c`、`data/parser.c`、`ptrace/ptrace_hide.c`、`komm/komm.c`、`control/control.c`、`Makefile`（版本 0.2.0）。
 
 ## 自检
 
@@ -130,7 +144,28 @@ ci_build_selection 已把 memcrc 计入构建列表（12 个模块）。
 
 未覆盖：重启后状态、嵌入模式、`ctl0` 通道、多规则并发下的锁竞争、6.12+ 内核、非受信 uid 下的 `PTRACE`/`MAP` 自作用域用例（只验证了被拒绝的负向用例）。
 
+> 0.2.0 起，`ctl0` 通道已在本机验证过一部分（`ALLOW`/`DENY`/`ALLOWLIST` 与规则命令走同一 `control_handle_command()`/`parser_*` 路径），但真机上的 `kpatch kpm ctl0` 仍受 superkey 限制，未做端到端。
 
+
+
+### 0.2.0（`REGS` 调试寄存器伪装）
+
+同一台设备、产物 `memcrc_0.2.0.kpm`（`sha256=c813676c…`）。`dmesg` 记录 `[yuuki] PTRACE_REGS ready (__arch_copy_from_user=ffffffd263db1e40)` → 符号解析成功。
+
+探针 `dbgregs`（静态 aarch64）：注入 `REGS:0` → fork 子进程 `raise(SIGSTOP)` → `PTRACE_ATTACH` → `SETREGSET(NT_ARM_HW_BREAK, addr=0x12345678, ctrl=0x1c7, 1 个寄存器)` → `GETREGSET` 打印 → 再 `SETREGSET` 7 个寄存器测溢出 → 清规则（`CMD:CLEAR:TYPE:5`）→ 再 `GETREGSET`。
+
+| 状态 | SET 返回值 | with-rule GET | 清规则后 GET |
+| --- | --- | --- | --- |
+| 未加载模块（基线） | `rc=0` | `addr=12345678 ctrl=3c5` | `addr=12345678 ctrl=3c5` |
+| 加载 0.2.0 | `rc=0` | `addr=12345678 ctrl=1c7` | **`addr=0 ctrl=0`** |
+
+判读：`ctrl=0x1c7` 是规则里写的原值，`0x3c5` 是内核归一化后的值（含 enable/mask 位），所以 with-rule 那一行证明 GET 的载荷来自我们的账本；清规则后 GET 变 `0/0` 证明 **SET 从未写进内核**（基线清规则后仍是 `12345678/3c5`，因为真实断点还在）。`SET n=7` 在两态下都返回 `-ENOSPC`，但原因不同：基线是内核拒绝，加载后是我们先拒。
+
+回归（同一次加载内）：`MAP:2000:/data/local/tmp/mc_a.txt:/data/local/tmp/mc_b.txt` 后 `cat mc_a.txt` 得 `BBB_MC`；`PATH:/system/bin/toybox` 后 `grep -c toybox /proc/self/maps` 4 → 0；`CMD:CLEAR` 后规则表 `[MAPPINGS:0][PATHS:0][PTRACE:0][RANGES:0][REGS:0]`。
+
+两个踩坑：① `getcwd` 通道的前缀白名单最初漏了 `REGS:`，规则被静默丢弃、首轮上机结果与基线完全相同——这类「入口过滤」改动必须与新增规则类型同步；② 设备节点 `/dev/yuuki_misc` 对 `shell`（uid 2000）不可写，`CMD:CLEAR` 只能以 root 写，且 `write()` 必须带换行符（否则 `-EINVAL`）。
+
+未覆盖：`NT_ARM_HW_WATCH` 分支、多线程并发 `SETREGSET`、`iov_len` 小于最小长度的畸形输入、`PTRACE:uid` 与 `REGS:uid` 同时命中的叠加行为。
 
 ## 已知可疑点（请 Auditor 重点看）
 

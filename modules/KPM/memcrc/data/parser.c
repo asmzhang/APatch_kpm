@@ -69,7 +69,7 @@ int parser_handle_clear_command(const char *arg1, const char *arg2) {
     }
     else if (strcmp(arg1, "TYPE") == 0 && strlen(arg2) > 0) {
         type = (enum shared_data_type)kstring_simple_strtoul(arg2, NULL, 10);
-        if (type >= 1 && type <= SHARED_DATA_TYPE_ADDR_RANGE) {
+        if (type >= 1 && type <= SHARED_DATA_TYPE_MAX) {
             shared_data_clear_by_type(type);
             pr_info("[yuuki] [parser] Cleared shared data of type %d\n", type);
             return PARSER_SUCCESS;
@@ -119,7 +119,7 @@ int parser_handle_remove_command(const char *arg1, const char *arg2) {
         type = (enum shared_data_type)kstring_simple_strtoul(type_str, NULL, 10);
         type_index = (unsigned int)kstring_simple_strtoul(type_index_str, NULL, 10);
 
-        if (type >= 1 && type <= SHARED_DATA_TYPE_ADDR_RANGE) {
+        if (type >= 1 && type <= SHARED_DATA_TYPE_MAX) {
             ret = shared_data_remove_by_type_index(type, type_index);
             if (ret == SHARED_DATA_SUCCESS) {
                 pr_info("[yuuki] [parser] Successfully removed type %d entry at type-index %u\n",
@@ -155,7 +155,7 @@ int parser_handle_dump_command(const char *arg1, const char *arg2) {
     }
     else if (strcmp(arg1, "TYPE") == 0 && strlen(arg2) > 0) {
         type = (enum shared_data_type)kstring_simple_strtoul(arg2, NULL, 10);
-        if (type >= 1 && type <= SHARED_DATA_TYPE_ADDR_RANGE) {
+        if (type >= 1 && type <= SHARED_DATA_TYPE_MAX) {
             shared_data_dump_by_type(type);
             pr_info("[yuuki] [parser] Dumped shared data of type %d\n", type);
             return PARSER_SUCCESS;
@@ -177,6 +177,7 @@ int parser_handle_status_command(void) {
     pr_info("[yuuki] [parser] Single paths: %u\n", shared_data_get_count_by_type(SHARED_DATA_TYPE_SINGLE_PATH));
     pr_info("[yuuki] [parser] PTRACE UIDs: %u\n", shared_data_get_count_by_type(SHARED_DATA_TYPE_PTRACE_UID));
     pr_info("[yuuki] [parser] Address ranges: %u\n", shared_data_get_count_by_type(SHARED_DATA_TYPE_ADDR_RANGE));
+    pr_info("[yuuki] [parser] Ptrace regs: %u\n", shared_data_get_count_by_type(SHARED_DATA_TYPE_PTRACE_REGS));
     return PARSER_SUCCESS;
 }
 
@@ -190,7 +191,7 @@ int parser_handle_list_command(const char *arg1, const char *arg2) {
 
     if (strcmp(arg1, "TYPE") == 0 && strlen(arg2) > 0) {
         type = (enum shared_data_type)kstring_simple_strtoul(arg2, NULL, 10);
-        if (type >= 1 && type <= SHARED_DATA_TYPE_ADDR_RANGE) {
+        if (type >= 1 && type <= SHARED_DATA_TYPE_MAX) {
             count = shared_data_get_count_by_type(type);
 
             pr_info("[yuuki] [parser] === Type %d entries (%u total) ===\n", type, count);
@@ -218,6 +219,10 @@ int parser_handle_list_command(const char *arg1, const char *arg2) {
                                     entry.data.range.uid,
                                     entry.data.range.start,
                                     entry.data.range.end);
+                            break;
+                        case SHARED_DATA_TYPE_PTRACE_REGS:
+                            pr_info("[yuuki] [parser] Type-index %u (global %u): REGS: %u\n", i, global_index,
+                                    entry.data.ptrace_uid.uid);
                             break;
                         default:
                             /* SHARED_DATA_TYPE_INVALID：上面已按 1..4 过滤 */
@@ -255,6 +260,8 @@ void parser_show_help(void) {
     pr_info("[yuuki] [parser] MAP:uid:src_path:dst_path - Add path mapping\n");
     pr_info("[yuuki] [parser] PATH:path - Add single path\n");
     pr_info("[yuuki] [parser] PTRACE:uid - Add PTRACE UID\n");
+    pr_info("[yuuki] [parser] REGS:uid - Fake NT_ARM_HW_* debug registers for uid (0=all)\n");
+    pr_info("[yuuki] [parser] RANGE:uid:start:end - Hide address range from maps (0=all, hex)\n");
 }
 
 // 主要的命令处理函数

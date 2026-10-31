@@ -148,6 +148,7 @@ void before_getcwd(hook_fargs1_t *args, void *udata) {
     if (strncmp(cmd, "MAP:", 4) != 0 &&
         strncmp(cmd, "PATH:", 5) != 0 &&
         strncmp(cmd, "PTRACE:", 7) != 0 &&
+        strncmp(cmd, "REGS:", 5) != 0 &&
         strncmp(cmd, "RANGE:", 6) != 0) {
         return;
     }

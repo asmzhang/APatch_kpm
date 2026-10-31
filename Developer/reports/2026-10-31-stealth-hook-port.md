@@ -11,7 +11,7 @@
 | 项 | 值 |
 | --- | --- |
 | 仓库 | `APatch_kpm`（分支 `my`） |
-| 本模块基线提交 | 见本报告入库提交（`feat(kpm): 移植 stealth_hook`） |
+| 本模块基线提交 | `47e5b5a`（feat(kpm): 移植 stealth_hook（HWBP / Ghost / PTE 能力探测）+ stealth_cli） |
 | KernelPatch 子模块 | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（0.13.9） |
 | instance_id | 未登记（探索构建，未走 `build_candidate.py`） |
 | 工具链 | NDK 26.1.10909125（clang 17.0.2，`aarch64-linux-android31-clang`） |

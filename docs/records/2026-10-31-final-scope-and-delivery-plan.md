@@ -298,7 +298,31 @@ BVR，断点可能回旧地址**错采一拍**（多记或少记一次命中）�
 - 工具链指纹 `ndk26.1.10909125`（与 R4f 登记一致；`ndk26.3.11579264` 在本机对
   KP 头文件树汇编失败，`current.h` sp 全局寄存器变量不被接受）
 
+### 独立窄复核结论（`Auditor/reports/2026-10-31-r4g-review.md`，覆盖 R4f+R4g）
+
+总判断：**可交付（带条件）**，条件均为登记/文档动作，modules/ 零改动。
+
+- AUD-f-1：**已根治，可由发现方关闭**。异常上下文安全成立（rearm/disarm 全为
+  MRS/MSR+位运算+isb）；审计员对登记 debug 产物做字节级反汇编，106 条
+  `0xD5xxxxxx` 指令全解码为 dbg 寄存器访问+ISB，无锁存寄存器。宏与上游
+  v6.1 `AARCH64_DBG_READ/WRITE` 逐字符同构，`BRPs[15:12]+1` 语义正确。
+  关单条件：错采局限写入 README 残余风险（已落实，见上文「已知局限」与
+  README「边界与已知差异」）。
+- AUD-f-3：现行写序（args 先、flags 后）已是最优，登记接受；AUD-f-4：仍在
+  （现 hwbp.c:397-399），info 级不阻塞；AUD-f-5：维持 low 接受。
+- AUD-c-5（qti_battery_charger）：**误判应关**——上游 module.h 证实
+  state/list/name 为 struct module 固定前三成员，name 偏移恒为 24，
+  "≈32" 机制被证伪；残余环境变量仅 CONFIG_GCC_PLUGIN_RANDSTRUCT（Android
+  内核默认关），关单附一行注记。
+- R4f 复核成立：cleanup 位置正确（先卸 syscall 桥再清节点）、释放路径无
+  UAF/双释放、dump 兜底禁用正确。
+- 新发现（均不阻塞）：NEW-g-1 low（cleanup 释放前未 disarm，理论 UAF 窗口，
+  建议 R5 后跟进）；NEW-g-2 info（越界 disarm 静默无日志）；NEW-g-3 info
+  （版本号多轮未 bump，建议随 R5 bump）。
+- 复核局限：真机证据为实现方自测结论的一致性核对；上游对照为 torvalds
+  v6.1 tag，未逐行比对 AOSP android14-6.1 分支；RANDSTRUCT 未从目标内核
+  config 直接取证。
+
 ### 下一步
 
-R4f+R4g 独立窄复核（含 AUD-c-5 争议复核）→ 关单处置 → R5 真机全矩阵。
-门禁：14 项检查 0 失败 2 警告（均为存量）。
+R5 真机全矩阵（NEW-g-1 随后跟进）；门禁：14 项检查 0 失败 2 警告（均为存量）。

@@ -76,6 +76,15 @@ stealth_cli unhook 0x7a1b2c3d4e
 
 ## 边界与已知差异
 
+- **rearm 是 MSR 直写（0.3.0 起）**：断点命中后的重装（入口拍 → LR、返回拍 → 原地址）
+  在调试异常上下文内直写 `DBGBVRn_EL1`/`DBGBCRn_EL1`（清使能位 → 改址 → 原样写回），
+  纯寄存器操作，不碰任何可睡眠的 perf API。代价：perf 框架内部记录的地址不感知这次
+  直写，上下文切换 / CPU 热插拔 / 休眠唤醒后框架可能按旧地址重装 BVR，断点会回旧
+  地址**错采一拍**（多记或少记一次命中、`ret_x0` 可能错配一拍），自愈、不死循环、
+  不会错采到非法地址。
+- **enable/disable 语义**：异常上下文里校验失败会先摘武装（BCR bit0=0）再置
+  `is_disabled`；之后用户态 enable 命令只走 perf API 重武装，恢复到 BVR 当时的值
+  （可能是重装回的旧地址，不一定是 target_addr）。
 - **PTE 未移植**：6.1 起内核移除了 `__tracepoint_android_rvh_do_mem_abort`，PTE 的拦截点不存在；
   5.10 上虽有该 hook，但真正的重定向还需要用户态 DBI 把目标页重编译成「搬家版页」并给出
   `offset_map[1024]`，否则钩子无处跳转。本移植只保留 `PTE_QUERY` 能力探测，其余命令统一返回
@@ -100,5 +109,8 @@ make all debug
 
 - **0.3.0** — HWBP 全链路（入口抓 X0–X7/LR、返回抓 X0、改参数、跳过原函数、按指针 dump 内存）+
   GHOST + PTE 能力探测；通道 uid 门；CLI `Developer/tools/stealth_cli/`。
+  R4f–R4g 修复（登记 instance 见 metadata）：rearm 从 perf 三件套改 MSR 直写
+  （异常上下文免睡，AUD-f-1 根治）、校验失败路径先摘武装、卸载恢复 cleanup、
+  dump 兜底缺符号时整体禁用。
 - **0.2.0** — 加 GHOST（`vm_mmap` + 读写 + 列表）。
 - **0.1.0** — 骨架：syscall 427 通道、STATUS/ECHO、uid 门。

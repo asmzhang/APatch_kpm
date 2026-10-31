@@ -4,7 +4,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| commit | `91c941819e728d85289ece965005887fdd4f4d45`（0.0.1 模块落地提交）；0.1.0 扩展提交见 `git log --oneline -- modules/KPM/memcrc` |
+| commit | `91c941819e728d85289ece965005887fdd4f4d45`（0.0.1 模块落地）；`91f3c0c`（行尾统一为 LF，无逻辑改动）；`d0e6b2a`（0.1.0 RANGE + 权限门） |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（子模块） |
 | Build ID / instance_id | 未登记（探索构建，未走 `tools/build_candidate.py`） |
 | 配方指纹 | 未登记 |

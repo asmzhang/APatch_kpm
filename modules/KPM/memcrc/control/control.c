@@ -28,12 +28,12 @@ hook_err_t err = HOOK_NO_ERR;
 static uid_t cm_allow_uids[CM_MAX_ALLOW] = { 0, 2000 };
 static int cm_allow_count = 2;
 
-static inline uid_t cm_current_uid(void) {
+uid_t control_current_uid(void) {
     struct cred *cred = *(struct cred **)((uintptr_t)current + task_struct_offset.cred_offset);
     return *(uid_t *)((uintptr_t)cred + cred_offset.uid_offset);
 }
 
-static bool cm_is_privileged(uid_t uid) {
+bool control_is_privileged(uid_t uid) {
     int i;
 
     if (uid == 0) {
@@ -50,7 +50,7 @@ static bool cm_is_privileged(uid_t uid) {
 }
 
 int control_allow_uid(uid_t uid) {
-    if (cm_is_privileged(uid)) {
+    if (control_is_privileged(uid)) {
         return 0;
     }
 
@@ -153,8 +153,8 @@ void before_getcwd(hook_fargs1_t *args, void *udata) {
         return;
     }
 
-    uid = cm_current_uid();
-    shared_data_add_parsed_scoped(cmd, uid, cm_is_privileged(uid));
+    uid = control_current_uid();
+    shared_data_add_parsed_scoped(cmd, uid, control_is_privileged(uid));
 }
 
 long syscall_init() {

@@ -112,9 +112,23 @@ int parser_handle_remove_command(const char *arg1, const char *arg2) {
             return PARSER_ERR_PARAM;
         }
 
-        strncpy(type_str, arg2, colon_pos - arg2);
-        type_str[colon_pos - arg2] = '\0';
-        strcpy(type_index_str, colon_pos + 1);
+        {
+            size_t type_len = (size_t)(colon_pos - arg2);
+            size_t index_len = strlen(colon_pos + 1);
+
+            /* 定长校验：arg2 最长 255 字节，而这两个缓冲各 16 字节（AUD-a-1） */
+            if (type_len == 0 || type_len >= sizeof(type_str) ||
+                index_len >= sizeof(type_index_str)) {
+                pr_err("[yuuki] [parser] REMOVE TYPE 参数超长：type_len=%zu index_len=%zu（上限 %zu）\n",
+                       type_len, index_len, sizeof(type_str) - 1);
+                return PARSER_ERR_PARAM;
+            }
+
+            memcpy(type_str, arg2, type_len);
+            type_str[type_len] = '\0';
+            memcpy(type_index_str, colon_pos + 1, index_len);
+            type_index_str[index_len] = '\0';
+        }
 
         type = (enum shared_data_type)kstring_simple_strtoul(type_str, NULL, 10);
         type_index = (unsigned int)kstring_simple_strtoul(type_index_str, NULL, 10);

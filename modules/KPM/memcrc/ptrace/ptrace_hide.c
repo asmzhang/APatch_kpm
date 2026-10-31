@@ -327,9 +327,16 @@ static int rep_proc_pid_status(struct seq_file *m, struct pid_namespace *ns, str
                             m->count - (line_end - m->buf));
                     m->count -= (replace_len - new_len);
                 } else if (new_len > replace_len) {
-                    memmove(line_end + (new_len - replace_len), line_end,
+                    size_t need = (size_t)(new_len - replace_len);
+
+                    /* 扩容必须先确认 seq_file 还有余量，否则写到 m->buf + m->size 之外（AUD-a-3） */
+                    if (m->count + need > m->size) {
+                        pr_warn("[yuuki] seq buffer full, skip State rewrite\n");
+                        return ret;
+                    }
+                    memmove(line_end + need, line_end,
                             m->count - (line_end - m->buf));
-                    m->count += (new_len - replace_len);
+                    m->count += need;
                 }
 
                 memcpy(state_value, replacement, new_len);

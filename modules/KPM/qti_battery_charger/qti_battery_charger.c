@@ -63,10 +63,15 @@ static long hook_battery_psy_get_prop() {
   return 0;
 }
 
+static bool qti_battery_hooked;
+
 void do_init_module_after(hook_fargs1_t* args, void* udata) {
   struct module* mod = (typeof(mod))args->arg0;
+  /* 不在自己的回调里摘自己的钩子（AUD-c-3）：改成幂等，钩子在 exit 里摘 */
+  if (qti_battery_hooked)
+    return;
   if (unlikely(!memcmp(mod->name, MODULE_NAME, sizeof(MODULE_NAME)))) {
-    unhook_func(do_init_module);
+    qti_battery_hooked = true;
     hook_battery_psy_get_prop();
   }
 }

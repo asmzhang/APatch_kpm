@@ -139,6 +139,12 @@ static long sh_pte_query(void)
 
 static long sh_dispatch(long cmd, long arg1, long arg2, long arg3, long arg4)
 {
+    /* 硬件断点能读任意进程内存、能改任意进程执行流：只给 uid 0。
+     * shell(2000) 仍可用 ghost/status，但跨进程 hook 必须 root（AUD-b-1）。 */
+    if (cmd >= SH_CMD_HWBP_HOOK && cmd <= SH_CMD_HWBP_SET_SKIP && sh_current_uid() != 0) {
+        return -1;
+    }
+
     (void)arg4;
 
     switch (cmd) {

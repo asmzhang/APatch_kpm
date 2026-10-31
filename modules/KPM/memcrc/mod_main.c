@@ -3,6 +3,7 @@
 #include <linux/printk.h>
 #include <linux/kernel.h>
 #include <linux/err.h>
+#include <linux/errno.h>
 #include <linux/string.h>
 #include <kputils.h>
 #include "./komm/komm.h"
@@ -20,18 +21,43 @@ KPM_DESCRIPTION("original intention is to bypass the memory crc check");
 
 static long mod_init(const char *args, const char *event, void *__user reserved){
     pr_info("[yuuki] Initializing...\n");
-    if(init_symbols()) {
-        pr_info("[yuuki] init_symbols failed\n");
-        goto exit;
+    if (init_symbols()) {
+        pr_err("[yuuki] init_symbols failed, refuse to load\n");
+        return -ENOENT;
     }
 
-    ioctl_init();
-    feature_init();
-    redirect_init();
-    syscall_init();
-    ptrace_hide_init();
+    /* 任一子系统初始化失败即整体失败，避免「加载成功但什么都没装上」（AUD-a-4） */
+    if (ioctl_init()) {
+        pr_err("[yuuki] ioctl_init failed\n");
+        return -EIO;
+    }
+    if (feature_init()) {
+        pr_err("[yuuki] feature_init failed\n");
+        ioctl_exit();
+        return -EIO;
+    }
+    if (redirect_init()) {
+        pr_err("[yuuki] redirect_init failed\n");
+        feature_exit();
+        ioctl_exit();
+        return -EIO;
+    }
+    if (syscall_init()) {
+        pr_err("[yuuki] syscall_init failed\n");
+        redirect_exit();
+        feature_exit();
+        ioctl_exit();
+        return -EIO;
+    }
+    if (ptrace_hide_init()) {
+        pr_err("[yuuki] ptrace_hide_init failed\n");
+        syscall_exit();
+        redirect_exit();
+        feature_exit();
+        ioctl_exit();
+        return -EIO;
+    }
 
-    exit:
     return 0;
 }
 
@@ -75,11 +101,14 @@ static long mod_control0(const char *args, char __user *out_msg, int outlen) {
         }
 
         len = (int)strlen(buf);
-        if (len > outlen) {
-            len = outlen;
+        if (len >= outlen) {
+            len = outlen - 1;   /* 留 1 字节给 NUL，避免用户态按字符串读越界（AUD-a-6） */
         }
         if (len > 0) {
-            compat_copy_to_user(out_msg, buf, len);
+            if (!compat_copy_to_user(out_msg, buf, len)) {
+                return -EFAULT; /* KP：返回 0 表示拷贝失败 */
+            }
+            buf[len] = '\0';
         }
     }
 

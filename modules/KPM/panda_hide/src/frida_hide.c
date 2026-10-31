@@ -27,18 +27,21 @@ static int __attribute__((optnone)) is_hidden_map(struct seq_file *m, size_t pre
     if (new_len == 0) return 0;
 
     /* 临时截断，防止 strstr 越界读到旧数据 */
-    char saved = start[new_len];
-    start[new_len] = '\0';
+    {
+        char line[256];
+        size_t copy_len = new_len < sizeof(line) - 1 ? new_len : sizeof(line) - 1;
 
-    int found = 0;
-    for (int i = 0; i < sizeof(block_str) / sizeof(block_str[0]); i++) {
-        if (strstr(start, block_str[i])) {
-            found = 1;
-            break;
+        /* m->count == m->size 时 m->buf 没有第 new_len 字节可写：拷到本地缓冲再查（AUD-c-4） */
+        memcpy(line, start, copy_len);
+        line[copy_len] = '\0';
+
+        for (int k = 0; k < (int)(sizeof(block_str) / sizeof(block_str[0])); k++) {
+            if (strstr(line, block_str[k])) {
+                return 1;
+            }
         }
+        return 0;
     }
-    start[new_len] = saved;
-    return found;
 }
 
 static void before_show_map_vma(hook_fargs2_t *args, void *udata) {

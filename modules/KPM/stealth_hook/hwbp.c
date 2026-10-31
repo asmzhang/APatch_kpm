@@ -75,6 +75,8 @@ static void *(*sh_vmalloc)(unsigned long size);
 static void (*sh_vfree)(const void *addr);
 static unsigned long (*sh_copy_from_user)(void *to, const void __user *from, unsigned long n);
 static struct task_struct *(*sh_find_task_by_vpid)(pid_t nr);
+static struct task_struct *(*sh_get_task_struct)(struct task_struct *tsk);
+static void (*sh_put_task_struct)(struct task_struct *tsk);
 static void *(*sh_register_user_hw_breakpoint)(void *attr, void *triggered, void *context, void *tsk);
 static void *(*sh_perf_event_create_kernel_counter)(void *attr, int cpu, void *task, void *callback, void *context);
 static int (*sh_modify_user_hw_breakpoint)(void *bp, void *attr);
@@ -114,6 +116,10 @@ struct sh_hwbp_node {
     uint64_t override_mask;
     uint64_t override_args[8];
     uint64_t ret_value;
+    /* 卸载时只置位、不摘链不释放：断点回调可能正在遍历链表（AUD-b-3）。
+     * 真正的 list_del + vfree 只在模块 cleanup 里做。 */
+    int retired;
+    struct task_struct *task_ref;   /* 自己持有的引用，避免线程退出后 UAF（AUD-b-5） */
 };
 
 static void fill_execute_attr(struct sh_perf_event_attr *attr, uint64_t addr, int disabled)
@@ -137,6 +143,8 @@ static int sh_hwbp_resolve(void)
         sh_vfree = (typeof(sh_vfree))kallsyms_lookup_name("vfree");
         sh_copy_from_user = (typeof(sh_copy_from_user))kallsyms_lookup_name("__arch_copy_from_user");
         sh_find_task_by_vpid = (typeof(sh_find_task_by_vpid))kallsyms_lookup_name("find_task_by_vpid");
+        sh_get_task_struct = (typeof(sh_get_task_struct))kallsyms_lookup_name("get_task_struct");
+        sh_put_task_struct = (typeof(sh_put_task_struct))kallsyms_lookup_name("put_task_struct");
     }
     if (!sh_register_user_hw_breakpoint) {
         sh_register_user_hw_breakpoint = (typeof(sh_register_user_hw_breakpoint))
@@ -204,11 +212,11 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
     for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
         struct sh_hwbp_node *node =
             (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
-        if (!node->is_disabled) {
+        if (!node->retired && !node->is_disabled) {
             single_active = node;
             active++;
         }
-        if (!matched && node->bp_handle == bp && !node->is_disabled) {
+        if (!matched && !node->retired && node->bp_handle == bp && !node->is_disabled) {
             matched = node;
             break;
         }
@@ -273,24 +281,28 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
     }
     matched->entry_lr = regs->regs[30];
 
-    /* 按指针 dump 内存：关 PAN 才能读用户页 */
-    if (matched->dump_size) {
+    /* 按指针 dump 内存：走 __arch_copy_from_user（自带异常表），坏指针只会少拷，
+     * 不再用「关 PAN + 裸解引用」，那会在缺页时直接内核 panic（AUD-b-2） */
+    if (matched->dump_size && sh_copy_from_user) {
         uint32_t dn = matched->dump_size > SH_DUMP_MAX ? SH_DUMP_MAX : matched->dump_size;
-        uint32_t j;
 
-        asm volatile(".inst 0xd500409f" ::: "memory");   /* msr pan, #0 */
+        if (dn > sizeof(matched->mem_dump[0])) {
+            dn = sizeof(matched->mem_dump[0]);
+        }
         for (i = 0; i < 8; i++) {
             uint64_t ptr = regs->regs[i];
+            unsigned long left;
+
+            matched->mem_len[i] = 0;
             if (ptr < 0x100000ULL || ptr > 0x7FFFFFFFFFFFULL) {
-                matched->mem_len[i] = 0;
                 continue;
             }
-            for (j = 0; j < dn; j++) {
-                matched->mem_dump[i][j] = *(volatile uint8_t *)(ptr + j);
+            left = sh_copy_from_user(matched->mem_dump[i],
+                                     (const void *)(uintptr_t)ptr, dn);
+            if (left <= dn) {
+                matched->mem_len[i] = (uint16_t)(dn - (uint32_t)left);
             }
-            matched->mem_len[i] = (uint16_t)dn;
         }
-        asm volatile(".inst 0xd500419f" ::: "memory");   /* msr pan, #1 */
     }
 
     /* 入口捕获完，断点挪到 LR，等返回那一拍 */
@@ -347,6 +359,10 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
     node->orig_bp_addr = req.target_addr;
     node->bp_addr = req.target_addr;
     node->tid = req.target_pid;
+    if (sh_get_task_struct) {
+        sh_get_task_struct(task);   /* 之后线程退出也不会把 task_struct 释放掉（AUD-b-5） */
+        node->task_ref = task;
+    }
     node->flags = req.flags;
     node->trampoline_addr = req.trampoline_addr;
     node->dump_size = req.dump_size > SH_DUMP_MAX ? SH_DUMP_MAX : req.dump_size;
@@ -397,9 +413,9 @@ long sh_hwbp_unhook(uint64_t target_addr, uint32_t tid)
                     sh_unregister_hw_breakpoint(node->bp_handle);
                 }
             }
-            pos->prev->next = pos->next;
-            pos->next->prev = pos->prev;
-            sh_vfree(node);
+            /* 只退役：摘链/释放交给 cleanup（AUD-b-3） */
+            node->retired = 1;
+            node->is_disabled = 1;
             return 0;
         }
     }
@@ -581,6 +597,9 @@ void sh_hwbp_cleanup(void)
         }
         pos->prev->next = pos->next;
         pos->next->prev = pos->prev;
+        if (node->task_ref && sh_put_task_struct) {
+            sh_put_task_struct(node->task_ref);
+        }
         sh_vfree(node);
     }
 }

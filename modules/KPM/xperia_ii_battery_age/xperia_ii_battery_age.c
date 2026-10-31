@@ -35,6 +35,10 @@ static long inline_hook_control0(const char* args, char* __user out_msg, int out
   if (aging > 5)
     return -1;
 
+  /* fg 指针要等第一次 fg_sram_read 才拿到；没拿到就别写（AUD-c-2） */
+  if (!fg || !fg_sram_write)
+    return -EAGAIN;
+
   int rc = fg_sram_write(fg, SOMC_AGING_LEVEL_WORD, SOMC_AGING_LEVEL_OFFSET, &aging, 1, FG_IMA_DEFAULT);
   char echo[64] = "";
   if (rc < 0) {
@@ -56,7 +60,10 @@ static long inline_hook_control0(const char* args, char* __user out_msg, int out
 }
 
 void before_read(hook_fargs6_t* args, void* udata) {
-  unhook_func(fg_sram_read);
+  /* 不在自己的回调里摘自己的钩子（KP hook.c 的 remove 路径自标 unsafe，AUD-c-3）：
+   * 改成幂等，钩子在 exit 里摘。 */
+  if (fg)
+    return;
   fg = (struct fg_dev*)args->arg0;
   // u8 *arg3 = (u8 *)args->arg3;
   // logkd("before read fg: %llu, address: %u, offset: %u, val: %u, len: %d, flags: %d\n", args->arg0, (u16)args->arg1,

@@ -6,6 +6,7 @@
 #include "komm.h"
 #include "shared_data.h"
 #include "parser.h"
+#include "../control/control.h"
 
 static int convert_parser_error(int parser_error) {
     switch (parser_error) {
@@ -44,6 +45,10 @@ static ssize_t my_write(struct file *file, const char __user *buf, size_t count,
     pr_info("[yuuki] Received: '%s'\n", yuuki);
 
     if (parser_is_command(yuuki)) {
+        if (!control_is_privileged(control_current_uid())) {
+            pr_warn("[yuuki] command denied for uid %u\n", control_current_uid());
+            return -EPERM;
+        }
         pr_info("[yuuki] Processing command\n");
         ret = parser_process_command(yuuki);
 
@@ -57,7 +62,8 @@ static ssize_t my_write(struct file *file, const char __user *buf, size_t count,
     }
 
     pr_info("[yuuki] Processing as data\n");
-    ret = shared_data_add_parsed(yuuki);
+    ret = shared_data_add_parsed_scoped(yuuki, control_current_uid(),
+                                       control_is_privileged(control_current_uid()));
 
     if (ret < 0) {
         switch (ret) {
@@ -88,6 +94,8 @@ static ssize_t my_write(struct file *file, const char __user *buf, size_t count,
     return count;
 }
 
+#define MC_READ_MAX (64 * 1024)
+
 static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t *pos) {
     char *kernel_buf;
     size_t total_len = 0;
@@ -108,6 +116,10 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
         return -EAGAIN;
     }
 
+    if (count > MC_READ_MAX) {
+        count = MC_READ_MAX;
+    }
+
     kernel_buf = kf_vmalloc(count);
     if (!kernel_buf) {
         return -ENOMEM;
@@ -122,7 +134,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     temp_len = snprintf(temp, sizeof(temp), "[MAPPINGS:%u]\n", map_count);
     if (total_len + temp_len < count) {
-        strcat(kernel_buf + total_len, temp);
+        memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
         goto buffer_full;
@@ -138,7 +150,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.mapping.dst_path);
 
             if (total_len + temp_len < count) {
-                strcat(kernel_buf + total_len, temp);
+                memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
                 goto buffer_full;
@@ -148,7 +160,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     temp_len = snprintf(temp, sizeof(temp), "[PATHS:%u]\n", path_count);
     if (total_len + temp_len < count) {
-        strcat(kernel_buf + total_len, temp);
+        memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
         goto buffer_full;
@@ -162,7 +174,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.single.path);
 
             if (total_len + temp_len < count) {
-                strcat(kernel_buf + total_len, temp);
+                memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
                 goto buffer_full;
@@ -172,7 +184,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     temp_len = snprintf(temp, sizeof(temp), "[PTRACE:%u]\n", ptrace_count);
     if (total_len + temp_len < count) {
-        strcat(kernel_buf + total_len, temp);
+        memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
         goto buffer_full;
@@ -186,7 +198,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.ptrace_uid.uid);
 
             if (total_len + temp_len < count) {
-                strcat(kernel_buf + total_len, temp);
+                memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
                 goto buffer_full;
@@ -196,7 +208,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     temp_len = snprintf(temp, sizeof(temp), "[RANGES:%u]\n", range_count);
     if (total_len + temp_len < count) {
-        strcat(kernel_buf + total_len, temp);
+        memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
         goto buffer_full;
@@ -212,7 +224,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.range.end);
 
             if (total_len + temp_len < count) {
-                strcat(kernel_buf + total_len, temp);
+                memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
                 goto buffer_full;
@@ -222,7 +234,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     temp_len = snprintf(temp, sizeof(temp), "[REGS:%u]\n", regs_count);
     if (total_len + temp_len < count) {
-        strcat(kernel_buf + total_len, temp);
+        memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
         goto buffer_full;
@@ -236,7 +248,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.ptrace_uid.uid);
 
             if (total_len + temp_len < count) {
-                strcat(kernel_buf + total_len, temp);
+                memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
                 goto buffer_full;
@@ -246,7 +258,7 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 
     temp_len = snprintf(temp, sizeof(temp), "[END]\n");
     if (total_len + temp_len < count) {
-        strcat(kernel_buf + total_len, temp);
+        memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     }
 
@@ -276,7 +288,12 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
 }
 
 static int on_misc_open(struct inode *inode, struct file *file) {
-    //pr_info("[yuuki] Device opened\n");
+    uid_t uid = control_current_uid();
+
+    if (!control_is_privileged(uid)) {
+        pr_warn("[yuuki] /dev/%s open denied for uid %u\n", DEVICE_NAME, uid);
+        return -EPERM;
+    }
     return 0;
 }
 
@@ -297,7 +314,8 @@ static struct miscdevice yuuki_misc = {
         .minor = MISC_DYNAMIC_MINOR,
         .name = DEVICE_NAME,
         .fops = &my_fops,
-        .mode = 0666,
+        /* 0600：普通进程连 open 都到不了；受信 uid 由 on_misc_open 再校验一次（AUD-a-2） */
+        .mode = 0600,
 };
 
 long ioctl_init() {

@@ -13,4 +13,8 @@ int control_allow_uid(uid_t uid);
 int control_deny_uid(uid_t uid);
 int control_dump_allow(char *buf, unsigned long size);
 
+/* 供 komm 设备通道复用同一套信任模型（AUD-a-2） */
+uid_t control_current_uid(void);
+bool control_is_privileged(uid_t uid);
+
 #endif

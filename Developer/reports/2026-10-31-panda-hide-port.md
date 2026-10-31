@@ -4,7 +4,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| commit | `75f62a4aca51bc25773706a437ded2d90a4a9ad9`（派生自该提交，`modules/KPM/panda_hide/` 本轮新增，见「变更点」） |
+| commit | `b671231e5d4e6e05d89c7f6967b902adc0deaafc`（本模块随该提交入库） |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（0.13.9） |
 | Build ID / instance_id | 未登记（探索构建，未走 `tools/build_candidate.py`） |
 | 配方指纹 | 未登记（同上，脏树阶段） |

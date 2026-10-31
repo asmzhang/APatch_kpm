@@ -90,7 +90,7 @@
       "instance_id": "mount_hidder-1.0.0+g3143c326dc4f.r0b23ffb6.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:29Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-mount_hidder.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-mount_hidder.json"
     },
     {
       "module": "mount_hidder",
@@ -176,7 +176,7 @@
       "instance_id": "mount_hidder-1.0.0_debug+g3143c326dc4f.rfd77625d.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:29Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-mount_hidder.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-mount_hidder.json"
     }
   ],
   "audits": [],

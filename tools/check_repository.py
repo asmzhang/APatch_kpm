@@ -60,6 +60,10 @@ HYGIENE_PATTERNS = [
     (re.compile(r"(?i)\bsuperkey\s*=\s*[A-Za-z0-9]{4,}"), "疑似 superkey 明文"),
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "私钥内容"),
     (re.compile(r"(?i)\b(serial|serialno|serial_no)\s*=\s*[A-Za-z0-9]{6,}"), "明文设备序列号"),
+    # 设备序列号的两种实际形态：大写十六进制串（Pixel/小米常见 12-16 位），
+    # 以及本工程历史记录里出现过的已知标识（逐字列出，避免误伤版本号/时间戳）。
+    (re.compile(r"\b(?=[0-9A-F]*[0-9])(?=[0-9A-F]*[A-F])[0-9A-F]{12,16}\b"), "明文设备序列号（十六进制形态）"),  # serial-hygiene: allow
+    (re.compile(r"(?i)\b(?:22251FDF60004E|23049RAD8C|AEUN9X1723G05852|3e6f1443)\b"), "已知设备标识"),  # serial-hygiene: allow
 ]
 
 TEXT_SUFFIX = (".md", ".json", ".py", ".sh", ".yml", ".yaml")
@@ -1060,6 +1064,8 @@ def check_hygiene(rep):
         except Exception:
             continue
         for lineno, line in enumerate(lines, 1):
+            if "serial-hygiene: allow" in line:      # 判据定义行本身：允许出现标识字面量
+                continue
             for pattern, why in HYGIENE_PATTERNS:
                 if pattern.search(line):
                     problems.append(f"{os.path.relpath(path, REPO)}:{lineno} {why}")

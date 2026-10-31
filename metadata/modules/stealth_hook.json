@@ -100,7 +100,7 @@
       "instance_id": "stealth_hook-0.3.0+gb71c7d8e6a6e.re4fbd446.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-stealth_hook.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-stealth_hook.json"
     },
     {
       "module": "stealth_hook",
@@ -196,7 +196,7 @@
       "instance_id": "stealth_hook-0.3.0_debug+gb71c7d8e6a6e.r75fa9e5f.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-stealth_hook.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-stealth_hook.json"
     }
   ],
   "audits": [],

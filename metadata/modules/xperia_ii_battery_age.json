@@ -90,7 +90,7 @@
       "instance_id": "xperia_ii_battery_age-1.1.2+gf37d1edec293.r93eac43f.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:36:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-xperia_ii_battery_age.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-xperia_ii_battery_age.json"
     },
     {
       "module": "xperia_ii_battery_age",
@@ -176,7 +176,7 @@
       "instance_id": "xperia_ii_battery_age-1.1.2_debug+gf37d1edec293.r43d19465.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:36:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-xperia_ii_battery_age.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-xperia_ii_battery_age.json"
     }
   ],
   "audits": [],

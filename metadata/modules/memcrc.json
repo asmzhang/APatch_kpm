@@ -174,7 +174,7 @@
       "instance_id": "memcrc-0.2.0+g8a711a713802.r6461dd8f.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:29Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-memcrc.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-memcrc.json"
     },
     {
       "module": "memcrc",
@@ -344,7 +344,7 @@
       "instance_id": "memcrc-0.2.0_debug+g8a711a713802.r38c5f7e4.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:29Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-memcrc.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-memcrc.json"
     }
   ],
   "audits": [],

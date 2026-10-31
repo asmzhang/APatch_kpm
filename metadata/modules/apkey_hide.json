@@ -85,7 +85,7 @@
       "instance_id": "apkey_hide-3.6.2+g70b54446ca1b.r62e1ff58.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:29Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-apkey_hide.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-apkey_hide.json"
     },
     {
       "module": "apkey_hide",
@@ -166,7 +166,7 @@
       "instance_id": "apkey_hide-3.6.2_debug+g70b54446ca1b.reac269f5.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:29Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-apkey_hide.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-apkey_hide.json"
     }
   ],
   "audits": [],

@@ -95,7 +95,7 @@
       "instance_id": "qti_battery_charger-1.0.2+g22c24856667c.r4df2b2d1.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:36:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-qti_battery_charger.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-qti_battery_charger.json"
     },
     {
       "module": "qti_battery_charger",
@@ -186,7 +186,7 @@
       "instance_id": "qti_battery_charger-1.0.2_debug+g22c24856667c.re85c44f1.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:36:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-qti_battery_charger.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-qti_battery_charger.json"
     }
   ],
   "audits": [],

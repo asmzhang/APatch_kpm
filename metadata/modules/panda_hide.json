@@ -140,7 +140,7 @@
       "instance_id": "panda_hide-2.0.0+g02b5eb7a0e1d.r37fb85e0.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-panda_hide.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-panda_hide.json"
     },
     {
       "module": "panda_hide",
@@ -276,7 +276,7 @@
       "instance_id": "panda_hide-2.0.0_debug+g02b5eb7a0e1d.rcac83706.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "维护者",
       "imported_at": "2026-10-31T10:34:30Z",
-      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-panda_hide.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-10-31-panda_hide.json"
     }
   ],
   "audits": [],

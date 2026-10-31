@@ -953,7 +953,8 @@ def cmd_import_manifest(args):
                 continue
             entry["imported_by"] = args.by
             entry["imported_at"] = utcnow()
-            entry["handoff_manifest"] = str(path.relative_to(REPO)) if str(path).startswith(str(REPO)) else str(path)
+            entry["handoff_manifest"] = (posix_rel(path.relative_to(REPO))
+                                       if str(path).startswith(str(REPO)) else str(path))
             builds.append(entry)          # 保留原 instance_id 与 artifacts[].path
             imported += 1
         if problems:

@@ -18,6 +18,7 @@
 #include <syscall.h>
 #include <kputils.h>
 #include <asm/current.h>
+#include <stdarg.h>
 #include <kallsyms.h>
 #include <hook.h>
 #include <linux/sched.h>
@@ -315,6 +316,71 @@ static long stealth_hook_init(const char *args, const char *event, void *__user 
     return 0;
 }
 
+/* AUD-b-7：uid 解析有上限，且整串必须是数字；返回值 0 表示格式非法。 */
+static int sh_parse_uid(const char *p, uid_t *out)
+{
+    unsigned long v = 0;
+    int digits = 0;
+
+    if (!p || !out) {
+        return 0;
+    }
+    while (*p >= '0' && *p <= '9') {
+        if (++digits > 10) {
+            return 0;
+        }
+        v = v * 10 + (unsigned long)(*p - '0');
+        if (v > 0xFFFFFFFFUL) {
+            return 0;
+        }
+        p++;
+    }
+    if (!digits) {
+        return 0;
+    }
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r') {
+        p++;
+    }
+    if (*p) {
+        return 0;
+    }
+    *out = (uid_t)v;
+    return 1;
+}
+
+/* 整词匹配（AUD-b-9 同类问题）："statusfoo" 不算 status。 */
+static int sh_is_word(const char *args, const char *word)
+{
+    size_t len = strlen(word);
+
+    if (!args || strncmp(args, word, len) != 0) {
+        return 0;
+    }
+    return args[len] == '\0' || args[len] == ' ' || args[len] == '\t' ||
+           args[len] == '\n' || args[len] == '\r';
+}
+
+/* 有界累加：n 不会超过缓冲长度，也不会因 snprintf 截断而回退。 */
+static int sh_app(char *buf, int cap, int n, const char *fmt, ...)
+{
+    int w;
+    va_list ap;
+
+    if (n < 0 || n >= cap) {
+        return cap;
+    }
+    va_start(ap, fmt);
+    w = kf_vsnprintf(buf + n, (size_t)(cap - n), fmt, ap);
+    va_end(ap);
+    if (w < 0) {
+        return n;
+    }
+    if (w >= cap - n) {
+        return cap;
+    }
+    return n + w;
+}
+
 static long stealth_hook_control(const char *args, char *__user out_msg, int outlen)
 {
     char buf[128];
@@ -331,28 +397,30 @@ static long stealth_hook_control(const char *args, char *__user out_msg, int out
     handled = 0;
     if (strncmp(args, "allow:", 6) == 0) {
         uid_t uid = 0;
-        const char *p = args + 6;
-        while (*p >= '0' && *p <= '9') {
-            uid = uid * 10 + (uid_t)(*p - '0');
-            p++;
+
+        /* AUD-b-7：解析必须有界，超长/溢出直接拒绝，不再累加溢出的 uid */
+        if (sh_parse_uid(args + 6, &uid)) {
+            n = sh_app(buf, sizeof(buf), n, "allow %u rc=%d", uid, sh_allow_uid(uid));
+        } else {
+            n = sh_app(buf, sizeof(buf), n, "allow: bad uid");
         }
-        n += kf_snprintf(buf + n, sizeof(buf) - n, "allow %u rc=%d", uid, sh_allow_uid(uid));
         handled = 1;
     } else if (strncmp(args, "deny:", 5) == 0) {
         uid_t uid = 0;
-        const char *p = args + 5;
-        while (*p >= '0' && *p <= '9') {
-            uid = uid * 10 + (uid_t)(*p - '0');
-            p++;
+
+        if (sh_parse_uid(args + 5, &uid)) {
+            n = sh_app(buf, sizeof(buf), n, "deny %u rc=%d", uid, sh_deny_uid(uid));
+        } else {
+            n = sh_app(buf, sizeof(buf), n, "deny: bad uid");
         }
-        n += kf_snprintf(buf + n, sizeof(buf) - n, "deny %u rc=%d", uid, sh_deny_uid(uid));
         handled = 1;
-    } else if (strncmp(args, "allowlist", 9) == 0) {
+    } else if (sh_is_word(args, "allowlist")) {
+        n = sh_app(buf, sizeof(buf), n, "%s", "");
         n += sh_dump_allow(buf + n, sizeof(buf) - n);
         handled = 1;
-    } else if (strncmp(args, "status", 6) == 0) {
-        n += kf_snprintf(buf + n, sizeof(buf) - n,
-                         "stealth_hook v%x nr=%d", SH_VERSION_CODE, SH_SYSCALL_NR);
+    } else if (sh_is_word(args, "status")) {
+        n = sh_app(buf, sizeof(buf), n, "stealth_hook v%x nr=%d",
+                   SH_VERSION_CODE, SH_SYSCALL_NR);
         n += sh_dump_allow(buf + n, sizeof(buf) - n);
         handled = 1;
     }
@@ -374,8 +442,9 @@ static long stealth_hook_exit(void *__user reserved)
     (void)reserved;
     sh_dbg("[stealth-hook] exit\n");
 
+    /* AUD-b-6：inline_unhook_syscalln 返回 void（KernelPatch syscall.h:144），
+     * 无法在此判定失败；卸载是否干净由 load/unload 的 rc 观测。 */
     inline_unhook_syscalln(SH_SYSCALL_NR, sh_syscall_before, 0);
-    sh_hwbp_cleanup();
     sh_ghost_cleanup();
 
     return 0;

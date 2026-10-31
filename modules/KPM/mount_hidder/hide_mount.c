@@ -178,7 +178,13 @@ static void hm_after(hook_fargs2_t *args, void *udata)
 
     for (i = 0; i < hm_path_count; i++) {
         if (!hm_paths[i][0]) continue;
-        if (strnstr(m->buf + base, hm_paths[i], len)) {
+        const char *hit = strnstr(m->buf + base, hm_paths[i], len);
+        size_t plen = kf_strlen(hm_paths[i]);
+
+        /* AUD-b-8：mountinfo 里路径是空格分隔字段，要求前后都是字段边界，
+         * 否则 "/data" 会误伤 "/data_mirror"。 */
+        if (hit && (hit == m->buf + base || hit[-1] == ' ') &&
+            (hit[plen] == ' ' || hit[plen] == '\0')) {
             m->count = base; /* 整条回滚，seq_read 会重新取下一个 */
             break;
         }
@@ -201,6 +207,8 @@ static void hm_hook_one(void *addr)
 static void hm_unhook_one(void *addr)
 {
     if (!addr) return;
+    /* AUD-b-9：hook_unwrap_remove 返回 void（hook.h:319），无法判定失败，
+     * 卸载是否干净由 load/unload 的 rc 观测。 */
     hook_unwrap_remove(addr, hm_before, hm_after, 1);
 }
 
@@ -252,11 +260,13 @@ static long hide_mount_control0(const char *args, char *__user out_msg, int outl
     int i;
 
     if (args && args[0] && strncmp(args, "status", 6) != 0) {
+        /* AUD-b-9：命令前缀要整词匹配，避免 "clearXXX" 被当成 clear */
         if (strncmp(args, "add:", 4) == 0) {
             rc = hm_add_path(args + 4, (int)strlen(args + 4));
         } else if (strncmp(args, "del:", 4) == 0) {
             rc = hm_del_path(args + 4, (int)strlen(args + 4));
-        } else if (strncmp(args, "clear", 5) == 0) {
+        } else if (strncmp(args, "clear", 5) == 0 &&
+                   (args[5] == '\0' || args[5] == ' ' || args[5] == '\n')) {
             hm_clear_paths();
         } else {
             rc = -2; /* 未知命令 */

@@ -34,7 +34,8 @@ static void before_seq_puts(hook_fargs2_t *args, void *udata) {
 static void after_proc_pid_wchan(hook_fargs4_t *args, void *udata) {
     struct seq_file *m = (struct seq_file *)args->arg0;
     if (m && m->buf) {
-        if (strcmp((char *)m->buf, "ptrace_stop") == 0) {
+        /* AUD-c-6：m->buf 不保证 NUL 结尾，按 count 做有界比较 */
+        if (m->count >= 11 && memcmp(m->buf, "ptrace_stop", 11) == 0) {
             m->buf[0] = '0';
             m->buf[1] = '\0';
             m->count = 1;

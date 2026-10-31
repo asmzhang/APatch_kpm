@@ -38,6 +38,8 @@ objs := qti_battery_charger.o
 
 all: qti_battery_charger_$(MYKPM_VERSION).kpm
 
+debug_objs := $(addprefix debug/,${objs})
+
 debug: CFLAGS += -DDEBUG
 debug: QBC_VER := _d
 debug: qti_battery_charger_$(MYKPM_VERSION)_debug.kpm
@@ -45,10 +47,15 @@ debug: qti_battery_charger_$(MYKPM_VERSION)_debug.kpm
 qti_battery_charger_$(MYKPM_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-qti_battery_charger_$(MYKPM_VERSION)_debug.kpm: ${objs}
+# AUD-c-1：debug 用独立对象目录，否则会复用 release 的 .o，两个产物逐字节相同
+qti_battery_charger_$(MYKPM_VERSION)_debug.kpm: ${debug_objs}
 	${CC} -r -o $@ $^
 
 %.o: %.c
+	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<
+
+debug/%.o: %.c
+	@mkdir -p $(@D)
 	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<
 
 .PHONY: clean

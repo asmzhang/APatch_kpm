@@ -457,6 +457,9 @@ static long stealth_hook_exit(void *__user reserved)
     /* AUD-b-6：inline_unhook_syscalln 返回 void（KernelPatch syscall.h:144），
      * 无法在此判定失败；卸载是否干净由 load/unload 的 rc 观测。 */
     inline_unhook_syscalln(SH_SYSCALL_NR, sh_syscall_before, 0);
+    /* AUD-e-4：R4d 误删了这行。没有它，perf 断点、task 引用、节点内存都不会释放，
+     * 卸载后活跃断点回调会跳进已卸载的模块。 */
+    sh_hwbp_cleanup();
     sh_ghost_cleanup();
 
     return 0;

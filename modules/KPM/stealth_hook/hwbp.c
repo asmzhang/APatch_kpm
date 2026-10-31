@@ -367,15 +367,18 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
             if (ptr < 0x100000ULL || ptr > 0x7FFFFFFFFFFFULL) {
                 continue;
             }
-            if (sh_copy_from_user_nofault) {
-                left = sh_copy_from_user_nofault(matched->mem_dump[i],
-                                                 (const void *)(uintptr_t)ptr, dn);
-            } else {
-                /* 兜底：__arch_copy_from_user 也有异常表，坏指针只少拷；
-                 * 但缺页可能触发 "sleeping function called from invalid context" 告警。 */
-                left = sh_copy_from_user(matched->mem_dump[i],
-                                         (const void *)(uintptr_t)ptr, dn);
+            if (!sh_copy_from_user_nofault) {
+                /* AUD-f-2：异常上下文里绝不能调可能睡眠的 __arch_copy_from_user。
+                 * 缺 nofault 符号就整体禁用 dump（QUERY 里 mem_len 全 0）。 */
+                static int dump_warned;
+                if (!dump_warned) {
+                    pr_warn("[stealth_hook] no copy_from_user_nofault, mem dump disabled\n");
+                    dump_warned = 1;
+                }
+                break;
             }
+            left = sh_copy_from_user_nofault(matched->mem_dump[i],
+                                             (const void *)(uintptr_t)ptr, dn);
             if (left <= dn) {
                 matched->mem_len[i] = (uint16_t)(dn - (uint32_t)left);
             }
@@ -690,6 +693,8 @@ void sh_hwbp_cleanup(void)
     struct list_head *pos;
     struct list_head *tmp;
 
+    int released = 0;
+
     if (!hwbp_list_ready) {
         return;
     }
@@ -710,5 +715,7 @@ void sh_hwbp_cleanup(void)
             sh_put_task_struct(node->task_ref);
         }
         sh_vfree(node);
+        released++;
     }
+    pr_info("[stealth_hook] hwbp cleanup: %d node(s) released\n", released);
 }

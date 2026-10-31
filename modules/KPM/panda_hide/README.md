@@ -75,6 +75,9 @@ panda_hide: all modules installed
 
 卸载后 dmesg 逆序拆卸，`unload_module: name: panda_hide, rc: 0`，全部信号回到卸载态基线。
 
+与 memcrc 0.2.0（同样钩 `do_task_stat`）同时加载时共存正常，四项隐藏照旧生效；
+若再开启 memcrc 的 `PTRACE:<uid>` 规则，`PTRACE_ATTACH` 会先被 memcrc 拦掉，本模块的状态伪装在该路径上观察不到。
+
 未覆盖项：只测了 release 变体（真机每目标只测一个变体）；ctl0 回显未测（无配置语义）；
 `mem_hide` 的 `process_vm_readv` 路径未单独构造用例；小米 13（5.10）未测。
 

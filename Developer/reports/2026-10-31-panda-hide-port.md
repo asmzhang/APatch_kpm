@@ -96,7 +96,18 @@ panda_hide: all modules installed
   2. `ctl0` 只回显参数，无配置语义，未单独测。
   3. `mem_hide` 的 `process_vm_readv` 路径未单独构造用例（只测 `/proc/<pid>/mem`）。
   4. 小米 13（5.10.149-android12-9）未测；`seq_put_decimal_ull`/`proc_pid_wchan` 在 5.10 上同样存在，但未实测。
-  5. 多模块共存场景（与 memcrc 的 `do_task_stat` 钩子同时生效）只做了「同机同时加载」的观测，未做交叉判据矩阵。
+  5. 多模块共存只测了与 memcrc 0.2.0 的组合（见下），stealth_hook / apkey_hide / hosts_redirect 同机共存未单独做判据矩阵。
+
+### 与 memcrc 0.2.0 共存（两者都钩 `do_task_stat`）
+
+| 场景 | 结果 |
+| --- | --- |
+| 两模块同时加载、memcrc 无规则 | panda 的四项隐藏全部生效（`TracerPid=0`、`State=S`、`wchan=0`、`stat` 第三字段 `S`） |
+| 再加 memcrc 规则 `PTRACE:2000` | `PTRACE_ATTACH` 直接被 memcrc 拦掉（`rc=-1 errno=1` EPERM），探测在 attach 阶段就失败 |
+| `CMD:CLEAR` 后 | 回到第一行的隐藏态 |
+
+结论：两条钩子链能在同一函数上共存，不 panic、不互相摘除；memcrc 的 `PTRACE:uid` 是更前置的拦截，
+两者同时开启时先被 memcrc 挡住，panda 的 `State` 伪装在该路径上观察不到。
 
 ## 边界声明
 

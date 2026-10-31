@@ -274,6 +274,16 @@ def parse_makefile_version(mdir):
     return m.group(1).strip()
 
 
+def posix_rel(rel):
+    """记录内的相对路径统一使用 POSIX 分隔符。
+
+    Windows 上 Path.relative_to() 产出反斜杠；把 os.sep 原始形态写进记录后，
+    其他平台（或 WSL/CI）按 artifacts/<id>/<name> 取文件就会找不到。
+    记录是跨平台事实，因此写入与读取都过一遍这里。
+    """
+    return str(rel).replace(chr(92), "/")
+
+
 def source_files(module, mdir, extra=()):
     """全部构建输入：模块目录内源码/脚本/配置 + 仓库级共享头 + 显式追加。"""
     files = []
@@ -283,7 +293,7 @@ def source_files(module, mdir, extra=()):
             if name.endswith(IGNORED_SUFFIX):
                 continue
             if name in BUILD_INPUT_NAMES or name.endswith(BUILD_INPUT_EXT):
-                files.append(str(Path(root, name).relative_to(REPO)))
+                files.append(posix_rel(Path(root, name).relative_to(REPO)))
     # 子模块初始化配方随同冻结内容捕获。
     if any((Path(root) / ".git").is_file() for root, _, _ in os.walk(mdir)) and (REPO / ".gitmodules").is_file():
         files.append(".gitmodules")
@@ -688,7 +698,7 @@ def build_entry(module, mdir, version, variant, toolchain, build_cmd, env_extra,
     sources = []
     for rel in files:
         blob = blobs.get(rel)
-        sources.append({"path": rel, "sha256": sha256_file(REPO / rel),
+        sources.append({"path": posix_rel(rel), "sha256": sha256_file(REPO / rel),
                         "blob_sha256": sha256_bytes(blob) if blob is not None else None})
     recipe = prepared_recipe if prepared_recipe is not None else capture_build_recipe(build_cmd, env_extra)
     flags_sha = recipe.get("dry_run_sha256", "") if recipe.get("captured") else ""
@@ -817,7 +827,7 @@ def record_locked(args):
                                 f"（recipe.note: {entry['recipe'].get('note', '未提供 --build-cmd')}）")
                 continue
             entry["artifacts"] = [artifact_facts(path)]
-            entry["artifacts"][0]["path"] = str(Path(path).relative_to(REPO))
+            entry["artifacts"][0]["path"] = posix_rel(Path(path).relative_to(REPO))
             if args.kind == "candidate":
                 check = verify_build(entry, profile="candidate")
                 if check["problems"]:
@@ -1158,10 +1168,10 @@ def verify_build(entry, worktree=False, check_build_args=False, profile="explora
     commit = entry.get("source_commit")
     per_file, mismatched, used = [], [], {}
     source_entries = entry.get("sources", [])
-    raw_blobs = blobs_at(commit, [s["path"] for s in source_entries], filters=False) \
+    raw_blobs = blobs_at(commit, [posix_rel(s["path"]) for s in source_entries], filters=False) \
         if (commit and not worktree) else {}
     for src in source_entries:
-        rel = src["path"]
+        rel = posix_rel(src["path"])
         recorded_file = src.get("sha256")
         expected = {recorded_file}
         if src.get("blob_sha256"):
@@ -1201,7 +1211,7 @@ def verify_build(entry, worktree=False, check_build_args=False, profile="explora
 
     # 6) 产物
     for art in entry.get("artifacts", []):
-        path = REPO / art["path"]
+        path = REPO / posix_rel(art["path"])
         if not path.is_file():
             result["problems"].append(f"产物不在场: {art['path']}")
             continue

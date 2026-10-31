@@ -1,16 +1,17 @@
-# 开发报告：memcrc 0.0.1
+# 开发报告：memcrc 0.0.1 → 0.1.0
 
 ## 身份
 
 | 项 | 值 |
 | --- | --- |
-| commit | `91c941819e728d85289ece965005887fdd4f4d45`（memcrc 模块落地提交；本报告写于提交前，身份栏于提交后回填） |
+| commit | `91c941819e728d85289ece965005887fdd4f4d45`（0.0.1 模块落地提交）；0.1.0 扩展提交见 `git log --oneline -- modules/KPM/memcrc` |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（子模块） |
 | Build ID / instance_id | 未登记（探索构建，未走 `tools/build_candidate.py`） |
 | 配方指纹 | 未登记 |
 | 构建事务 | 手工 `make -C modules/KPM/memcrc all debug`（未登记） |
 | 工具链 | clang 17.0.2（NDK 26.1.10909125，`aarch64-linux-android31-clang`） |
-| 产物 | `memcrc_0.0.1.kpm` `sha256=29cd7c9273451231bfd845de6d022a05094f7e60d5159bcf4a792a47dd6dd1c6` `size=75032`；`memcrc_0.0.1_debug.kpm` `sha256=2a9f9e46d0a74db948b5d7e65b7932ee61f6fc059697720f993ad97160860d33` `size=75040` |
+| 产物（0.1.0，当前源码） | `memcrc_0.1.0.kpm` `sha256=ec083df1ea4ceeca52db46b7fe4a52b0f4428a2b013c5ff947e7d29c851c58e0` `size=85584`；`memcrc_0.1.0_debug.kpm` `sha256=93116fc1c5ca0c83629197c1952c99b90e8562a9a5c62d0d8aa378f873b0ccbd` `size=85584` |
+| 产物（0.0.1，历史） | `memcrc_0.0.1.kpm` `sha256=29cd7c9273451231bfd845de6d022a05094f7e60d5159bcf4a792a47dd6dd1c6` `size=75032`；`memcrc_0.0.1_debug.kpm` `sha256=2a9f9e46d0a74db948b5d7e65b7932ee61f6fc059697720f993ad97160860d33` `size=75040` |
 
 ## 变更点
 
@@ -32,14 +33,26 @@
 - 与上游的逐文件差异共 12 个文件、111 行（`diff -ru _repos/memcrc/src modules/KPM/memcrc`；搬入文件的行尾已与上游对齐，否则整文件都会显示为改写。git 侧 `core.autocrlf=true`，入库统一存 LF）。除上述几处外业务逻辑零改动。
 - 本轮覆盖范围：编译 + 导入表核对 + 门禁 + 实现方真机自检（见「真机自检（实现方，非 Tester 结论）」）。真机结论需 Tester 独立出具（见「边界声明」）。
 
+## 相对上游的功能扩展（0.1.0）
+
+上游只有三类规则、通道不区分调用者。0.1.0 并入 `xiaojianbang-stealth-hook` 的 `maps_hide` 能力，并在**同一次改动**里先补上权限门（否则新增能力会让风险放大，见「已知可疑点」第一条）。
+
+- **新增第四类规则 `RANGE:uid:start:end`**：`SHARED_DATA_TYPE_ADDR_RANGE`，`uid` 为 `0` 表示所有进程（与 `MAP:` 的 uid 0 通配语义一致），地址为十六进制、可带 `0x`。命中条件为「uid 相同（或规则 uid 为 0）且区间有交集」（`start < r->end && r->start < end`）。
+- **消费点不依赖结构体布局**：`rep_show_map_vma` 在 `filter_output()` 之后追加 `filter_maps_range()`，从已写入 `seq_file` 的 `start-end` 文本解析地址（`parse_maps_range()` 逐字符十六进制、遇 `-` 分段），命中就把 `m->count` 回滚到本行起始。这样不碰 `struct vm_area_struct`，跨版本更稳。
+- **通道加 uid 作用域门**：`shared_data_add_parsed_scoped(const char *str, uid_t caller_uid, bool privileged)` 按类型检查——`MAP`/`PTRACE`/`RANGE` 的 uid 必须等于调用者，`PATH` 是全局规则必须 `privileged`；`shared_data_add_parsed()` 退化成 `(str, 0, true)` 的受信包装，供 ioctl 通道沿用。默认受信 uid `{0, 2000}`，可 `ALLOW:`/`DENY:`/`ALLOWLIST` 维护（`0` 不可移除）。
+- **`getcwd` 入口先做前缀白名单**：只处理 `MAP:`/`PATH:`/`PTRACE:`/`RANGE:` 开头的缓冲区，其余立刻返回——`getcwd` 是高频调用，不能为每条无关调用做完整解析。
+- **`ctl0` 复用同一套命令**：`mod_control0` 先试 `control_handle_command()`（`ALLOW:`/`DENY:`/`ALLOWLIST`），再走 `parser_is_command()` / `shared_data_add_parsed()`，回写内容带上 `ALLOWLIST` 与 `rc=<n>`。
+
+改动文件：`data/shared_data.h`、`data/shared_data.c`、`data/parser.c`、`feature/feature.c`、`control/control.c`（整体重写）、`control/control.h`、`mod_main.c`、`Makefile`（版本 0.1.0）。
+
 ## 自检
 
 ```text
 $ make -C modules/KPM/memcrc clean all debug
 0 warnings, 0 errors（release / debug 各一次全量重建）
 
-$ llvm-readelf -sW memcrc_0.0.1.kpm | awk '$7=="UND"'
-34 个未定义符号，全部为 KP 导出：
+$ llvm-readelf -sW memcrc_0.1.0.kpm | awk '$7=="UND"'
+34 个未定义符号，全部为 KP 导出（0.1.0 未新增依赖；snprintf 走 KP 的 kf_snprintf 映射）：
   compat_copy_to_user compat_strncpy_from_user cred_offset fp_unwrap_syscalln
   fp_wrap_syscalln get_random_u64 has_syscall_wrapper hook inline_unwrap_syscalln
   inline_wrap_syscalln kallsyms_lookup_name kf_memcpy kf_memmove kf_memset
@@ -52,10 +65,10 @@ $ llvm-readelf -sW memcrc_0.0.1.kpm | awk '$7=="UND"'
 $ python tools/check_repository.py
 12 项 PASS；1 项 FAIL = tool_selftest（Windows 环境：'gbk' codec 无法解码自检夹具输出，
   与本次改动无关，空树同样失败）；2 项 WARN 为存量（handoff 缺字段 / 未登记实例）。
-ci_build_selection 已把 memcrc 计入构建列表（11 个模块）。
+ci_build_selection 已把 memcrc 计入构建列表（12 个模块）。
 ```
 
-- 构建：`make -C modules/KPM/memcrc all debug`，警告 0 条（首次移植时 39 条，逐类修完）。
+- 构建：`make -C modules/KPM/memcrc all debug`，警告 0 条（首次移植时 39 条，逐类修完；0.1.0 扩展同样是 0 警告 0 错误）。
 - 离线镜像回归：不适用（无偏移推导，`kernel_img/` 无镜像参与）。
 - 代码走查结论：`mod_init` 五步（`ioctl_init`/`feature_init`/`redirect_init`/`syscall_init`/`ptrace_hide_init`）与 `mod_exit` 逆序对称；`init_symbols` 任一符号缺失即整体失败（不会半初始化）；`mod_exit` 未 `unhook` 的部分由各子系统 `*_exit` 负责。
 
@@ -97,13 +110,31 @@ ci_build_selection 已把 memcrc 计入构建列表（11 个模块）。
 1. **规则里的路径必须与 `d_path()` 给出的真实路径逐字一致**。`/sdcard` 是符号链接，重定向按 `/sdcard/...` 写规则不生效；改用 `/storage/emulated/0/...` 才命中。
 2. **libc 不在 `/system/lib64/`**。Android 15 上 bionic 位于 `/apex/com.android.runtime/lib64/bionic/libc.so`，用 `/system/lib64/libc.so` 做过滤规则会“看起来没生效”，实则是路径不存在。
 
-未覆盖：重启后状态、嵌入模式、`ctl0` 通道、非 root 应用发起重定向（只验证了 uid 0 条目）、多规则并发下的锁竞争、6.12+ 内核。
+### 0.1.0（`RANGE` + uid 门）
+
+同一台设备、同一产物 `memcrc_0.1.0.kpm`（`sha256=ec083df1…`）重新加载，`dmesg` 五路初始化全部成功。app 侧注入用 `run-as com.xff.launch`（uid 10274）：`/data/local/tmp` 对 app 不可执行，注入器拷到 `/data/data/com.xff.launch/inject` 并 `chown 10274:10274`、`chmod 700`。
+
+| 用例 | 调用者 | 结果 |
+| --- | --- | --- |
+| 全局 `RANGE:0:0:ffffffffffffffff` | shell uid 2000（受信） | maps 143 → **0**；`CMD:CLEAR` 后恢复 141 |
+| 全局 `RANGE:0:0:ffffffffffffffff` | app uid 10274（非受信） | **拒绝**，`dmesg`：`shared_data: uid 10274 denied RANGE for uid 0`；shell 的 maps 仍 144 |
+| 自作用域 `RANGE:10274:0:ffffffffffffffff` | app uid 10274 | app 自己的 maps 143 → **0**；shell 的 maps **144 不受影响** |
+| 全局 `PATH:/data/app/` | app uid 10274 | **拒绝**，`shared_data: uid 10274 denied global PATH rule` |
+| 给 uid 0 下 `MAP:` | app uid 10274 | **拒绝**，`shared_data: uid 10274 denied MAP for uid 0` |
+| 回归：路径重定向 | shell | `cat mc_a.txt` `AAA_MC` → **`BBB_MC`** |
+| 回归：maps 过滤 | shell | `grep -c toybox /proc/self/maps` 4 → **0** |
+| 回归：状态伪装 | shell | `sleep` 进程 `State: S (sleeping)` → **`R (running)`** |
+| 回归：清空 | shell | 四类规则归零，maps 恢复 |
+
+**第一版按 pid 作用域，实测被自己打穿，已改 uid 作用域。** 初版规则写作 `RANGE:pid:start:end`，判据是「规则 pid 为 0 或等于调用者 pid」。实测非受信 app 发 `RANGE:0:…` 被**接受**，整台设备的 `/proc/self/maps` 变成 0 行，连 `uiautomator` 都报 `stack not found in /proc/self/maps` 而罢工。根因：`task_struct_offset.tgid_offset` 在 KP 里默认 `-1` 且从未被赋值（`KernelPatch/kernel/patch/ksyms/task_cred.c:61-63`：`.pid_offset = -1, .tgid_offset = -1, .thread_pid_offset = -1`），读出来是 0，于是「pid 不等」恒不成立、通配判定恒为真。改成 uid 作用域后正常，同时避免引入 `__task_pid_nr_ns` 这类额外符号依赖。教训：**KP 只导出 `cred_offset` 这类确定被赋值的字段，`pid`/`tgid` 偏移不可依赖**；凡「按调用者身份限权」必须用 uid。
+
+未覆盖：重启后状态、嵌入模式、`ctl0` 通道、多规则并发下的锁竞争、6.12+ 内核、非受信 uid 下的 `PTRACE`/`MAP` 自作用域用例（只验证了被拒绝的负向用例）。
 
 
 
 ## 已知可疑点（请 Auditor 重点看）
 
-- **权限面**：`control/control.c:11-22` `before_getcwd` 用 `inline_hook_syscalln(__NR_getcwd, 2, …)` 钩 `getcwd`，把**用户缓冲区内容**当命令交给 `shared_data_add_parsed()` 执行。即任何无 root 应用调用 `getcwd()` 并预填缓冲区，就能注入全局 `MAP:`/`PATH:`/`PTRACE:` 规则（`uid 0` 的 MAP 条目对所有 uid 生效）。这是上游设计，本轮**未改**，请评估是否应加「只接受 uid==0 或管理器 uid」的门槛。
+- **权限面（0.1.0 已修，请复核）**：`control/control.c` 的 `before_getcwd` 用 `inline_hook_syscalln(__NR_getcwd, 2, …)` 钩 `getcwd`，把**用户缓冲区内容**当命令执行。上游无任何调用者校验，任何无 root 应用都能注入全局 `MAP:`/`PATH:`/`PTRACE:` 规则。0.1.0 加了作用域门（`shared_data_add_parsed_scoped()`：非受信 uid 只能改自己，`PATH` 仅受信可加）与入口前缀白名单，并新增 `ALLOW:`/`DENY:`/`ALLOWLIST` 维护受信表（默认 `{0, 2000}`，`0` 不可移除）。复核点：受信表本身由 `ctl0` 修改，而 `ctl0` 需要管理器 uid 或 superkey；`getcwd` 前缀白名单是否会被构造出绕过（如缓冲区以 `RANGE:` 开头但实际想注入别的类型——`shared_data_add_parsed_scoped()` 仍按类型逐条复查，不依赖前缀）。
 - `redirect.c` 在 `do_filp_open` 钩子里再调 `backup_do_filp_open`（同函数第二次进入），重定向链（A→B，B 又命中 A）时可能递归；上游无深度限制，建议加一层「本线程已在重定向中」的标记。
 - `ptrace_hide.c` 对 `m->count` 做 memmove 调整，未校验 `m->buf` 剩余空间与 `count` 边界；`proc_pid_status` 输出被并发读时是否安全需确认。
 - `data/shared_data.c` 的 `kf_raw_spin_lock_irqsave` 使用 KP 的 `_raw_spin_lock_irqsave` 指针；若目标内核该符号被内联化（部分 6.6+ 配置）则 `init_symbols` 失败，模块整体不加载（安全默认，但等于不可用）。

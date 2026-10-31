@@ -15,7 +15,10 @@ enum shared_data_type {
     SHARED_DATA_TYPE_PATH_MAPPING,  // 类型1: UID + 原始路径 + 目标路径
     SHARED_DATA_TYPE_SINGLE_PATH,   // 类型2: 单个路径
     SHARED_DATA_TYPE_PTRACE_UID,    // 类型3: PTRACE UID
+    SHARED_DATA_TYPE_ADDR_RANGE,    // 类型4: PID + 地址区间（隐藏 /proc/<pid>/maps 里的行）
 };
+
+#define SHARED_DATA_TYPE_MAX   SHARED_DATA_TYPE_ADDR_RANGE
 
 struct path_mapping_data {
     uid_t uid;
@@ -31,12 +34,20 @@ struct ptrace_uid_data {
     uid_t uid;
 };
 
+/* 类型4：把 uid（0 表示所有进程）的 [start, end) 地址区间从 maps 里抹掉 */
+struct addr_range_data {
+    uid_t uid;
+    unsigned long start;
+    unsigned long end;
+};
+
 struct shared_data_entry {
     enum shared_data_type type;
     union {
         struct path_mapping_data mapping;
         struct single_path_data single;
         struct ptrace_uid_data ptrace_uid;
+        struct addr_range_data range;
     } data;
 };
 
@@ -63,7 +74,13 @@ int shared_data_add_ptrace_uid(uid_t uid);
 // 格式1: "MAP:uid:src_path:dst_path"
 // 格式2: "PATH:path"
 // 格式3: "PTRACE:uid"
+// 格式4: "RANGE:uid:start:end"（start/end 十六进制，可带 0x；uid=0 表示所有进程）
+//
+// 无特权调用者只能改自己：MAP/PTRACE/RANGE 的 uid 必须等于
+// caller_uid；PATH 是全局规则，只允许特权调用者添加。
 int shared_data_add_parsed(const char *str);
+
+int shared_data_add_parsed_scoped(const char *str, uid_t caller_uid, bool privileged);
 
 int shared_data_get_entry_by_index(unsigned int index, struct shared_data_entry *entry);
 
@@ -102,6 +119,15 @@ int shared_data_format_path_mapping(uid_t uid, const char *src_path, const char 
                                     char *buf, size_t buf_size);
 
 int shared_data_format_ptrace_uid(uid_t uid, char *buf, size_t buf_size);
+
+int shared_data_add_addr_range(uid_t uid, unsigned long start, unsigned long end);
+
+int shared_data_find_addr_range(uid_t uid, unsigned long start, unsigned long end);
+
+int shared_data_parse_addr_range(const char *str, uid_t *uid, unsigned long *start, unsigned long *end);
+
+int shared_data_format_addr_range(uid_t uid, unsigned long start, unsigned long end,
+                                  char *buf, size_t buf_size);
 
 bool shared_data_is_initialized(void);
 

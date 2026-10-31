@@ -13,7 +13,7 @@ struct internal_entry {
 static struct {
     struct internal_entry entries[SHARED_DATA_MAX_ENTRIES];
     unsigned int count;
-    unsigned int count_by_type[4];
+    unsigned int count_by_type[SHARED_DATA_TYPE_ADDR_RANGE + 1];
     spinlock_t lock;
     bool initialized;
 } shared_data = {
@@ -218,9 +218,18 @@ int shared_data_parse_path_mapping(const char *str, uid_t *uid, char *src_path, 
     return SHARED_DATA_SUCCESS;
 }
 
-int shared_data_add_parsed(const char *str) {
+/*
+ * 规则作用域检查：
+ *   - 受信调用者（privileged=true）可以给任意 uid/pid 下规则；
+ *   - 非受信调用者只能改自己——MAP/PTRACE 的 uid 必须等于 caller_uid，
+ *     RANGE 的 pid 必须等于 caller_pid；
+ *   - PATH 是全局规则（所有进程都看不到这条路径），只允许受信调用者添加。
+ * 这样即使注入通道对普通 app 开放，也拿不到影响别人的能力。
+ */
+int shared_data_add_parsed_scoped(const char *str, uid_t caller_uid, bool privileged) {
     char buffer[SHARED_DATA_MAX_STR_LEN];
     uid_t uid;
+    unsigned long start, end;
     char src_path[SHARED_DATA_MAX_PATH_LEN];
     char dst_path[SHARED_DATA_MAX_PATH_LEN];
 
@@ -232,25 +241,53 @@ int shared_data_add_parsed(const char *str) {
     buffer[sizeof(buffer) - 1] = '\0';
 
     if (strncmp(buffer, "MAP:", 4) == 0) {
-        if (shared_data_parse_path_mapping(buffer + 4, &uid, src_path, dst_path) == 0) {
-            return shared_data_add_path_mapping(uid, src_path, dst_path);
+        if (shared_data_parse_path_mapping(buffer + 4, &uid, src_path, dst_path) != 0) {
+            return SHARED_DATA_ERR_PARSE;
         }
-        return SHARED_DATA_ERR_PARSE;
+        if (!privileged && uid != caller_uid) {
+            pr_warn("shared_data: uid %u denied MAP for uid %u\n", caller_uid, uid);
+            return SHARED_DATA_ERR_INVALID;
+        }
+        return shared_data_add_path_mapping(uid, src_path, dst_path);
     }
 
     if (strncmp(buffer, "PATH:", 5) == 0) {
+        if (!privileged) {
+            pr_warn("shared_data: uid %u denied global PATH rule\n", caller_uid);
+            return SHARED_DATA_ERR_INVALID;
+        }
         return shared_data_add_single_path(buffer + 5);
     }
 
     if (strncmp(buffer, "PTRACE:", 7) == 0) {
-        if (shared_data_parse_ptrace_uid(buffer + 7, &uid) == 0) {
-            return shared_data_add_ptrace_uid(uid);
+        if (shared_data_parse_ptrace_uid(buffer + 7, &uid) != 0) {
+            return SHARED_DATA_ERR_PARSE;
         }
-        return SHARED_DATA_ERR_PARSE;
+        if (!privileged && uid != caller_uid) {
+            pr_warn("shared_data: uid %u denied PTRACE for uid %u\n", caller_uid, uid);
+            return SHARED_DATA_ERR_INVALID;
+        }
+        return shared_data_add_ptrace_uid(uid);
+    }
+
+    if (strncmp(buffer, "RANGE:", 6) == 0) {
+        if (shared_data_parse_addr_range(buffer + 6, &uid, &start, &end) != 0) {
+            return SHARED_DATA_ERR_PARSE;
+        }
+        if (!privileged && uid != caller_uid) {
+            pr_warn("shared_data: uid %u denied RANGE for uid %u\n", caller_uid, uid);
+            return SHARED_DATA_ERR_INVALID;
+        }
+        return shared_data_add_addr_range(uid, start, end);
     }
 
     pr_err("shared_data: Unsupported format: %s\n", str);
     return SHARED_DATA_ERR_PARSE;
+}
+
+int shared_data_add_parsed(const char *str) {
+    /* ctl0 / /dev 通道：调用方已经是受信身份（管理器 uid 或 superkey 鉴权） */
+    return shared_data_add_parsed_scoped(str, 0, true);
 }
 
 int shared_data_get_entry_by_index(unsigned int index, struct shared_data_entry *entry) {
@@ -450,7 +487,7 @@ unsigned int shared_data_get_count_by_type(enum shared_data_type type) {
     unsigned long flags;
     unsigned int count;
 
-    if (!shared_data.initialized || type < 1 || type > 3) {
+    if (!shared_data.initialized || type < 1 || type > SHARED_DATA_TYPE_ADDR_RANGE) {
         return 0;
     }
 
@@ -476,6 +513,7 @@ void shared_data_dump(void) {
     pr_info("  Path mappings: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_PATH_MAPPING]);
     pr_info("  Single paths: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_SINGLE_PATH]);
     pr_info("  PTRACE UIDs: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_PTRACE_UID]);
+    pr_info("  Address ranges: %u\n", shared_data.count_by_type[SHARED_DATA_TYPE_ADDR_RANGE]);
 
     for (i = 0; i < SHARED_DATA_MAX_ENTRIES; i++) {
         if (shared_data.entries[i].valid) {
@@ -493,6 +531,12 @@ void shared_data_dump(void) {
                 case SHARED_DATA_TYPE_PTRACE_UID:
                     pr_info("  [%d] PTRACE: %u\n", i,
                             shared_data.entries[i].entry.data.ptrace_uid.uid);
+                    break;
+                case SHARED_DATA_TYPE_ADDR_RANGE:
+                    pr_info("  [%d] RANGE: uid=%u %lx-%lx\n", i,
+                            shared_data.entries[i].entry.data.range.uid,
+                            shared_data.entries[i].entry.data.range.start,
+                            shared_data.entries[i].entry.data.range.end);
                     break;
                 default:
                     pr_info("  [%d] UNKNOWN TYPE: %d\n", i,
@@ -524,7 +568,7 @@ void shared_data_clear_by_type(enum shared_data_type type) {
     unsigned long flags;
     int i;
 
-    if (!shared_data.initialized || type < 1 || type > 3) {
+    if (!shared_data.initialized || type < 1 || type > SHARED_DATA_TYPE_ADDR_RANGE) {
         return;
     }
 
@@ -756,4 +800,178 @@ int shared_data_format_ptrace_uid(uid_t uid, char *buf, size_t buf_size) {
     }
 
     return SHARED_DATA_SUCCESS;
-}
+}
+
+
+/* ---------------- 类型4：地址区间（maps 隐藏） ---------------- */
+
+static int parse_hex_ul(const char *s, unsigned long *out) {
+    unsigned long v = 0;
+    int digits = 0;
+
+    if (!s || !out) {
+        return -1;
+    }
+
+    while (*s == ' ' || *s == '\t') {
+        s++;
+    }
+
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        s += 2;
+    }
+
+    for (;; s++) {
+        unsigned long d;
+
+        if (*s >= '0' && *s <= '9') {
+            d = (unsigned long)(*s - '0');
+        } else if (*s >= 'a' && *s <= 'f') {
+            d = (unsigned long)(*s - 'a' + 10);
+        } else if (*s >= 'A' && *s <= 'F') {
+            d = (unsigned long)(*s - 'A' + 10);
+        } else {
+            break;
+        }
+
+        v = (v << 4) | d;
+        digits++;
+    }
+
+    if (digits == 0 || digits > 16) {
+        return -1;
+    }
+
+    *out = v;
+    return 0;
+}
+
+int shared_data_add_addr_range(uid_t uid, unsigned long start, unsigned long end) {
+    unsigned long flags;
+    int slot;
+
+    if (!shared_data.initialized || start >= end) {
+        return SHARED_DATA_ERR_INVALID;
+    }
+
+    flags = kf_raw_spin_lock_irqsave(&shared_data.lock);
+
+    if (shared_data.count >= SHARED_DATA_MAX_ENTRIES) {
+        kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+        return SHARED_DATA_ERR_FULL;
+    }
+
+    slot = find_free_slot();
+    if (slot < 0) {
+        kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+        return SHARED_DATA_ERR_FULL;
+    }
+
+    shared_data.entries[slot].entry.type = SHARED_DATA_TYPE_ADDR_RANGE;
+    shared_data.entries[slot].entry.data.range.uid = uid;
+    shared_data.entries[slot].entry.data.range.start = start;
+    shared_data.entries[slot].entry.data.range.end = end;
+    shared_data.entries[slot].valid = true;
+
+    shared_data.count++;
+    shared_data.count_by_type[SHARED_DATA_TYPE_ADDR_RANGE]++;
+
+    kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+
+    pr_info("shared_data: added RANGE [%d]: uid=%u %lx-%lx\n", slot, uid, start, end);
+
+    return SHARED_DATA_SUCCESS;
+}
+
+int shared_data_find_addr_range(uid_t uid, unsigned long start, unsigned long end) {
+    unsigned long flags;
+    int i, result = -1;
+
+    if (!shared_data.initialized) {
+        return -1;
+    }
+
+    flags = kf_raw_spin_lock_irqsave(&shared_data.lock);
+
+    for (i = 0; i < SHARED_DATA_MAX_ENTRIES; i++) {
+        struct addr_range_data *r;
+
+        if (!shared_data.entries[i].valid ||
+            shared_data.entries[i].entry.type != SHARED_DATA_TYPE_ADDR_RANGE) {
+            continue;
+        }
+
+        r = &shared_data.entries[i].entry.data.range;
+
+        if (r->uid != 0 && r->uid != uid) {
+            continue;
+        }
+
+        /* 有交集就整行抹掉 */
+        if (start < r->end && r->start < end) {
+            result = i;
+            break;
+        }
+    }
+
+    kf_raw_spin_unlock_irqrestore(&shared_data.lock, flags);
+
+    return result;
+}
+
+int shared_data_parse_addr_range(const char *str, uid_t *uid, unsigned long *start, unsigned long *end) {
+    char buffer[96];
+    char *remaining;
+    char *token;
+    unsigned long value;
+
+    if (!str || !uid || !start || !end) {
+        return SHARED_DATA_ERR_INVALID;
+    }
+
+    strncpy(buffer, str, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    remaining = buffer;
+
+    token = strsep(&remaining, ":");
+    if (!token || kstring_strtoul(token, 10, &value) != 0) {
+        return SHARED_DATA_ERR_PARSE;
+    }
+    *uid = (uid_t)value;
+
+    token = strsep(&remaining, ":");
+    if (!token || parse_hex_ul(token, &value) != 0) {
+        return SHARED_DATA_ERR_PARSE;
+    }
+    *start = value;
+
+    token = strsep(&remaining, ":");
+    if (!token || parse_hex_ul(token, &value) != 0) {
+        return SHARED_DATA_ERR_PARSE;
+    }
+    *end = value;
+
+    if (*start >= *end) {
+        return SHARED_DATA_ERR_PARSE;
+    }
+
+    return SHARED_DATA_SUCCESS;
+}
+
+int shared_data_format_addr_range(uid_t uid, unsigned long start, unsigned long end,
+                                  char *buf, size_t buf_size) {
+    int len;
+
+    if (!buf || buf_size == 0) {
+        return SHARED_DATA_ERR_INVALID;
+    }
+
+    len = snprintf(buf, buf_size, "RANGE:%u:%lx:%lx", uid, start, end);
+
+    if (len >= buf_size) {
+        return SHARED_DATA_ERR_TOOLONG;
+    }
+
+    return SHARED_DATA_SUCCESS;
+}

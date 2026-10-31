@@ -3,6 +3,8 @@
 #include <linux/printk.h>
 #include <kputils.h>
 #include <linux/string.h>
+#include <linux/sched.h>
+#include <linux/cred.h>
 #include "feature.h"
 #include "shared_data.h"
 
@@ -161,6 +163,97 @@ static int rep_show_vfsstat(struct seq_file *m, struct vfsmount *mnt) {
     return ret;
 }
 
+/*
+ * 类型4（地址区间）用：从 "7f8a1c0000-7f8a1c1000 r-xp ..." 里解析出起止地址。
+ * 直接解析已输出的文本，不依赖 struct vm_area_struct 的字段布局。
+ */
+static inline bool parse_maps_range(const char *s, size_t len, unsigned long *start, unsigned long *end) {
+    unsigned long v = 0;
+    size_t i = 0;
+    bool has_digit = false;
+
+    if (!s || len < 3 || !start || !end) {
+        return false;
+    }
+
+    while (i < len && (s[i] == ' ' || s[i] == '\t')) {
+        i++;
+    }
+
+    for (; i < len; i++) {
+        char c = s[i];
+        unsigned long d;
+
+        if (c >= '0' && c <= '9') {
+            d = (unsigned long)(c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            d = (unsigned long)(c - 'a' + 10);
+        } else if (c >= 'A' && c <= 'F') {
+            d = (unsigned long)(c - 'A' + 10);
+        } else {
+            break;
+        }
+
+        v = (v << 4) | d;
+        has_digit = true;
+    }
+
+    if (!has_digit || i >= len || s[i] != '-') {
+        return false;
+    }
+
+    *start = v;
+    v = 0;
+    has_digit = false;
+    i++;
+
+    for (; i < len; i++) {
+        char c = s[i];
+        unsigned long d;
+
+        if (c >= '0' && c <= '9') {
+            d = (unsigned long)(c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            d = (unsigned long)(c - 'a' + 10);
+        } else if (c >= 'A' && c <= 'F') {
+            d = (unsigned long)(c - 'A' + 10);
+        } else {
+            break;
+        }
+
+        v = (v << 4) | d;
+        has_digit = true;
+    }
+
+    if (!has_digit) {
+        return false;
+    }
+
+    *end = v;
+    return *start < *end;
+}
+
+static inline uid_t current_uid_value(void) {
+    struct cred *cred = *(struct cred **)((uintptr_t)current + task_struct_offset.cred_offset);
+    return *(uid_t *)((uintptr_t)cred + cred_offset.uid_offset);
+}
+
+static void filter_maps_range(struct seq_file *m, size_t old_count) {
+    unsigned long start, end;
+
+    if (!m || !m->buf || m->count <= old_count) {
+        return;
+    }
+
+    if (!parse_maps_range(m->buf + old_count, m->count - old_count, &start, &end)) {
+        return;
+    }
+
+    if (shared_data_find_addr_range(current_uid_value(), start, end) >= 0) {
+        m->count = old_count;
+    }
+}
+
 static void rep_show_map_vma(struct seq_file *m, struct vm_area_struct *vma) {
     size_t old_count;
 
@@ -169,6 +262,7 @@ static void rep_show_map_vma(struct seq_file *m, struct vm_area_struct *vma) {
 
     if (is_proc_effective()) {
         filter_output(m, old_count, false);
+        filter_maps_range(m, old_count);
     }
 }
 

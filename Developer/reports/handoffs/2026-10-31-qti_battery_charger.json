@@ -3,36 +3,36 @@
   "version": "1.0.2",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-10-31T11:28:04Z",
+  "handoff_at": "2026-10-31T12:10:46Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "qti_battery_charger",
       "version": "1.0.2",
       "kind": "candidate",
-      "build_id": "qti_battery_charger-1.0.2+g5f13d217b976.r69fe516f.kpb51197a.ndk26.1.10909125",
+      "build_id": "qti_battery_charger-1.0.2+g29951ee67dca.rb1b7cc59.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-10-31T11:28:03Z",
-      "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
+      "recorded_at": "2026-10-31T12:10:45Z",
+      "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
       "source_dirty": false,
-      "source_tree_sha256": "5f13d217b9769fdb0239538e5e8d23732f00de7412611064436118f81ff64a75",
-      "source_tree_blob_sha256": "d2e8f2ee768dc01b46dcb58cbec8abf916392e055f4f0c4e6a0b87b95ef35c9f",
+      "source_tree_sha256": "29951ee67dca569135d5c5abaf6c5f75cfb9df88af89d35748bcc7b85e15fe4f",
+      "source_tree_blob_sha256": "5cd9b00645b5f38ffe4437fc20c62c8bd7713e3ec029b5762ffa71ab29592314",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "78dac393368d26ff481d6144b511f11d0de6c2f2206c65143530d473641bc85f"
+        "data_ref": "b913422e68326ceddc064316be4359ffcae2f40701f59eb72050cc90fcc53337"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "69fe516ff8f866b27a57680af96a4ccdb3f34e9f2c1b5428884c4bb44f7c9c0a",
+      "fingerprint_sha256": "b1b7cc59b5c5977dc66911bbe2d599abb0fceac10f2ef152d14197f9ddf4562e",
       "recipe": {
-        "data_ref": "c73eba30cf23e81365e37f12f246c121952fe7ffad2af147fa43e702399ac7d8"
+        "data_ref": "53a4fc9a4244a60a5e011cda18fa639fd066f7ae484480711c16da6e709945c4"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
-        "source_tree_sha256": "5f13d217b9769fdb0239538e5e8d23732f00de7412611064436118f81ff64a75",
+        "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
+        "source_tree_sha256": "29951ee67dca569135d5c5abaf6c5f75cfb9df88af89d35748bcc7b85e15fe4f",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "9e33aacad46e77f4198617a3e2a69b3c535b15965ed6c77ec5f479a517a6b572",
+        "recipe_sha256": "92e49105bdf98ce92bfa4a428d8ce898ccbb0967763d63d833131c6c5e822dbe",
         "input_unchanged": true,
         "returncode": 0
       },
@@ -48,62 +48,72 @@
             "author": "lzghzr",
             "description": "set battery_psy_get_prop value"
           },
-          "path": "artifacts/qti_battery_charger-1.0.2+g5f13d217b976.r69fe516f.kpb51197a.ndk26.1.10909125/qti_battery_charger_1.0.2.kpm"
+          "path": "artifacts/qti_battery_charger-1.0.2+g29951ee67dca.rb1b7cc59.kpb51197a.ndk26.1.10909125/qti_battery_charger_1.0.2.kpm"
         }
       ],
-      "instance_id": "qti_battery_charger-1.0.2+g5f13d217b976.r69fe516f.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "qti_battery_charger-1.0.2+g29951ee67dca.rb1b7cc59.kpb51197a.ndk26.1.10909125#1"
     },
     {
       "module": "qti_battery_charger",
       "version": "1.0.2",
       "kind": "candidate",
-      "build_id": "qti_battery_charger-1.0.2_debug+g5f13d217b976.rcd2473e5.kpb51197a.ndk26.1.10909125",
+      "build_id": "qti_battery_charger-1.0.2_debug+g29951ee67dca.rb72af860.kpb51197a.ndk26.1.10909125",
       "variant": "debug",
-      "recorded_at": "2026-10-31T11:28:04Z",
-      "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
+      "recorded_at": "2026-10-31T12:10:46Z",
+      "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
       "source_dirty": false,
-      "source_tree_sha256": "5f13d217b9769fdb0239538e5e8d23732f00de7412611064436118f81ff64a75",
-      "source_tree_blob_sha256": "d2e8f2ee768dc01b46dcb58cbec8abf916392e055f4f0c4e6a0b87b95ef35c9f",
+      "source_tree_sha256": "29951ee67dca569135d5c5abaf6c5f75cfb9df88af89d35748bcc7b85e15fe4f",
+      "source_tree_blob_sha256": "5cd9b00645b5f38ffe4437fc20c62c8bd7713e3ec029b5762ffa71ab29592314",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "78dac393368d26ff481d6144b511f11d0de6c2f2206c65143530d473641bc85f"
+        "data_ref": "b913422e68326ceddc064316be4359ffcae2f40701f59eb72050cc90fcc53337"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "cd2473e57c39c5cdfd89b457327816f4d7efe7c93662098822dd3922a0841f4b",
+      "fingerprint_sha256": "b72af860198b8b864fc51c070cd410d98652a6b354478f2b4866ba42c65e9e6b",
       "recipe": {
-        "data_ref": "c73eba30cf23e81365e37f12f246c121952fe7ffad2af147fa43e702399ac7d8"
+        "data_ref": "53a4fc9a4244a60a5e011cda18fa639fd066f7ae484480711c16da6e709945c4"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
-        "source_tree_sha256": "5f13d217b9769fdb0239538e5e8d23732f00de7412611064436118f81ff64a75",
+        "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
+        "source_tree_sha256": "29951ee67dca569135d5c5abaf6c5f75cfb9df88af89d35748bcc7b85e15fe4f",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "9e33aacad46e77f4198617a3e2a69b3c535b15965ed6c77ec5f479a517a6b572",
+        "recipe_sha256": "92e49105bdf98ce92bfa4a428d8ce898ccbb0967763d63d833131c6c5e822dbe",
         "input_unchanged": true,
         "returncode": 0
       },
       "artifacts": [
         {
           "name": "qti_battery_charger_1.0.2_debug.kpm",
-          "sha256": "9b8dfb9a240cddf4de804df721d009566cb2b8acda0c8c8ac7567f0b0916b8e3",
+          "sha256": "f35121e034193ee1c83aa06c909bce8b012f62b9ca3343413b7c21cc47ff813e",
           "size": 6072,
           "embedded": {
             "name": "qti_battery_charger",
-            "version": "1.0.2",
+            "version": "1.0.2_d",
             "license": "GPL v2",
             "author": "lzghzr",
             "description": "set battery_psy_get_prop value"
           },
-          "path": "artifacts/qti_battery_charger-1.0.2_debug+g5f13d217b976.rcd2473e5.kpb51197a.ndk26.1.10909125/qti_battery_charger_1.0.2_debug.kpm"
+          "path": "artifacts/qti_battery_charger-1.0.2_debug+g29951ee67dca.rb72af860.kpb51197a.ndk26.1.10909125/qti_battery_charger_1.0.2_debug.kpm"
         }
       ],
-      "instance_id": "qti_battery_charger-1.0.2_debug+g5f13d217b976.rcd2473e5.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "qti_battery_charger-1.0.2_debug+g29951ee67dca.rb72af860.kpb51197a.ndk26.1.10909125#1"
     }
   ],
   "handoff_schema": 2,
   "shared_data": {
-    "78dac393368d26ff481d6144b511f11d0de6c2f2206c65143530d473641bc85f": [
+    "53a4fc9a4244a60a5e011cda18fa639fd066f7ae484480711c16da6e709945c4": {
+      "captured": true,
+      "command": "make -C '<repo>\\modules\\KPM\\qti_battery_charger' all debug",
+      "dry_run_args": "-n -B（强制重算配方）",
+      "returncode": 0,
+      "dry_run_sha256": "92e49105bdf98ce92bfa4a428d8ce898ccbb0967763d63d833131c6c5e822dbe",
+      "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+      "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/qti_battery_charger'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o qti_battery_charger.o qti_battery_charger.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o qti_battery_charger_1.0.2.kpm qti_battery_charger.o\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.2_d\\\" -DDEBUG -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o debug/qti_battery_charger.o qti_battery_charger.c"
+    },
+    "b913422e68326ceddc064316be4359ffcae2f40701f59eb72050cc90fcc53337": [
       {
         "path": "kpm_utils.h",
         "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
@@ -111,8 +121,8 @@
       },
       {
         "path": "modules/KPM/qti_battery_charger/Makefile",
-        "sha256": "e0cd4037944760d7775367bffdd50b33a73b4e0fbadb28991e7ee25e49668e8a",
-        "blob_sha256": "c8360990e2c0636cffe54ecd9e7392f285c931779b0489241fcdbf0c750581eb"
+        "sha256": "52fd50fcd4db0c67be982b5ba544e37ed52373ae6525a96f1bb5ccf23fb804ff",
+        "blob_sha256": "52fd50fcd4db0c67be982b5ba544e37ed52373ae6525a96f1bb5ccf23fb804ff"
       },
       {
         "path": "modules/KPM/qti_battery_charger/battchg.h",
@@ -139,16 +149,6 @@
         "sha256": "ce295047e66211c0aa25ee9538254debed02974a36353deb070c40cb2b49928d",
         "blob_sha256": "7f803819dee9479340e2a71384657e19e84f53de9a96f7d79935976873abd189"
       }
-    ],
-    "c73eba30cf23e81365e37f12f246c121952fe7ffad2af147fa43e702399ac7d8": {
-      "captured": true,
-      "command": "make -C '<repo>\\modules\\KPM\\qti_battery_charger' all debug",
-      "dry_run_args": "-n -B（强制重算配方）",
-      "returncode": 0,
-      "dry_run_sha256": "9e33aacad46e77f4198617a3e2a69b3c535b15965ed6c77ec5f479a517a6b572",
-      "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
-      "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
-      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/qti_battery_charger'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o qti_battery_charger.o qti_battery_charger.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o qti_battery_charger_1.0.2.kpm qti_battery_charger.o\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o qti_battery_charger_1.0.2_debug.kpm qti_battery_charger.o"
-    }
+    ]
   }
 }

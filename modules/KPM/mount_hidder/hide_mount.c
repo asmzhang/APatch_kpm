@@ -283,7 +283,7 @@ static long hide_mount_control0(const char *args, char *__user out_msg, int outl
         if (len > 0) compat_copy_to_user(out_msg, buf, (int)len);
     }
 
-    return 0;
+    return rc; /* add/del 失败要让调用方看得见，不要一律回 0 */
 }
 
 static long hide_mount_exit(void *__user reserved)

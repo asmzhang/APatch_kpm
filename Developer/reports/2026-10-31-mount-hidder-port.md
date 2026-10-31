@@ -4,13 +4,14 @@
 
 | 项 | 值 |
 | --- | --- |
-| commit | `91c941819e728d85289ece965005887fdd4f4d45`（本轮改动未提交，工作树含 `?? modules/KPM/mount_hidder/`） |
+| commit | `c223060ccfe07d83b16a9017568b9cb150ed48ed`（mount_hidder 模块落地提交；本报告写于提交前，身份栏于提交后回填） |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（子模块，0.13.9） |
 | Build ID / instance_id | 未登记（探索构建，未走 `tools/build_candidate.py`） |
 | 配方指纹 | 未登记 |
 | 构建事务 | 手工 `make -C modules/KPM/mount_hidder all debug`（未登记） |
 | 工具链 | clang 17.0.2（NDK 26.1.10909125，`aarch64-linux-android31-clang`） |
-| 产物 | `mount_hidder_1.0.0.kpm` `sha256=fec27427e1c780d10f3b3d7e3bd6c9763178d26172b217d21a085a09aa65a09f` `size=10328`；`mount_hidder_1.0.0_debug.kpm` `sha256=ced8bf3ea82bf694a5fd636a3ee4fdbe0170116dfcc21e92f9c4ba9272346ba7` `size=10328` |
+| 产物（当前源码） | `mount_hidder_1.0.0.kpm` `sha256=0100faa348f0e7e233702b248b9ba31eeeaa0c6f1b50f07dc36cc33c85145425` `size=10152`；`mount_hidder_1.0.0_debug.kpm` `sha256=0a2aed56401c1815b870f437d72989e8cbaf64a1b6922e407b5bab22e05ba7ae` `size=10152` |
+| 真机测过的产物 | `mount_hidder_1.0.0.kpm` `sha256=54ef82bce7976420cb00ed18b286ad464606b313852262f6d534987980737a0f` `size=10160`（含 ctl0 add/del/clear，本表「差分验证」与「加载挂钩」两节均基于它）。审计后仅改了 `hide_mount_control0` 的返回值（`return 0` → `return rc`，让 add/del 失败对调用方可见），因此当前源码产物与上表差 8 字节；该差异只影响 ctl0 返回码，随 ctl0 一起重测。 |
 | 上游 | `_repos/mount_hidder`（`hide_mount.c` 110 行 / `hide_mount.h` 9 行 / `README.md` 2 行 / `LICENSE`） |
 
 ## 变更点
@@ -60,11 +61,11 @@ ci_build_selection 已把 mount_hidder 计入（12 个模块）。
 ```
 
 - 构建确定性：`make clean && make all debug` 两次，两份产物 sha256 均不变。
-- release 与 debug 体积相同（10328B）：本模块没有 `#ifdef CONFIG_DEBUG` 分支，`logkd` 在两种变体里都在（上游也是无条件 `logkd`）。两版仅版本串 `1.0.0` / `1.0.0_d` 不同。
+- release 与 debug 体积相同（10152B）：本模块没有 `#ifdef CONFIG_DEBUG` 分支，`logkd` 在两种变体里都在（上游也是无条件 `logkd`）。两版仅版本串 `1.0.0` / `1.0.0_d` 不同。
 
 ## 真机自检（实现方，非 Tester 结论）
 
-设备：Pixel 6（22251FDF60004E），Android 15，内核 `6.1.99-android14-11-gd7dac4b14270-ab12946699`，APatch 11282 / KernelPatch 0.13.9。
+设备：Pixel 6（设备指纹 `sha256:433ab88276ec`，序列号不入库），Android 15，内核 `6.1.99-android14-11-gd7dac4b14270-ab12946699`，APatch 11282 / KernelPatch 0.13.9。
 产物：`mount_hidder_1.0.0.kpm`，经 APatch 管理器「加载」从 `/sdcard/Download/` 载入。
 
 ### 加载与挂钩

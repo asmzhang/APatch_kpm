@@ -4,7 +4,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| commit | `648c4a40ce4fc94b76bb5cf4827c05d7462470e3`（本轮改动未提交，工作树含 `?? modules/KPM/memcrc/`） |
+| commit | `91c941819e728d85289ece965005887fdd4f4d45`（memcrc 模块落地提交；本报告写于提交前，身份栏于提交后回填） |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（子模块） |
 | Build ID / instance_id | 未登记（探索构建，未走 `tools/build_candidate.py`） |
 | 配方指纹 | 未登记 |
@@ -29,7 +29,7 @@
   - `struct filename` 零初始化 + `refcnt = 0x40000000`：上游只写 `->name`，`refcnt`/`aname` 是 vmalloc 未初始化内存；若 `do_filp_open` 内部对入参调 `putname()`，`refcnt` 恰为 0 时会走 `__putname()` 用 `kmem_cache_free` 释放一个 vmalloc 指针。把 refcnt 置成大值使 `--refcnt == 0` 永不成立，释放权始终留在本函数。
   - `feature.h` / `redirect.h` / `komm.h` 补文件作用域前置声明：否则编译器在每个原型作用域里各造一个不可见的不完整类型（`-Wincompatible-pointer-types` / `-Wvisibility` 刷屏）。
   - `data/shared_data.c` 与 `data/parser.c` 的 `switch` 补 `default`（未处理 `SHARED_DATA_TYPE_INVALID`）；`trim_spaces` 加 `unused`（上游遗留、无调用点）。
-- 与上游的逐文件差异共 12 个文件、111 行（`diff -ru _repos/memcrc/src modules/KPM/memcrc`，已把搬入文件的行尾统一为仓库既有的 CRLF，否则整文件都会显示为改写）。除上述几处外业务逻辑零改动。
+- 与上游的逐文件差异共 12 个文件、111 行（`diff -ru _repos/memcrc/src modules/KPM/memcrc`；搬入文件的行尾已与上游对齐，否则整文件都会显示为改写。git 侧 `core.autocrlf=true`，入库统一存 LF）。除上述几处外业务逻辑零改动。
 - 本轮覆盖范围：编译 + 导入表核对 + 门禁 + 实现方真机自检（见「真机自检（实现方，非 Tester 结论）」）。真机结论需 Tester 独立出具（见「边界声明」）。
 
 ## 自检
@@ -73,6 +73,7 @@ ci_build_selection 已把 memcrc 计入构建列表（11 个模块）。
 | `struct seq_file` 为手写 4 字段快照（`buf/size/from/count`） | 全版本 | 与上游生态（mount_hidder、kpm-panda-hide、mkpms）同一做法；只读 `count` 与写 `count`，未触碰后续字段。 |
 | `ctl0` 通道未验证 | — | 设备镜像预置了 superkey，命令行 `kpatch` 拿不到 key；`ctl0` 与 `CMD:*` 命令只通过 `/dev/yuuki_misc` 验证过，未走 KPM 控制通道。 |
 | 无偏移依赖 | — | 本模块不使用结构体偏移推导（`cred_offset`/`task_struct_offset` 取自 KP 导出变量），不需要 static/dynamic 双产物。 |
+| 未声明许可证 | — | 上游仓库没有 LICENSE，源码也没有 `KPM_LICENSE`；本仓其余 13 个模块均有该字段。不替上游猜授权，元数据暂缺 `license`。若维护者要求统一，需先确认上游授权。 |
 
 ## 真机自检（实现方，非 Tester 结论）
 

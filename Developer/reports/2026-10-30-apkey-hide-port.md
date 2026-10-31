@@ -4,7 +4,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| commit | 探索期未冻结（本报告为探索性自检记录，见「构建事务」说明） |
+| commit | `648c4a40ce4fc94b76bb5cf4827c05d7462470e3`（模块落地提交；本报告写于提交前，身份栏于提交后回填） |
 | KernelPatch commit | `b51197aaba8f2272dd8a3e30c85698a29aa928c9`（子模块，仓库内） |
 | Build ID / instance_id | 未登记（探索构建，`identity.py` 尚未记录；候选交接时按 build_candidate.py 生成） |
 | 配方指纹 | 未生成（同上） |

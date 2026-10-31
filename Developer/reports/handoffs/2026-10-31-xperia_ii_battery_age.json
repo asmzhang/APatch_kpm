@@ -1,0 +1,149 @@
+{
+  "module": "xperia_ii_battery_age",
+  "version": "1.1.2",
+  "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+  "handoff_by": "Developer",
+  "handoff_at": "2026-10-31T10:36:23Z",
+  "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
+  "builds": [
+    {
+      "module": "xperia_ii_battery_age",
+      "version": "1.1.2",
+      "kind": "candidate",
+      "build_id": "xperia_ii_battery_age-1.1.2+gf37d1edec293.r93eac43f.kpb51197a.ndk26.1.10909125",
+      "variant": "base",
+      "recorded_at": "2026-10-31T10:36:23Z",
+      "source_commit": "998837ee5d1246973ddef02dbac737c73641a091",
+      "source_dirty": false,
+      "source_tree_sha256": "f37d1edec293ade930191f0e1292b236da96f30a7f563e3d9ee43414e454bdf7",
+      "source_tree_blob_sha256": "a24aaa602143cab091e7d5cfc07dc053ae8c9c69b833865793e7225177d367a9",
+      "source_blob_missing": [],
+      "sources": {
+        "data_ref": "8dcec2b1cd88976625af7c9a6ff65e994fe5001b0a8d53feb6fbc4d4bb21cf6b"
+      },
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "93eac43f153aa5566bee438014169e5f4e09d3bdfcae8fb5ec2d9cd38bfd66a1",
+      "recipe": {
+        "data_ref": "7380dcda167c564d2430d92c2ef8052331e10463d1d3ddd2064190d4052e30a0"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "998837ee5d1246973ddef02dbac737c73641a091",
+        "source_tree_sha256": "f37d1edec293ade930191f0e1292b236da96f30a7f563e3d9ee43414e454bdf7",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "f2b10b676ac6553b3f07750725b34b17997678c888b1421aef3d3d76d5e164e1",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "xperia_ii_battery_age_1.1.2.kpm",
+          "sha256": "c7e36de46eab86da8a598d26dd4932c70b61d4ba984fdf9d3153a96ea285762c",
+          "size": 6312,
+          "embedded": {
+            "name": "xperia_ii_battery_age",
+            "version": "1.1.2",
+            "license": "GPL v2",
+            "author": "lzghzr",
+            "description": "set xperia ii battery aging level"
+          },
+          "path": "artifacts/xperia_ii_battery_age-1.1.2+gf37d1edec293.r93eac43f.kpb51197a.ndk26.1.10909125/xperia_ii_battery_age_1.1.2.kpm"
+        }
+      ],
+      "instance_id": "xperia_ii_battery_age-1.1.2+gf37d1edec293.r93eac43f.kpb51197a.ndk26.1.10909125#1"
+    },
+    {
+      "module": "xperia_ii_battery_age",
+      "version": "1.1.2",
+      "kind": "candidate",
+      "build_id": "xperia_ii_battery_age-1.1.2_debug+gf37d1edec293.r43d19465.kpb51197a.ndk26.1.10909125",
+      "variant": "debug",
+      "recorded_at": "2026-10-31T10:36:23Z",
+      "source_commit": "998837ee5d1246973ddef02dbac737c73641a091",
+      "source_dirty": false,
+      "source_tree_sha256": "f37d1edec293ade930191f0e1292b236da96f30a7f563e3d9ee43414e454bdf7",
+      "source_tree_blob_sha256": "a24aaa602143cab091e7d5cfc07dc053ae8c9c69b833865793e7225177d367a9",
+      "source_blob_missing": [],
+      "sources": {
+        "data_ref": "8dcec2b1cd88976625af7c9a6ff65e994fe5001b0a8d53feb6fbc4d4bb21cf6b"
+      },
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "43d194651738e6136ec751d6e9b2e13fc3d9be52619048b9a6b89d539e4d4b03",
+      "recipe": {
+        "data_ref": "7380dcda167c564d2430d92c2ef8052331e10463d1d3ddd2064190d4052e30a0"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "998837ee5d1246973ddef02dbac737c73641a091",
+        "source_tree_sha256": "f37d1edec293ade930191f0e1292b236da96f30a7f563e3d9ee43414e454bdf7",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "f2b10b676ac6553b3f07750725b34b17997678c888b1421aef3d3d76d5e164e1",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "xperia_ii_battery_age_1.1.2_debug.kpm",
+          "sha256": "c7e36de46eab86da8a598d26dd4932c70b61d4ba984fdf9d3153a96ea285762c",
+          "size": 6312,
+          "embedded": {
+            "name": "xperia_ii_battery_age",
+            "version": "1.1.2",
+            "license": "GPL v2",
+            "author": "lzghzr",
+            "description": "set xperia ii battery aging level"
+          },
+          "path": "artifacts/xperia_ii_battery_age-1.1.2_debug+gf37d1edec293.r43d19465.kpb51197a.ndk26.1.10909125/xperia_ii_battery_age_1.1.2_debug.kpm"
+        }
+      ],
+      "instance_id": "xperia_ii_battery_age-1.1.2_debug+gf37d1edec293.r43d19465.kpb51197a.ndk26.1.10909125#1"
+    }
+  ],
+  "handoff_schema": 2,
+  "shared_data": {
+    "7380dcda167c564d2430d92c2ef8052331e10463d1d3ddd2064190d4052e30a0": {
+      "captured": true,
+      "command": "make -C '<repo>\\modules\\KPM\\xperia_ii_battery_age' all debug",
+      "dry_run_args": "-n -B（强制重算配方）",
+      "returncode": 0,
+      "dry_run_sha256": "f2b10b676ac6553b3f07750725b34b17997678c888b1421aef3d3d76d5e164e1",
+      "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+      "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/xperia_ii_battery_age'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.1.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o xperia_ii_battery_age.o xperia_ii_battery_age.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o xperia_ii_battery_age_1.1.2.kpm xperia_ii_battery_age.o\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o xperia_ii_battery_age_1.1.2_debug.kpm xperia_ii_battery_age.o"
+    },
+    "8dcec2b1cd88976625af7c9a6ff65e994fe5001b0a8d53feb6fbc4d4bb21cf6b": [
+      {
+        "path": "kpm_utils.h",
+        "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+        "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+      },
+      {
+        "path": "modules/KPM/xperia_ii_battery_age/Makefile",
+        "sha256": "c62cafd1c67174ac62596147277f01e0f34a4634116b1ffb4dd729c2daedd41a",
+        "blob_sha256": "05028fe68d2880bea3e40656aff2adfc659aebfbe4525eaf0a2c6f46513f04ce"
+      },
+      {
+        "path": "modules/KPM/xperia_ii_battery_age/xiiba_utils.h",
+        "sha256": "4eaa28296a29ccfc9129c572ab4fe170ca90548ec469e942a60e40144060fb0c",
+        "blob_sha256": "4eaa28296a29ccfc9129c572ab4fe170ca90548ec469e942a60e40144060fb0c"
+      },
+      {
+        "path": "modules/KPM/xperia_ii_battery_age/xperia_ii_battery_age.c",
+        "sha256": "fc5f590bd09b7d2f35c2554c8f1b41fb3506a0f1b2f8171a2261024552667142",
+        "blob_sha256": "fc5f590bd09b7d2f35c2554c8f1b41fb3506a0f1b2f8171a2261024552667142"
+      },
+      {
+        "path": "tools/build_candidate.py",
+        "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+        "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+      },
+      {
+        "path": "tools/identity.py",
+        "sha256": "9e4173293cf0f4e8e55bf9d3905f1c7da86b4155a8cf8793e941302f15b3e22b",
+        "blob_sha256": "38b5a470fabe6f24729a5cd56f5f7d4be1ccb699c97c08c20501d339a77884e9"
+      }
+    ]
+  }
+}

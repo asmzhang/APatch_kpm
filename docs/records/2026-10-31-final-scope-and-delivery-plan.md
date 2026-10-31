@@ -144,3 +144,51 @@ R2 与 R5 允许并行（不同模块），R3 必须在 R2 之后，R4 之后需
 ### 下一步
 
 R2 冻结登记已完成（上述 7 模块），可以直接进 R3 独立审计；审计对象是上表 14 份产物对应的实例。
+
+## 九、R3/R4 执行记录（2026-10-31）
+
+### R3 独立审计（第一轮）
+
+- 审计员：独立上下文 + 不同模型（`my-wb/glm-5.3-flash`），三组并行，报告在
+  `Auditor/reports/2026-10-31-r1-a.md`、`-b.md`、`-c.md`。
+- 结论：21 单（3 critical / 8 high / 5 medium / 5 low-info）。**apkey_hide 3.6.2 零单通过**；
+  身份层（哈希、导入符号、内嵌元数据、四处版本）全部通过，问题都在代码逻辑层。
+- critical 三张：memcrc `parser.c` REMOVE TYPE 栈溢出、memcrc 设备通道绕过 uid 作用域门、
+  stealth_hook 断点回调里裸解引用用户指针可致 panic。
+
+### R4 第一轮修复（提交 `ee8f97f`）
+
+- 修完 3 张 critical + 5 张 high，重建 5 个模块并真机复验（`/dev/yuuki_misc` 变 0600、
+  shell/app 写被拒、shell 跑 `stealth_cli selftest` 得 EPERM、root 全通过），登记为 `254fb89`。
+- 复核（`Auditor/reports/2026-10-31-r4-review-a.md`、`-b.md`）：关闭 8 条，5 条仍开，
+  另外复核方指出修复自身引入的两个新问题（重复 unhook 双重 release、注册失败路径漏 task 引用）。
+
+### R4b 第二轮修复（提交 `7cbb61c`，登记 `e584cee`）
+
+- AUD-a-6：`mod_control0` 改为先在内核侧补 NUL，再连 NUL 一起拷（`len + 1`）。
+- AUD-b-1：命令门扩到 ghost 建映射/写内存（`0x3001-0x3003`），shell 只能 STATUS/ECHO/
+  GHOST_FREE/GHOST_LIST 与只读查询。
+- AUD-b-2：调试异常上下文的用户读取改用 `copy_from_user_nofault`（kallsyms 解析），
+  缺符号时退回 `__arch_copy_from_user` 并注释残留风险。
+- AUD-b-3 / NEW-b-3a / NEW-b-3b：命令通道加 IRQ-safe 自旋锁（无符号时降级并打告警）；
+  unhook 置 `bp_handle = 0` 后再退役，重复 unhook 返回 `-2`；enable/query 跳过退役节点。
+- NEW-b-5a：perf 注册失败路径补 `put_task_struct`。
+- 真机复验（Pixel 6，6.1.99-android14）：
+  - shell `stealth_cli ghost alloc 4096` → `Operation not permitted (errno=1)`；
+  - root `stealth_cli selftest` 全通过（含改参、跳过原函数、unhook 复原）；
+  - **关键回归**：「先 hook/unhook（产生退役节点）再卸载模块」路径 `unload_module ... rc: 0`，
+    管理器进程不再挂住。此前 `ee8f97f` 版本在同一路径上会二次 release 并挂死管理器进程
+    （实测进程变僵尸、AMS 报 `refused to die`、只能重启设备）——这正是 NEW-b-3a 的现场证据。
+- 产物（与真机测过的字节完全一致）：
+  - memcrc `582f8aff4873ab46…`（95640B）/ debug `5f585513378e68fc…`
+  - stealth_hook `1043f629821b4da9…`（28600B）/ debug `85bb5e1fec1c8cf2…`
+
+### 新发现（待复核定级）
+
+- 对无效地址下 exec 硬件断点（`stealth_cli hook 0x2247d0`）后设备重启（adb 断开约 25 秒后恢复），
+  怀疑内核 panic。已交审计员定级（候选单号 AUD-d-1），修复方向是在注册前校验
+  `target_addr` 落在调用者可执行映射内。
+
+### 下一步
+
+R4b 复核 → 若有仍开项继续修；之后进 medium/low 批量清理，再进 R5 真机矩阵。

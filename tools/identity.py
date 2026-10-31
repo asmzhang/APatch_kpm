@@ -856,7 +856,7 @@ def record_locked(args):
         for entry, path in planned:
             facts = entry["artifacts"][0]
             if args.no_archive:
-                facts["path"] = str(Path(path).relative_to(REPO))
+                facts["path"] = posix_rel(Path(path).relative_to(REPO))
                 continue
             outdir = instance_dir(entry["instance_id"])
             outdir.mkdir(parents=True, exist_ok=True)
@@ -866,7 +866,7 @@ def record_locked(args):
                     die(f"{target.relative_to(REPO)} 已存在且哈希不同（归档不可覆盖）")
             else:
                 shutil.copy2(path, target)
-            facts["path"] = str(target.relative_to(REPO))
+            facts["path"] = posix_rel(target.relative_to(REPO))
             manifest = outdir / "MANIFEST.json"
             if manifest.is_file():
                 old = json.loads(manifest.read_text(encoding="utf-8"))

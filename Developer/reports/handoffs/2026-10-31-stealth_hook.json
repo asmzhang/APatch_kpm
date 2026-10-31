@@ -3,34 +3,34 @@
   "version": "0.3.0",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-10-31T10:34:16Z",
+  "handoff_at": "2026-10-31T11:27:59Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "stealth_hook",
       "version": "0.3.0",
       "kind": "candidate",
-      "build_id": "stealth_hook-0.3.0+gb71c7d8e6a6e.re4fbd446.kpb51197a.ndk26.1.10909125",
+      "build_id": "stealth_hook-0.3.0+g4aed30a1f8cd.r00d498b5.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-10-31T10:34:16Z",
-      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+      "recorded_at": "2026-10-31T11:27:58Z",
+      "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
       "source_dirty": false,
-      "source_tree_sha256": "b71c7d8e6a6e1f4fded56282c8bc8192cec2b0a55f10161831a7e13ae601559c",
-      "source_tree_blob_sha256": "8b5be534571ff0a8feaf263c5a8313322b8749fec15eb2b64b1ce05ff62d7af9",
+      "source_tree_sha256": "4aed30a1f8cd2c27ff63e3f86da0517b22ea1daf690e9c5ebb113540719716ca",
+      "source_tree_blob_sha256": "c38acefaf6116e070c4e9e346d2b1d54daa15b0cef2fdd1fd564c95c407c2b26",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "5d10b475fa5a63e7f4a1da1e698eb1f43a8f1a15bab9bc4473fa08f0caf2193b"
+        "data_ref": "6d09f10d1390c53d366ddbb4dd18022a139d3ecb3ac56b5f7791f743649f04b0"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "e4fbd44609cac4d0f9430fbab64d8e399941cd921b8bb825f2f2fb73f190239d",
+      "fingerprint_sha256": "00d498b5b70e14ce24ff9fd5f87c20930c2ba50e19525e4d3e6450daf9161fc3",
       "recipe": {
         "data_ref": "34bfc8927930a8a883ad9e5ff0367306dec4d06652162e7ee5c2a2e925e17e69"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
-        "source_tree_sha256": "b71c7d8e6a6e1f4fded56282c8bc8192cec2b0a55f10161831a7e13ae601559c",
+        "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
+        "source_tree_sha256": "4aed30a1f8cd2c27ff63e3f86da0517b22ea1daf690e9c5ebb113540719716ca",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
         "recipe_sha256": "4722b1e85c5d006931d7b3e59701e397f352c1c38d1afbb1a1cc5034d7ff63e3",
         "input_unchanged": true,
@@ -39,8 +39,8 @@
       "artifacts": [
         {
           "name": "stealth_hook_0.3.0.kpm",
-          "sha256": "22ce8b98f206870fb410c3d7d61bed38756fad6107a49ade3197197a31c36c17",
-          "size": 26368,
+          "sha256": "fee9578ebac6722f83a30800ef36793ce6e37ae3657269a10f354e306e49bbff",
+          "size": 27472,
           "embedded": {
             "name": "stealth_hook",
             "version": "0.3.0",
@@ -48,36 +48,36 @@
             "author": "xiaojianbang",
             "description": "HWBP / PTE / ghost memory toolkit (xiaojianbang-stealth-hook port)"
           },
-          "path": "artifacts/stealth_hook-0.3.0+gb71c7d8e6a6e.re4fbd446.kpb51197a.ndk26.1.10909125/stealth_hook_0.3.0.kpm"
+          "path": "artifacts/stealth_hook-0.3.0+g4aed30a1f8cd.r00d498b5.kpb51197a.ndk26.1.10909125/stealth_hook_0.3.0.kpm"
         }
       ],
-      "instance_id": "stealth_hook-0.3.0+gb71c7d8e6a6e.re4fbd446.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "stealth_hook-0.3.0+g4aed30a1f8cd.r00d498b5.kpb51197a.ndk26.1.10909125#1"
     },
     {
       "module": "stealth_hook",
       "version": "0.3.0",
       "kind": "candidate",
-      "build_id": "stealth_hook-0.3.0_debug+gb71c7d8e6a6e.r75fa9e5f.kpb51197a.ndk26.1.10909125",
+      "build_id": "stealth_hook-0.3.0_debug+g4aed30a1f8cd.rfc67daa3.kpb51197a.ndk26.1.10909125",
       "variant": "debug",
-      "recorded_at": "2026-10-31T10:34:16Z",
-      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+      "recorded_at": "2026-10-31T11:27:59Z",
+      "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
       "source_dirty": false,
-      "source_tree_sha256": "b71c7d8e6a6e1f4fded56282c8bc8192cec2b0a55f10161831a7e13ae601559c",
-      "source_tree_blob_sha256": "8b5be534571ff0a8feaf263c5a8313322b8749fec15eb2b64b1ce05ff62d7af9",
+      "source_tree_sha256": "4aed30a1f8cd2c27ff63e3f86da0517b22ea1daf690e9c5ebb113540719716ca",
+      "source_tree_blob_sha256": "c38acefaf6116e070c4e9e346d2b1d54daa15b0cef2fdd1fd564c95c407c2b26",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "5d10b475fa5a63e7f4a1da1e698eb1f43a8f1a15bab9bc4473fa08f0caf2193b"
+        "data_ref": "6d09f10d1390c53d366ddbb4dd18022a139d3ecb3ac56b5f7791f743649f04b0"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "75fa9e5f44c79b46c9f8f4e9487622ed04d3b5a678f36c8f282dafc6ed81d2ae",
+      "fingerprint_sha256": "fc67daa35f3d20c97c71f13b0896faa00987cb4d67e5d9f4cf144a3dd3af2629",
       "recipe": {
         "data_ref": "34bfc8927930a8a883ad9e5ff0367306dec4d06652162e7ee5c2a2e925e17e69"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
-        "source_tree_sha256": "b71c7d8e6a6e1f4fded56282c8bc8192cec2b0a55f10161831a7e13ae601559c",
+        "source_commit": "ee8f97f82cbfa749666eb4a764b19db2fff0fafc",
+        "source_tree_sha256": "4aed30a1f8cd2c27ff63e3f86da0517b22ea1daf690e9c5ebb113540719716ca",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
         "recipe_sha256": "4722b1e85c5d006931d7b3e59701e397f352c1c38d1afbb1a1cc5034d7ff63e3",
         "input_unchanged": true,
@@ -86,8 +86,8 @@
       "artifacts": [
         {
           "name": "stealth_hook_0.3.0_debug.kpm",
-          "sha256": "f9db0eca1220159be48a35c6e4e97d0871c66ca18848c22f9be704da4c54e890",
-          "size": 29880,
+          "sha256": "e12ae26937ab2056e35075454d66609f44782503c7cd030c59b89e2d394ae890",
+          "size": 31000,
           "embedded": {
             "name": "stealth_hook",
             "version": "0.3.0_d",
@@ -95,10 +95,10 @@
             "author": "xiaojianbang",
             "description": "HWBP / PTE / ghost memory toolkit (xiaojianbang-stealth-hook port)"
           },
-          "path": "artifacts/stealth_hook-0.3.0_debug+gb71c7d8e6a6e.r75fa9e5f.kpb51197a.ndk26.1.10909125/stealth_hook_0.3.0_debug.kpm"
+          "path": "artifacts/stealth_hook-0.3.0_debug+g4aed30a1f8cd.rfc67daa3.kpb51197a.ndk26.1.10909125/stealth_hook_0.3.0_debug.kpm"
         }
       ],
-      "instance_id": "stealth_hook-0.3.0_debug+gb71c7d8e6a6e.r75fa9e5f.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "stealth_hook-0.3.0_debug+g4aed30a1f8cd.rfc67daa3.kpb51197a.ndk26.1.10909125#1"
     }
   ],
   "handoff_schema": 2,
@@ -113,7 +113,7 @@
       "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
       "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/stealth_hook'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.3.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o stealth_hook.o stealth_hook.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.3.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o ghost_mem.o ghost_mem.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.3.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o hwbp.o hwbp.c"
     },
-    "5d10b475fa5a63e7f4a1da1e698eb1f43a8f1a15bab9bc4473fa08f0caf2193b": [
+    "6d09f10d1390c53d366ddbb4dd18022a139d3ecb3ac56b5f7791f743649f04b0": [
       {
         "path": "kpm_utils.h",
         "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
@@ -131,13 +131,13 @@
       },
       {
         "path": "modules/KPM/stealth_hook/hwbp.c",
-        "sha256": "be1f8476119639fab7082a8dfadb2da926c8d7ee77e73126c1db3b9f3b9a5ba8",
-        "blob_sha256": "be1f8476119639fab7082a8dfadb2da926c8d7ee77e73126c1db3b9f3b9a5ba8"
+        "sha256": "3079ffa9fd01bc6ba434e9258ff724d37b038e9762e4ff332940d007117e4115",
+        "blob_sha256": "3079ffa9fd01bc6ba434e9258ff724d37b038e9762e4ff332940d007117e4115"
       },
       {
         "path": "modules/KPM/stealth_hook/stealth_hook.c",
-        "sha256": "2002015da5c23d9ae085cf7c547e085b2c25d8f9148ae1728974abfe3901515f",
-        "blob_sha256": "2002015da5c23d9ae085cf7c547e085b2c25d8f9148ae1728974abfe3901515f"
+        "sha256": "5bb28d10a2e1d68df77f318c10c9f607145fef90a5739f658534c4274803d0eb",
+        "blob_sha256": "5bb28d10a2e1d68df77f318c10c9f607145fef90a5739f658534c4274803d0eb"
       },
       {
         "path": "modules/KPM/stealth_hook/stealth_hook.h",
@@ -151,8 +151,8 @@
       },
       {
         "path": "tools/identity.py",
-        "sha256": "9e4173293cf0f4e8e55bf9d3905f1c7da86b4155a8cf8793e941302f15b3e22b",
-        "blob_sha256": "38b5a470fabe6f24729a5cd56f5f7d4be1ccb699c97c08c20501d339a77884e9"
+        "sha256": "ce295047e66211c0aa25ee9538254debed02974a36353deb070c40cb2b49928d",
+        "blob_sha256": "7f803819dee9479340e2a71384657e19e84f53de9a96f7d79935976873abd189"
       }
     ]
   }

@@ -145,8 +145,9 @@ static long sh_dispatch_body(long cmd, long arg1, long arg2, long arg3, long arg
         if (cmd >= SH_CMD_HWBP_HOOK && cmd <= SH_CMD_HWBP_SET_SKIP) {
             return -1;
         }
-        /* ghost 建的是可写/可执行 VMA，同样只给 root（AUD-b-1 复核意见） */
-        if (cmd >= SH_CMD_GHOST_ALLOC && cmd <= SH_CMD_GHOST_WRITE) {
+        /* ghost 建的是可写/可执行 VMA，LIST 也会泄露别人的映射，整组只给 root
+         * （AUD-b-1 / AUD-d-4 复核意见） */
+        if (cmd >= SH_CMD_GHOST_ALLOC && cmd <= SH_CMD_GHOST_LIST) {
             return -1;
         }
     }
@@ -210,39 +211,48 @@ static long sh_dispatch_body(long cmd, long arg1, long arg2, long arg3, long arg
     }
 }
 
-/* 命令通道串行化（AUD-b-3）：可能改链表/账本的操作都从 sh_dispatch 进来，
- * 用一把 IRQ-safe 自旋锁兜住。断点回调不加锁：运行期链表只追加、节点只退役不摘链。 */
-static unsigned long (*sh_spin_lock_fn)(void *lock);
-static void (*sh_spin_unlock_fn)(void *lock, unsigned long flags);
-static unsigned long sh_cmd_lock_area[8];
+/* 命令通道串行化（AUD-b-3 / AUD-d-2）：命令体里会做 copy_from_user、vmalloc、vm_mmap，
+ * 这些都可能睡眠，因此只能用 mutex（syscall hook 处在进程上下文，可以睡眠），
+ * 不能用关中断自旋锁。符号走 kallsyms，缺符号时降级为不串行化并告警。 */
+static void (*sh_mutex_lock_fn)(void *lock);
+static void (*sh_mutex_unlock_fn)(void *lock);
+static void (*sh_mutex_init_fn)(void *lock, const char *name, void *key);
+static unsigned long sh_cmd_mutex[8];   /* 留足 struct mutex（含 debug 变体） */
+static int sh_cmd_mutex_ready;
 
-static unsigned long sh_cmd_lock(void)
+static void sh_cmd_lock(void)
 {
-    if (!sh_spin_lock_fn) {
-        sh_spin_lock_fn = (typeof(sh_spin_lock_fn))kallsyms_lookup_name("_raw_spin_lock_irqsave");
-        sh_spin_unlock_fn = (typeof(sh_spin_unlock_fn))kallsyms_lookup_name("_raw_spin_unlock_irqrestore");
-        if (!sh_spin_lock_fn || !sh_spin_unlock_fn) {
-            pr_warn("[stealth_hook] no spinlock symbols, command path unserialized\n");
+    if (!sh_cmd_mutex_ready) {
+        sh_mutex_lock_fn = (typeof(sh_mutex_lock_fn))kallsyms_lookup_name("mutex_lock");
+        sh_mutex_unlock_fn = (typeof(sh_mutex_unlock_fn))kallsyms_lookup_name("mutex_unlock");
+        sh_mutex_init_fn = (typeof(sh_mutex_init_fn))kallsyms_lookup_name("__mutex_init");
+        if (!sh_mutex_lock_fn || !sh_mutex_unlock_fn || !sh_mutex_init_fn) {
+            pr_warn("[stealth_hook] no mutex symbols, command path unserialized\n");
+            sh_mutex_lock_fn = 0;
+        } else {
+            sh_mutex_init_fn(sh_cmd_mutex, "stealth_hook_cmd", 0);
         }
+        sh_cmd_mutex_ready = 1;
     }
-    return sh_spin_lock_fn ? sh_spin_lock_fn(sh_cmd_lock_area) : 0;
+    if (sh_mutex_lock_fn) {
+        sh_mutex_lock_fn(sh_cmd_mutex);
+    }
 }
 
-static void sh_cmd_unlock(unsigned long flags)
+static void sh_cmd_unlock(void)
 {
-    if (sh_spin_unlock_fn) {
-        sh_spin_unlock_fn(sh_cmd_lock_area, flags);
+    if (sh_mutex_unlock_fn) {
+        sh_mutex_unlock_fn(sh_cmd_mutex);
     }
 }
 
 static long sh_dispatch(long cmd, long arg1, long arg2, long arg3, long arg4)
 {
-    unsigned long flags;
     long ret;
 
-    flags = sh_cmd_lock();
+    sh_cmd_lock();
     ret = sh_dispatch_body(cmd, arg1, arg2, arg3, arg4);
-    sh_cmd_unlock(flags);
+    sh_cmd_unlock();
     return ret;
 }
 

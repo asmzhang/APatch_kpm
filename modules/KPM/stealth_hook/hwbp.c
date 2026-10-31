@@ -78,9 +78,47 @@ static unsigned long (*sh_copy_from_user)(void *to, const void __user *from, uns
  * copy_from_user_nofault 在 5.10/6.1 是导出符号，但 KP 未转发，仍走 kallsyms（AUD-b-2）。 */
 static unsigned long (*sh_copy_from_user_nofault)(void *to, const void __user *from, unsigned long n);
 static struct task_struct *(*sh_find_task_by_vpid)(pid_t nr);
+static void *(*sh_get_task_mm)(struct task_struct *tsk);
+static void (*sh_mmput)(void *mm);
 static struct task_struct *(*sh_get_task_struct)(struct task_struct *tsk);
 static void (*sh_put_task_struct)(struct task_struct *tsk);
 static void *(*sh_register_user_hw_breakpoint)(void *attr, void *triggered, void *context, void *tsk);
+static int (*sh_access_remote_vm)(void *mm, unsigned long addr, void *buf, int len, unsigned int gup_flags);
+
+/* 断点地址校验（AUD-d-1/AUD-d-3）：必须是用户地址且能被读到一个完整指令字。
+ * 跨进程用 access_remote_vm（缺符号时退回只做用户地址区间检查）。 */
+#define SH_USER_ADDR_MAX 0x0000800000000000ULL
+static int sh_addr_is_valid(void *task, uint64_t addr)
+{
+    uint32_t insn;
+    struct task_struct *tsk = (struct task_struct *)task;
+    void *mm;
+
+    if (addr < 0x1000ULL || addr >= SH_USER_ADDR_MAX) {
+        return 0;
+    }
+    if (tsk == current) {
+        if (!sh_copy_from_user_nofault) {
+            return 1;
+        }
+        return sh_copy_from_user_nofault(&insn, (const void *)(uintptr_t)addr, 4) == 0;
+    }
+    if (!sh_access_remote_vm || !sh_get_task_mm) {
+        return 1;   /* 缺符号：只做区间检查，残余风险在报告里写明 */
+    }
+    mm = sh_get_task_mm(tsk);
+    if (!mm) {
+        return 0;
+    }
+    {
+        int ok = sh_access_remote_vm(mm, (unsigned long)addr, &insn, 4, 0) == 4;
+
+        if (sh_mmput) {
+            sh_mmput(mm);
+        }
+        return ok;
+    }
+}
 static void *(*sh_perf_event_create_kernel_counter)(void *attr, int cpu, void *task, void *callback, void *context);
 static int (*sh_modify_user_hw_breakpoint)(void *bp, void *attr);
 static void (*sh_unregister_hw_breakpoint)(void *bp);
@@ -150,6 +188,9 @@ static int sh_hwbp_resolve(void)
         sh_find_task_by_vpid = (typeof(sh_find_task_by_vpid))kallsyms_lookup_name("find_task_by_vpid");
         sh_get_task_struct = (typeof(sh_get_task_struct))kallsyms_lookup_name("get_task_struct");
         sh_put_task_struct = (typeof(sh_put_task_struct))kallsyms_lookup_name("put_task_struct");
+        sh_get_task_mm = (typeof(sh_get_task_mm))kallsyms_lookup_name("get_task_mm");
+        sh_mmput = (typeof(sh_mmput))kallsyms_lookup_name("mmput");
+        sh_access_remote_vm = (typeof(sh_access_remote_vm))kallsyms_lookup_name("access_remote_vm");
     }
     if (!sh_register_user_hw_breakpoint) {
         sh_register_user_hw_breakpoint = (typeof(sh_register_user_hw_breakpoint))
@@ -189,6 +230,11 @@ static void rearm_to(struct sh_hwbp_node *node, uint64_t addr)
     struct sh_perf_event_attr attr;
 
     if (!sh_modify_user_hw_breakpoint || !node->bp_handle) {
+        return;
+    }
+    if (!sh_addr_is_valid(node->task_ref, addr)) {
+        /* LR 不可读（AUD-d-3）：原地禁用，避免把断点装到内核/无效地址 */
+        node->is_disabled = 1;
         return;
     }
     node->bp_addr = addr;
@@ -360,6 +406,10 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
     if (!task) {
         pr_err("[hwbp] tid not found: %d\n", req.target_pid);
         return -3;
+    }
+    if (!sh_addr_is_valid(task, req.target_addr)) {
+        pr_err("[hwbp] target not readable user code: %llx\n", req.target_addr);
+        return -22;   /* AUD-d-1：非法地址静默成功会导致内核 panic */
     }
 
     node = (struct sh_hwbp_node *)sh_vmalloc(sizeof(*node));

@@ -948,6 +948,30 @@ def _run_checks():
     results.append(("hygiene_cjk_text", caught and clean,
                     f"中文报告里的绝对路径被检出={caught}，脱敏后通过={clean}"))
 
+    # 33) 设备标识判据：正例必中（十六进制序列号），反例不得误伤（哈希前缀、时间戳、带豁免注释的样例行）
+    tmp = make_tmp()
+    subprocess.run(["git", "-C", tmp, "init", "-q"], check=True, capture_output=True)
+    os.makedirs(os.path.join(tmp, "docs"), exist_ok=True)
+    gate.REPO = tmp
+    leaked = Path(tmp) / "docs" / "leak.md"
+    serial = "22251FDF" + "60004E"   # 拼接构造，避免判据文件自命中
+    leaked.write_text("实测设备 " + serial + " 上通过\n", encoding="utf-8")
+    subprocess.run(["git", "-C", tmp, "add", "-A"], check=True, capture_output=True)
+    rep = gate.Report()
+    gate.check_hygiene(rep)
+    caught = bool(rep.failures)
+    os.remove(leaked)
+    benign = Path(tmp) / "docs" / "benign.md"
+    benign.write_text(
+        "sha256:433ab88276ec\n时间戳 20261002T113032Z\n样例 " + serial + "  # serial-hygiene: allow\n",
+        encoding="utf-8")
+    subprocess.run(["git", "-C", tmp, "add", "-A"], check=True, capture_output=True)
+    rep2 = gate.Report()
+    gate.check_hygiene(rep2)
+    clean = not rep2.failures
+    results.append(("hygiene_device_serial", caught and clean,
+                    f"十六进制序列号被检出={caught}，哈希/时间戳/豁免行不误伤={clean}"))
+
     # 文件发现机制支持项目ID的大小写展示；不修改产物/登记名的验收判据。
     cases = {
         "camel_base": identity.variant_of("NoMount_0.5.2.kpm", "nomount", "0.5.2") == "base",

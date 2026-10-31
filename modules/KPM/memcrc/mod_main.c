@@ -102,13 +102,13 @@ static long mod_control0(const char *args, char __user *out_msg, int outlen) {
 
         len = (int)strlen(buf);
         if (len >= outlen) {
-            len = outlen - 1;   /* 留 1 字节给 NUL，避免用户态按字符串读越界（AUD-a-6） */
+            len = outlen - 1;   /* 留 1 字节给 NUL（AUD-a-6） */
         }
+        buf[len] = '\0';        /* 先在内核侧补 NUL，再连 NUL 一起拷（AUD-a-6 复核意见） */
         if (len > 0) {
-            if (!compat_copy_to_user(out_msg, buf, len)) {
-                return -EFAULT; /* KP：返回 0 表示拷贝失败 */
+            if (!compat_copy_to_user(out_msg, buf, len + 1)) {
+                return -EFAULT; /* KP 语义：返回 0 表示拷贝失败 */
             }
-            buf[len] = '\0';
         }
     }
 

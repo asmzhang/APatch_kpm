@@ -74,6 +74,9 @@ struct sh_perf_event_attr {
 static void *(*sh_vmalloc)(unsigned long size);
 static void (*sh_vfree)(const void *addr);
 static unsigned long (*sh_copy_from_user)(void *to, const void __user *from, unsigned long n);
+/* 调试异常（overflow handler）上下文的用户态拷贝必须 nofault：缺页只少拷、不睡眠。
+ * copy_from_user_nofault 在 5.10/6.1 是导出符号，但 KP 未转发，仍走 kallsyms（AUD-b-2）。 */
+static unsigned long (*sh_copy_from_user_nofault)(void *to, const void __user *from, unsigned long n);
 static struct task_struct *(*sh_find_task_by_vpid)(pid_t nr);
 static struct task_struct *(*sh_get_task_struct)(struct task_struct *tsk);
 static void (*sh_put_task_struct)(struct task_struct *tsk);
@@ -142,6 +145,8 @@ static int sh_hwbp_resolve(void)
         sh_vmalloc = (typeof(sh_vmalloc))kallsyms_lookup_name("vmalloc");
         sh_vfree = (typeof(sh_vfree))kallsyms_lookup_name("vfree");
         sh_copy_from_user = (typeof(sh_copy_from_user))kallsyms_lookup_name("__arch_copy_from_user");
+        sh_copy_from_user_nofault = (typeof(sh_copy_from_user_nofault))
+            kallsyms_lookup_name("copy_from_user_nofault");
         sh_find_task_by_vpid = (typeof(sh_find_task_by_vpid))kallsyms_lookup_name("find_task_by_vpid");
         sh_get_task_struct = (typeof(sh_get_task_struct))kallsyms_lookup_name("get_task_struct");
         sh_put_task_struct = (typeof(sh_put_task_struct))kallsyms_lookup_name("put_task_struct");
@@ -297,8 +302,15 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
             if (ptr < 0x100000ULL || ptr > 0x7FFFFFFFFFFFULL) {
                 continue;
             }
-            left = sh_copy_from_user(matched->mem_dump[i],
-                                     (const void *)(uintptr_t)ptr, dn);
+            if (sh_copy_from_user_nofault) {
+                left = sh_copy_from_user_nofault(matched->mem_dump[i],
+                                                 (const void *)(uintptr_t)ptr, dn);
+            } else {
+                /* 兜底：__arch_copy_from_user 也有异常表，坏指针只少拷；
+                 * 但缺页可能触发 "sleeping function called from invalid context" 告警。 */
+                left = sh_copy_from_user(matched->mem_dump[i],
+                                         (const void *)(uintptr_t)ptr, dn);
+            }
             if (left <= dn) {
                 matched->mem_len[i] = (uint16_t)(dn - (uint32_t)left);
             }
@@ -378,6 +390,9 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
 
         pr_err("[hwbp] register failed: %llx err=%ld attr_size=%u bp_addr=%llx\n",
                (uint64_t)node->bp_handle, err, attr.size, attr.bp_addr);
+        if (node->task_ref && sh_put_task_struct) {
+            sh_put_task_struct(task);   /* NEW-b-5a：失败路径不漏 task 引用 */
+        }
         sh_vfree(node);
         return err;
     }
@@ -406,6 +421,9 @@ long sh_hwbp_unhook(uint64_t target_addr, uint32_t tid)
             (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
         tmp = pos->next;
         if (node->target_addr == target_addr && (tid == 0 || node->tid == tid)) {
+            if (node->retired) {
+                return -2;   /* 已退役：不重复 release（NEW-b-3a） */
+            }
             if (node->bp_handle) {
                 if (sh_perf_event_release_kernel) {
                     sh_perf_event_release_kernel(node->bp_handle);
@@ -413,6 +431,7 @@ long sh_hwbp_unhook(uint64_t target_addr, uint32_t tid)
                     sh_unregister_hw_breakpoint(node->bp_handle);
                 }
             }
+            node->bp_handle = 0;   /* 已 release，置零避免 cleanup 二次 release（NEW-b-3a） */
             /* 只退役：摘链/释放交给 cleanup（AUD-b-3） */
             node->retired = 1;
             node->is_disabled = 1;
@@ -432,6 +451,9 @@ long sh_hwbp_enable(uint64_t target_addr, uint32_t tid, int enable)
     for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
         struct sh_hwbp_node *node =
             (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+        if (node->retired) {
+            continue;   /* 已退役节点不再 enable/disable（NEW-b-3b） */
+        }
         if (node->target_addr == target_addr && (tid == 0 || node->tid == tid)) {
             node->is_disabled = enable ? 0 : 1;
             if (node->bp_handle) {
@@ -468,6 +490,9 @@ long sh_hwbp_query(struct sh_hwbp_query __user *ureq)
     index = req.node_index;
     for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
         node = (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+        if (node->retired) {
+            continue;   /* 已退役节点不参与查询（NEW-b-3b） */
+        }
         if (node->target_addr == req.target_addr && (req.tid == 0 || node->tid == req.tid)) {
             if (total == index) {
                 chosen = node;

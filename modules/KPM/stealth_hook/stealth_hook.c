@@ -137,12 +137,18 @@ static long sh_pte_query(void)
     return sh_pte_rvh_tp ? 1 : 0;
 }
 
-static long sh_dispatch(long cmd, long arg1, long arg2, long arg3, long arg4)
+static long sh_dispatch_body(long cmd, long arg1, long arg2, long arg3, long arg4)
 {
     /* 硬件断点能读任意进程内存、能改任意进程执行流：只给 uid 0。
      * shell(2000) 仍可用 ghost/status，但跨进程 hook 必须 root（AUD-b-1）。 */
-    if (cmd >= SH_CMD_HWBP_HOOK && cmd <= SH_CMD_HWBP_SET_SKIP && sh_current_uid() != 0) {
-        return -1;
+    if (sh_current_uid() != 0) {
+        if (cmd >= SH_CMD_HWBP_HOOK && cmd <= SH_CMD_HWBP_SET_SKIP) {
+            return -1;
+        }
+        /* ghost 建的是可写/可执行 VMA，同样只给 root（AUD-b-1 复核意见） */
+        if (cmd >= SH_CMD_GHOST_ALLOC && cmd <= SH_CMD_GHOST_WRITE) {
+            return -1;
+        }
     }
 
     (void)arg4;
@@ -202,6 +208,42 @@ static long sh_dispatch(long cmd, long arg1, long arg2, long arg3, long arg4)
     default:
         return -1;  /* 未实现：上游是 -1，保持一致 */
     }
+}
+
+/* 命令通道串行化（AUD-b-3）：可能改链表/账本的操作都从 sh_dispatch 进来，
+ * 用一把 IRQ-safe 自旋锁兜住。断点回调不加锁：运行期链表只追加、节点只退役不摘链。 */
+static unsigned long (*sh_spin_lock_fn)(void *lock);
+static void (*sh_spin_unlock_fn)(void *lock, unsigned long flags);
+static unsigned long sh_cmd_lock_area[8];
+
+static unsigned long sh_cmd_lock(void)
+{
+    if (!sh_spin_lock_fn) {
+        sh_spin_lock_fn = (typeof(sh_spin_lock_fn))kallsyms_lookup_name("_raw_spin_lock_irqsave");
+        sh_spin_unlock_fn = (typeof(sh_spin_unlock_fn))kallsyms_lookup_name("_raw_spin_unlock_irqrestore");
+        if (!sh_spin_lock_fn || !sh_spin_unlock_fn) {
+            pr_warn("[stealth_hook] no spinlock symbols, command path unserialized\n");
+        }
+    }
+    return sh_spin_lock_fn ? sh_spin_lock_fn(sh_cmd_lock_area) : 0;
+}
+
+static void sh_cmd_unlock(unsigned long flags)
+{
+    if (sh_spin_unlock_fn) {
+        sh_spin_unlock_fn(sh_cmd_lock_area, flags);
+    }
+}
+
+static long sh_dispatch(long cmd, long arg1, long arg2, long arg3, long arg4)
+{
+    unsigned long flags;
+    long ret;
+
+    flags = sh_cmd_lock();
+    ret = sh_dispatch_body(cmd, arg1, arg2, arg3, arg4);
+    sh_cmd_unlock(flags);
+    return ret;
 }
 
 /* ============================================================

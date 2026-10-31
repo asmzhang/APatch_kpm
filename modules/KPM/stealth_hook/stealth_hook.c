@@ -218,23 +218,34 @@ static long sh_dispatch_body(long cmd, long arg1, long arg2, long arg3, long arg
 static void (*sh_mutex_lock_fn)(void *lock);
 static void (*sh_mutex_unlock_fn)(void *lock);
 static void (*sh_mutex_init_fn)(void *lock, const char *name, void *key);
-static unsigned long sh_cmd_mutex[8];   /* 留足 struct mutex（含 debug 变体） */
+/* AUD-e-1：struct mutex 在 CONFIG_DEBUG_MUTEXES/LOCKDEP 目标上远大于 32 字节，
+ * 这里给足 128 字节余量；尺寸假设在报告里写明，移植到别的内核要重新核对。 */
+static unsigned long sh_cmd_mutex[16];
 static int sh_cmd_mutex_ready;
+
+/* AUD-e-2：初始化放到模块 init（单线程上下文）里做一次，运行期只走加锁路径，
+ * 避免两条 CPU 并发首次命令时把锁初始化两次。 */
+static void sh_cmd_lock_init(void)
+{
+    if (sh_cmd_mutex_ready) {
+        return;
+    }
+    sh_mutex_lock_fn = (typeof(sh_mutex_lock_fn))kallsyms_lookup_name("mutex_lock");
+    sh_mutex_unlock_fn = (typeof(sh_mutex_unlock_fn))kallsyms_lookup_name("mutex_unlock");
+    sh_mutex_init_fn = (typeof(sh_mutex_init_fn))kallsyms_lookup_name("__mutex_init");
+    if (!sh_mutex_lock_fn || !sh_mutex_unlock_fn || !sh_mutex_init_fn) {
+        pr_warn("[stealth_hook] no mutex symbols, command path unserialized\n");
+        sh_mutex_lock_fn = 0;
+        sh_mutex_unlock_fn = 0;
+    } else {
+        kf_memset(sh_cmd_mutex, 0, sizeof(sh_cmd_mutex));
+        sh_mutex_init_fn(sh_cmd_mutex, "stealth_hook_cmd", 0);
+    }
+    sh_cmd_mutex_ready = 1;
+}
 
 static void sh_cmd_lock(void)
 {
-    if (!sh_cmd_mutex_ready) {
-        sh_mutex_lock_fn = (typeof(sh_mutex_lock_fn))kallsyms_lookup_name("mutex_lock");
-        sh_mutex_unlock_fn = (typeof(sh_mutex_unlock_fn))kallsyms_lookup_name("mutex_unlock");
-        sh_mutex_init_fn = (typeof(sh_mutex_init_fn))kallsyms_lookup_name("__mutex_init");
-        if (!sh_mutex_lock_fn || !sh_mutex_unlock_fn || !sh_mutex_init_fn) {
-            pr_warn("[stealth_hook] no mutex symbols, command path unserialized\n");
-            sh_mutex_lock_fn = 0;
-        } else {
-            sh_mutex_init_fn(sh_cmd_mutex, "stealth_hook_cmd", 0);
-        }
-        sh_cmd_mutex_ready = 1;
-    }
     if (sh_mutex_lock_fn) {
         sh_mutex_lock_fn(sh_cmd_mutex);
     }
@@ -297,6 +308,7 @@ static long stealth_hook_init(const char *args, const char *event, void *__user 
     hook_err_t err;
 
     (void)reserved;
+    sh_cmd_lock_init();
     sh_dbg("[stealth-hook] init, args: %s, event: %s\n",
            args ? args : "(null)", event ? event : "(null)");
 

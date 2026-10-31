@@ -88,6 +88,13 @@ static int (*sh_access_remote_vm)(void *mm, unsigned long addr, void *buf, int l
 /* 断点地址校验（AUD-d-1/AUD-d-3）：必须是用户地址且能被读到一个完整指令字。
  * 跨进程用 access_remote_vm（缺符号时退回只做用户地址区间检查）。 */
 #define SH_USER_ADDR_MAX 0x0000800000000000ULL
+
+/* 异常上下文（调试异常回调）里只能做纯算术语义检查：任何 copy_from_user /
+ * access_remote_vm 都可能睡眠（AUD-e-3）。 */
+static inline int sh_user_addr_ok(uint64_t addr)
+{
+    return addr >= 0x1000ULL && addr < SH_USER_ADDR_MAX;
+}
 static int sh_addr_is_valid(void *task, uint64_t addr)
 {
     uint32_t insn;
@@ -232,8 +239,9 @@ static void rearm_to(struct sh_hwbp_node *node, uint64_t addr)
     if (!sh_modify_user_hw_breakpoint || !node->bp_handle) {
         return;
     }
-    if (!sh_addr_is_valid(node->task_ref, addr)) {
-        /* LR 不可读（AUD-d-3）：原地禁用，避免把断点装到内核/无效地址 */
+    if (!sh_user_addr_ok(addr)) {
+        /* AUD-d-3 / AUD-e-3：异常上下文只做区间检查；越界就原地禁用，
+         * 绝不在这里调用可能睡眠的 access_remote_vm。 */
         node->is_disabled = 1;
         return;
     }
@@ -287,8 +295,15 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
 
     /* SKIP_ORIGIN：直接返回假值，跳到 LR */
     if (matched->flags & SH_HWBP_FLAG_SKIP_ORIGIN) {
+        uint64_t lr = STRIP_PAC(regs->regs[30]);
+
+        /* AUD-d-1 残留：LR 不可信，越界就禁用节点而不是跳到内核地址 */
+        if (!sh_user_addr_ok(lr)) {
+            matched->is_disabled = 1;
+            return;
+        }
         regs->regs[0] = matched->ret_value;
-        regs->pc = STRIP_PAC(regs->regs[30]);
+        regs->pc = lr;
         return;
     }
 
@@ -303,6 +318,10 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
 
     /* INLINE：PC 跳到 trampoline */
     if (matched->flags & SH_HWBP_FLAG_INLINE) {
+        if (!sh_user_addr_ok(matched->trampoline_addr)) {
+            matched->is_disabled = 1;
+            return;
+        }
         regs->pc = matched->trampoline_addr;
         return;
     }
@@ -426,6 +445,15 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
         node->task_ref = task;
     }
     node->flags = req.flags;
+    if ((req.flags & SH_HWBP_FLAG_INLINE) &&
+        !sh_addr_is_valid(task, req.trampoline_addr)) {
+        /* AUD-d-1 残留：INLINE 会直接把 pc 指过去，必须在可读用户页 */
+        sh_vfree(node);
+        if (sh_put_task_struct) {
+            sh_put_task_struct(task);
+        }
+        return -22;
+    }
     node->trampoline_addr = req.trampoline_addr;
     node->dump_size = req.dump_size > SH_DUMP_MAX ? SH_DUMP_MAX : req.dump_size;
 
@@ -605,6 +633,9 @@ long sh_hwbp_set_override(struct sh_hwbp_override __user *ureq)
     for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
         struct sh_hwbp_node *node =
             (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+        if (node->retired) {
+            continue;   /* AUD-b-3：退役节点不再接受覆盖 */
+        }
         if (node->target_addr == req.target_addr &&
             (req.target_pid == 0 || node->tid == req.target_pid)) {
             node->override_mask = req.override_mask;
@@ -635,6 +666,9 @@ long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count)
     for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
         struct sh_hwbp_node *node =
             (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+        if (node->retired) {
+            continue;   /* AUD-b-3 */
+        }
         if (node->target_addr == target_addr) {
             node->skip_count = skip_count;
             node->skipped = 0;

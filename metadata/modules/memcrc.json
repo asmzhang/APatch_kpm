@@ -1,0 +1,357 @@
+{
+  "module": "memcrc",
+  "status": "candidate",
+  "version_declared": "0.2.0",
+  "version_sources": {
+    "makefile": "0.2.0"
+  },
+  "builds": [
+    {
+      "module": "memcrc",
+      "version": "0.2.0",
+      "kind": "candidate",
+      "build_id": "memcrc-0.2.0+g8a711a713802.r6461dd8f.kpb51197a.ndk26.1.10909125",
+      "variant": "base",
+      "recorded_at": "2026-10-31T10:34:10Z",
+      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+      "source_dirty": false,
+      "source_tree_sha256": "8a711a71380228e3e44b18f80bfbda87a5ec87f0cb174c804f74f06aecaec86d",
+      "source_tree_blob_sha256": "466fb55a370068a10622b295f465956828aaa8aa6412b079629b10a6fba62be6",
+      "source_blob_missing": [],
+      "sources": [
+        {
+          "path": "kpm_utils.h",
+          "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+          "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+        },
+        {
+          "path": "modules/KPM/memcrc/Makefile",
+          "sha256": "22e0d31b7718973871dc22980eb8dca52526b27263d2b516fdd5bd203f804891",
+          "blob_sha256": "22e0d31b7718973871dc22980eb8dca52526b27263d2b516fdd5bd203f804891"
+        },
+        {
+          "path": "modules/KPM/memcrc/compat.h",
+          "sha256": "34d3cea1127c8a19eb1ea0999961098d419eb57187b9d263721b17bdf11be9c0",
+          "blob_sha256": "34d3cea1127c8a19eb1ea0999961098d419eb57187b9d263721b17bdf11be9c0"
+        },
+        {
+          "path": "modules/KPM/memcrc/control/control.c",
+          "sha256": "005e91b0834a989e3083a3625ba8d932b10d6c1034d5401b9073c6b887de5eff",
+          "blob_sha256": "005e91b0834a989e3083a3625ba8d932b10d6c1034d5401b9073c6b887de5eff"
+        },
+        {
+          "path": "modules/KPM/memcrc/control/control.h",
+          "sha256": "ecf41b9fd2ebbb9c833256949382cd012a52e74c6dcf5547a1467c211893ba24",
+          "blob_sha256": "ecf41b9fd2ebbb9c833256949382cd012a52e74c6dcf5547a1467c211893ba24"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/kstring.c",
+          "sha256": "31e11b4807a69fecb821b99b2518556e8c0c6271817b8769d38b3128d5c404d3",
+          "blob_sha256": "31e11b4807a69fecb821b99b2518556e8c0c6271817b8769d38b3128d5c404d3"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/kstring.h",
+          "sha256": "3c3e707d5817f9efc2459b80cfd645d17da2d9179c19bb11576044a1c726519a",
+          "blob_sha256": "3c3e707d5817f9efc2459b80cfd645d17da2d9179c19bb11576044a1c726519a"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/parser.c",
+          "sha256": "d0dd355e1e982c6dddc5265951770663504a0aca29769a2d3efdc9487f80988e",
+          "blob_sha256": "d0dd355e1e982c6dddc5265951770663504a0aca29769a2d3efdc9487f80988e"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/parser.h",
+          "sha256": "3c18c615c0dfc934f0578511aede437451c0179d1c2a113209c442b348a51f18",
+          "blob_sha256": "3c18c615c0dfc934f0578511aede437451c0179d1c2a113209c442b348a51f18"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/shared_data.c",
+          "sha256": "50e53b102b95190f27068600be21cc07d30faae6dd8cbd287285a81382c46011",
+          "blob_sha256": "50e53b102b95190f27068600be21cc07d30faae6dd8cbd287285a81382c46011"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/shared_data.h",
+          "sha256": "2e99adba8487f3f530f6e1ab989283777d9a0122a448d915546de4d1c142eac5",
+          "blob_sha256": "2e99adba8487f3f530f6e1ab989283777d9a0122a448d915546de4d1c142eac5"
+        },
+        {
+          "path": "modules/KPM/memcrc/feature/feature.c",
+          "sha256": "8c71d5aef3e4a2aee5c36f6b4a752e2489b791984ca10fcd81ffa2c682cbe1e1",
+          "blob_sha256": "8c71d5aef3e4a2aee5c36f6b4a752e2489b791984ca10fcd81ffa2c682cbe1e1"
+        },
+        {
+          "path": "modules/KPM/memcrc/feature/feature.h",
+          "sha256": "44573ed90bd0a7521e2c698df9bf289814a56acb20623567f0619e992ce7a218",
+          "blob_sha256": "44573ed90bd0a7521e2c698df9bf289814a56acb20623567f0619e992ce7a218"
+        },
+        {
+          "path": "modules/KPM/memcrc/komm/komm.c",
+          "sha256": "1098721e44083d3e4a6a238506472ba3e7cd338121a0eb5ff1a1492354d12769",
+          "blob_sha256": "1098721e44083d3e4a6a238506472ba3e7cd338121a0eb5ff1a1492354d12769"
+        },
+        {
+          "path": "modules/KPM/memcrc/komm/komm.h",
+          "sha256": "dd469a6b898f77be6ffed16e04ba0afab39aeda7d05849c93c46cf75f60e0a97",
+          "blob_sha256": "dd469a6b898f77be6ffed16e04ba0afab39aeda7d05849c93c46cf75f60e0a97"
+        },
+        {
+          "path": "modules/KPM/memcrc/mod_main.c",
+          "sha256": "4e93e6f9432170b8d71262bbcbf49f438de230ed57e82a128d7fba28ed6d1cfa",
+          "blob_sha256": "4e93e6f9432170b8d71262bbcbf49f438de230ed57e82a128d7fba28ed6d1cfa"
+        },
+        {
+          "path": "modules/KPM/memcrc/ptrace/ptrace_hide.c",
+          "sha256": "1f59841c04b84cb3e5f8648dccb52d67f98fc71ffdaacb23e5fc9660dc8bb231",
+          "blob_sha256": "1f59841c04b84cb3e5f8648dccb52d67f98fc71ffdaacb23e5fc9660dc8bb231"
+        },
+        {
+          "path": "modules/KPM/memcrc/ptrace/ptrace_hide.h",
+          "sha256": "3f06f41dd00743cf3c76e6affda4e7c06694a1656b4ec12d9360a3e15bd28231",
+          "blob_sha256": "3f06f41dd00743cf3c76e6affda4e7c06694a1656b4ec12d9360a3e15bd28231"
+        },
+        {
+          "path": "modules/KPM/memcrc/redirect/redirect.c",
+          "sha256": "4cac7fdc40ae8963c0a9b6e8595a56ad0f91b16d6d6470672227d2caf92f933e",
+          "blob_sha256": "4cac7fdc40ae8963c0a9b6e8595a56ad0f91b16d6d6470672227d2caf92f933e"
+        },
+        {
+          "path": "modules/KPM/memcrc/redirect/redirect.h",
+          "sha256": "18b663bf4456964c1b731067ecb0ce9679ac3b82a6c8b010f22844cc9b7159ce",
+          "blob_sha256": "18b663bf4456964c1b731067ecb0ce9679ac3b82a6c8b010f22844cc9b7159ce"
+        },
+        {
+          "path": "modules/KPM/memcrc/symbols.h",
+          "sha256": "02a309adcf56d5c33ad7496bbda3ee3e6a063cf591f960dd57c0220590c3da5a",
+          "blob_sha256": "02a309adcf56d5c33ad7496bbda3ee3e6a063cf591f960dd57c0220590c3da5a"
+        },
+        {
+          "path": "tools/build_candidate.py",
+          "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+          "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+        },
+        {
+          "path": "tools/identity.py",
+          "sha256": "9e4173293cf0f4e8e55bf9d3905f1c7da86b4155a8cf8793e941302f15b3e22b",
+          "blob_sha256": "38b5a470fabe6f24729a5cd56f5f7d4be1ccb699c97c08c20501d339a77884e9"
+        }
+      ],
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "6461dd8f80a58aaa3bd860014b2661799a08bcbfa706bb390370d7ae1dcbfae1",
+      "recipe": {
+        "captured": true,
+        "command": "make -C '<repo>\\modules\\KPM\\memcrc' all debug",
+        "dry_run_args": "-n -B（强制重算配方）",
+        "returncode": 0,
+        "dry_run_sha256": "ffadb3a1a21ae57a09fea8655f0e629a7ee86f1e8c7199c77dcb6a6515e2e4d3",
+        "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+        "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+        "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/memcrc'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o mod_main.o mod_main.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o control/control.o control/control.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o komm/komm.o komm/komm.c"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+        "source_tree_sha256": "8a711a71380228e3e44b18f80bfbda87a5ec87f0cb174c804f74f06aecaec86d",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "ffadb3a1a21ae57a09fea8655f0e629a7ee86f1e8c7199c77dcb6a6515e2e4d3",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "memcrc_0.2.0.kpm",
+          "sha256": "c813676cbcb4ecd6dcb40d10d44b6e42f93e391197557284077b07a8e634c21f",
+          "size": 93024,
+          "embedded": {
+            "name": "memcrc",
+            "version": "0.2.0",
+            "author": "yuuki",
+            "description": "original intention is to bypass the memory crc check"
+          },
+          "path": "artifacts/memcrc-0.2.0+g8a711a713802.r6461dd8f.kpb51197a.ndk26.1.10909125/memcrc_0.2.0.kpm"
+        }
+      ],
+      "instance_id": "memcrc-0.2.0+g8a711a713802.r6461dd8f.kpb51197a.ndk26.1.10909125#1",
+      "imported_by": "维护者",
+      "imported_at": "2026-10-31T10:34:29Z",
+      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-memcrc.json"
+    },
+    {
+      "module": "memcrc",
+      "version": "0.2.0",
+      "kind": "candidate",
+      "build_id": "memcrc-0.2.0_debug+g8a711a713802.r38c5f7e4.kpb51197a.ndk26.1.10909125",
+      "variant": "debug",
+      "recorded_at": "2026-10-31T10:34:10Z",
+      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+      "source_dirty": false,
+      "source_tree_sha256": "8a711a71380228e3e44b18f80bfbda87a5ec87f0cb174c804f74f06aecaec86d",
+      "source_tree_blob_sha256": "466fb55a370068a10622b295f465956828aaa8aa6412b079629b10a6fba62be6",
+      "source_blob_missing": [],
+      "sources": [
+        {
+          "path": "kpm_utils.h",
+          "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+          "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+        },
+        {
+          "path": "modules/KPM/memcrc/Makefile",
+          "sha256": "22e0d31b7718973871dc22980eb8dca52526b27263d2b516fdd5bd203f804891",
+          "blob_sha256": "22e0d31b7718973871dc22980eb8dca52526b27263d2b516fdd5bd203f804891"
+        },
+        {
+          "path": "modules/KPM/memcrc/compat.h",
+          "sha256": "34d3cea1127c8a19eb1ea0999961098d419eb57187b9d263721b17bdf11be9c0",
+          "blob_sha256": "34d3cea1127c8a19eb1ea0999961098d419eb57187b9d263721b17bdf11be9c0"
+        },
+        {
+          "path": "modules/KPM/memcrc/control/control.c",
+          "sha256": "005e91b0834a989e3083a3625ba8d932b10d6c1034d5401b9073c6b887de5eff",
+          "blob_sha256": "005e91b0834a989e3083a3625ba8d932b10d6c1034d5401b9073c6b887de5eff"
+        },
+        {
+          "path": "modules/KPM/memcrc/control/control.h",
+          "sha256": "ecf41b9fd2ebbb9c833256949382cd012a52e74c6dcf5547a1467c211893ba24",
+          "blob_sha256": "ecf41b9fd2ebbb9c833256949382cd012a52e74c6dcf5547a1467c211893ba24"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/kstring.c",
+          "sha256": "31e11b4807a69fecb821b99b2518556e8c0c6271817b8769d38b3128d5c404d3",
+          "blob_sha256": "31e11b4807a69fecb821b99b2518556e8c0c6271817b8769d38b3128d5c404d3"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/kstring.h",
+          "sha256": "3c3e707d5817f9efc2459b80cfd645d17da2d9179c19bb11576044a1c726519a",
+          "blob_sha256": "3c3e707d5817f9efc2459b80cfd645d17da2d9179c19bb11576044a1c726519a"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/parser.c",
+          "sha256": "d0dd355e1e982c6dddc5265951770663504a0aca29769a2d3efdc9487f80988e",
+          "blob_sha256": "d0dd355e1e982c6dddc5265951770663504a0aca29769a2d3efdc9487f80988e"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/parser.h",
+          "sha256": "3c18c615c0dfc934f0578511aede437451c0179d1c2a113209c442b348a51f18",
+          "blob_sha256": "3c18c615c0dfc934f0578511aede437451c0179d1c2a113209c442b348a51f18"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/shared_data.c",
+          "sha256": "50e53b102b95190f27068600be21cc07d30faae6dd8cbd287285a81382c46011",
+          "blob_sha256": "50e53b102b95190f27068600be21cc07d30faae6dd8cbd287285a81382c46011"
+        },
+        {
+          "path": "modules/KPM/memcrc/data/shared_data.h",
+          "sha256": "2e99adba8487f3f530f6e1ab989283777d9a0122a448d915546de4d1c142eac5",
+          "blob_sha256": "2e99adba8487f3f530f6e1ab989283777d9a0122a448d915546de4d1c142eac5"
+        },
+        {
+          "path": "modules/KPM/memcrc/feature/feature.c",
+          "sha256": "8c71d5aef3e4a2aee5c36f6b4a752e2489b791984ca10fcd81ffa2c682cbe1e1",
+          "blob_sha256": "8c71d5aef3e4a2aee5c36f6b4a752e2489b791984ca10fcd81ffa2c682cbe1e1"
+        },
+        {
+          "path": "modules/KPM/memcrc/feature/feature.h",
+          "sha256": "44573ed90bd0a7521e2c698df9bf289814a56acb20623567f0619e992ce7a218",
+          "blob_sha256": "44573ed90bd0a7521e2c698df9bf289814a56acb20623567f0619e992ce7a218"
+        },
+        {
+          "path": "modules/KPM/memcrc/komm/komm.c",
+          "sha256": "1098721e44083d3e4a6a238506472ba3e7cd338121a0eb5ff1a1492354d12769",
+          "blob_sha256": "1098721e44083d3e4a6a238506472ba3e7cd338121a0eb5ff1a1492354d12769"
+        },
+        {
+          "path": "modules/KPM/memcrc/komm/komm.h",
+          "sha256": "dd469a6b898f77be6ffed16e04ba0afab39aeda7d05849c93c46cf75f60e0a97",
+          "blob_sha256": "dd469a6b898f77be6ffed16e04ba0afab39aeda7d05849c93c46cf75f60e0a97"
+        },
+        {
+          "path": "modules/KPM/memcrc/mod_main.c",
+          "sha256": "4e93e6f9432170b8d71262bbcbf49f438de230ed57e82a128d7fba28ed6d1cfa",
+          "blob_sha256": "4e93e6f9432170b8d71262bbcbf49f438de230ed57e82a128d7fba28ed6d1cfa"
+        },
+        {
+          "path": "modules/KPM/memcrc/ptrace/ptrace_hide.c",
+          "sha256": "1f59841c04b84cb3e5f8648dccb52d67f98fc71ffdaacb23e5fc9660dc8bb231",
+          "blob_sha256": "1f59841c04b84cb3e5f8648dccb52d67f98fc71ffdaacb23e5fc9660dc8bb231"
+        },
+        {
+          "path": "modules/KPM/memcrc/ptrace/ptrace_hide.h",
+          "sha256": "3f06f41dd00743cf3c76e6affda4e7c06694a1656b4ec12d9360a3e15bd28231",
+          "blob_sha256": "3f06f41dd00743cf3c76e6affda4e7c06694a1656b4ec12d9360a3e15bd28231"
+        },
+        {
+          "path": "modules/KPM/memcrc/redirect/redirect.c",
+          "sha256": "4cac7fdc40ae8963c0a9b6e8595a56ad0f91b16d6d6470672227d2caf92f933e",
+          "blob_sha256": "4cac7fdc40ae8963c0a9b6e8595a56ad0f91b16d6d6470672227d2caf92f933e"
+        },
+        {
+          "path": "modules/KPM/memcrc/redirect/redirect.h",
+          "sha256": "18b663bf4456964c1b731067ecb0ce9679ac3b82a6c8b010f22844cc9b7159ce",
+          "blob_sha256": "18b663bf4456964c1b731067ecb0ce9679ac3b82a6c8b010f22844cc9b7159ce"
+        },
+        {
+          "path": "modules/KPM/memcrc/symbols.h",
+          "sha256": "02a309adcf56d5c33ad7496bbda3ee3e6a063cf591f960dd57c0220590c3da5a",
+          "blob_sha256": "02a309adcf56d5c33ad7496bbda3ee3e6a063cf591f960dd57c0220590c3da5a"
+        },
+        {
+          "path": "tools/build_candidate.py",
+          "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+          "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+        },
+        {
+          "path": "tools/identity.py",
+          "sha256": "9e4173293cf0f4e8e55bf9d3905f1c7da86b4155a8cf8793e941302f15b3e22b",
+          "blob_sha256": "38b5a470fabe6f24729a5cd56f5f7d4be1ccb699c97c08c20501d339a77884e9"
+        }
+      ],
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "38c5f7e4eba24876fddbacf311a512fc61bfd2883239543c93d83721867c5fae",
+      "recipe": {
+        "captured": true,
+        "command": "make -C '<repo>\\modules\\KPM\\memcrc' all debug",
+        "dry_run_args": "-n -B（强制重算配方）",
+        "returncode": 0,
+        "dry_run_sha256": "ffadb3a1a21ae57a09fea8655f0e629a7ee86f1e8c7199c77dcb6a6515e2e4d3",
+        "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+        "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+        "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/memcrc'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o mod_main.o mod_main.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o control/control.o control/control.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.0\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o komm/komm.o komm/komm.c"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+        "source_tree_sha256": "8a711a71380228e3e44b18f80bfbda87a5ec87f0cb174c804f74f06aecaec86d",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "ffadb3a1a21ae57a09fea8655f0e629a7ee86f1e8c7199c77dcb6a6515e2e4d3",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "memcrc_0.2.0_debug.kpm",
+          "sha256": "c4e5ffdcc1c67e0e637a81f4a88db04f0adc1cd36dc420ff749da62fb0e3781c",
+          "size": 93024,
+          "embedded": {
+            "name": "memcrc",
+            "version": "0.2.0_d",
+            "author": "yuuki",
+            "description": "original intention is to bypass the memory crc check"
+          },
+          "path": "artifacts/memcrc-0.2.0_debug+g8a711a713802.r38c5f7e4.kpb51197a.ndk26.1.10909125/memcrc_0.2.0_debug.kpm"
+        }
+      ],
+      "instance_id": "memcrc-0.2.0_debug+g8a711a713802.r38c5f7e4.kpb51197a.ndk26.1.10909125#1",
+      "imported_by": "维护者",
+      "imported_at": "2026-10-31T10:34:29Z",
+      "handoff_manifest": "Developer\\reports\\handoffs\\2026-10-31-memcrc.json"
+    }
+  ],
+  "audits": [],
+  "device_tests": [],
+  "issues": [],
+  "acceptances": [],
+  "deliveries": [],
+  "updated_at": "2026-10-31T10:34:29Z",
+  "updated_by": "维护者"
+}

@@ -3,34 +3,34 @@
   "version": "2.0.0",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-10-31T10:25:57Z",
+  "handoff_at": "2026-10-31T10:34:19Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "panda_hide",
       "version": "2.0.0",
       "kind": "candidate",
-      "build_id": "panda_hide-2.0.0+g7b318a66b9e5.rfb2949ac.kpb51197a.ndk26.1.10909125",
+      "build_id": "panda_hide-2.0.0+g02b5eb7a0e1d.r37fb85e0.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-10-31T10:25:57Z",
-      "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
+      "recorded_at": "2026-10-31T10:34:19Z",
+      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
       "source_dirty": false,
-      "source_tree_sha256": "7b318a66b9e54ff587ff6d99c73b78b97902fb665a87c7cbd058466f3838a0f5",
-      "source_tree_blob_sha256": "95f0ccba512de90d72baabff68f79934a0e97a906b231f02445a69b426f92d66",
+      "source_tree_sha256": "02b5eb7a0e1d867e069ff592160c16284ed08ff1683e218dee1f5934afb8fb1d",
+      "source_tree_blob_sha256": "c39b7d7a53fda4568e0bdc9c94be0dee79a4bfe9db157cf45403c2baa66cad8f",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "4c25ef05fccfcea4f3694ef4e6596ee09c54801530790331f262e3b892faa8ea"
+        "data_ref": "a05a122865b52f77dabc7443ab14db60fc3f1aeec4b41ce4058eeaac2ef95cb5"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "fb2949acf568eeec473bc12ab6dfc676ed08219e34af3f6b0a74ff445d3c5262",
+      "fingerprint_sha256": "37fb85e0f2b2e22ab8e4fbe085e5871b511ffb15755f29045e131ecc6bc30d67",
       "recipe": {
         "data_ref": "c1d19a1cd9f816bb5609807b9ff99ff396195c4f678802509c3872c6d7fdd16a"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
-        "source_tree_sha256": "7b318a66b9e54ff587ff6d99c73b78b97902fb665a87c7cbd058466f3838a0f5",
+        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+        "source_tree_sha256": "02b5eb7a0e1d867e069ff592160c16284ed08ff1683e218dee1f5934afb8fb1d",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
         "recipe_sha256": "c476141ca6876d8f504caf16d39dd3d1227538de8657936e6181a658950ae4b7",
         "input_unchanged": true,
@@ -48,36 +48,36 @@
             "author": "pandaos",
             "description": "panda_hide: comprehensive frida & debugger hiding."
           },
-          "path": "artifacts\\panda_hide-2.0.0+g7b318a66b9e5.rfb2949ac.kpb51197a.ndk26.1.10909125\\panda_hide_2.0.0.kpm"
+          "path": "artifacts/panda_hide-2.0.0+g02b5eb7a0e1d.r37fb85e0.kpb51197a.ndk26.1.10909125/panda_hide_2.0.0.kpm"
         }
       ],
-      "instance_id": "panda_hide-2.0.0+g7b318a66b9e5.rfb2949ac.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "panda_hide-2.0.0+g02b5eb7a0e1d.r37fb85e0.kpb51197a.ndk26.1.10909125#1"
     },
     {
       "module": "panda_hide",
       "version": "2.0.0",
       "kind": "candidate",
-      "build_id": "panda_hide-2.0.0_debug+g7b318a66b9e5.ra2685f55.kpb51197a.ndk26.1.10909125",
+      "build_id": "panda_hide-2.0.0_debug+g02b5eb7a0e1d.rcac83706.kpb51197a.ndk26.1.10909125",
       "variant": "debug",
-      "recorded_at": "2026-10-31T10:25:57Z",
-      "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
+      "recorded_at": "2026-10-31T10:34:19Z",
+      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
       "source_dirty": false,
-      "source_tree_sha256": "7b318a66b9e54ff587ff6d99c73b78b97902fb665a87c7cbd058466f3838a0f5",
-      "source_tree_blob_sha256": "95f0ccba512de90d72baabff68f79934a0e97a906b231f02445a69b426f92d66",
+      "source_tree_sha256": "02b5eb7a0e1d867e069ff592160c16284ed08ff1683e218dee1f5934afb8fb1d",
+      "source_tree_blob_sha256": "c39b7d7a53fda4568e0bdc9c94be0dee79a4bfe9db157cf45403c2baa66cad8f",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "4c25ef05fccfcea4f3694ef4e6596ee09c54801530790331f262e3b892faa8ea"
+        "data_ref": "a05a122865b52f77dabc7443ab14db60fc3f1aeec4b41ce4058eeaac2ef95cb5"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "a2685f55255b74b820095012659c7f8822f68469dcdbac431329d86e1ff85e9e",
+      "fingerprint_sha256": "cac837065a284400c6408e542a38d8326e39990dd29526e60a6824fbcc9e292d",
       "recipe": {
         "data_ref": "c1d19a1cd9f816bb5609807b9ff99ff396195c4f678802509c3872c6d7fdd16a"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
-        "source_tree_sha256": "7b318a66b9e54ff587ff6d99c73b78b97902fb665a87c7cbd058466f3838a0f5",
+        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+        "source_tree_sha256": "02b5eb7a0e1d867e069ff592160c16284ed08ff1683e218dee1f5934afb8fb1d",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
         "recipe_sha256": "c476141ca6876d8f504caf16d39dd3d1227538de8657936e6181a658950ae4b7",
         "input_unchanged": true,
@@ -95,82 +95,82 @@
             "author": "pandaos",
             "description": "panda_hide: comprehensive frida & debugger hiding."
           },
-          "path": "artifacts\\panda_hide-2.0.0_debug+g7b318a66b9e5.ra2685f55.kpb51197a.ndk26.1.10909125\\panda_hide_2.0.0_debug.kpm"
+          "path": "artifacts/panda_hide-2.0.0_debug+g02b5eb7a0e1d.rcac83706.kpb51197a.ndk26.1.10909125/panda_hide_2.0.0_debug.kpm"
         }
       ],
-      "instance_id": "panda_hide-2.0.0_debug+g7b318a66b9e5.ra2685f55.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "panda_hide-2.0.0_debug+g02b5eb7a0e1d.rcac83706.kpb51197a.ndk26.1.10909125#1"
     }
   ],
   "handoff_schema": 2,
   "shared_data": {
-    "4c25ef05fccfcea4f3694ef4e6596ee09c54801530790331f262e3b892faa8ea": [
+    "a05a122865b52f77dabc7443ab14db60fc3f1aeec4b41ce4058eeaac2ef95cb5": [
       {
         "path": "kpm_utils.h",
         "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
         "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\Makefile",
+        "path": "modules/KPM/panda_hide/Makefile",
         "sha256": "b58a47363b5d84a405d1df51befd95af60e1f86ff6a055c55a105dc766dc5fb2",
         "blob_sha256": "b58a47363b5d84a405d1df51befd95af60e1f86ff6a055c55a105dc766dc5fb2"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\common.h",
+        "path": "modules/KPM/panda_hide/src/common.h",
         "sha256": "3ffb0e76a27ca7ebe11c49a9709619c82714cc83e4fd8facb4252c6dcd95f463",
         "blob_sha256": "3ffb0e76a27ca7ebe11c49a9709619c82714cc83e4fd8facb4252c6dcd95f463"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\debugger_hide.c",
+        "path": "modules/KPM/panda_hide/src/debugger_hide.c",
         "sha256": "dac1d2b90994b3d9cd39694a3cde71cc28a0308eeaa743efc3edd58b44991849",
         "blob_sha256": "dac1d2b90994b3d9cd39694a3cde71cc28a0308eeaa743efc3edd58b44991849"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\debugger_hide.h",
+        "path": "modules/KPM/panda_hide/src/debugger_hide.h",
         "sha256": "9191331df7a0a58ecf462f5fb89ef86803bca03e1d2cb28fa58b7f867f8e88a0",
         "blob_sha256": "9191331df7a0a58ecf462f5fb89ef86803bca03e1d2cb28fa58b7f867f8e88a0"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\frida_hide.c",
+        "path": "modules/KPM/panda_hide/src/frida_hide.c",
         "sha256": "1ec9be7f2a5770c7b40e99fb28be902a4f34ce07a68f37eaa454ea52eaac530e",
         "blob_sha256": "1ec9be7f2a5770c7b40e99fb28be902a4f34ce07a68f37eaa454ea52eaac530e"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\frida_hide.h",
+        "path": "modules/KPM/panda_hide/src/frida_hide.h",
         "sha256": "cff45e1571940d9929708d01f8967c407668d458c2dc84dcb6879a609b9d71ad",
         "blob_sha256": "cff45e1571940d9929708d01f8967c407668d458c2dc84dcb6879a609b9d71ad"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\main.c",
+        "path": "modules/KPM/panda_hide/src/main.c",
         "sha256": "717859e5b6f748f83dbafae439d0c5b9a164f7803457886aa843348c52e226e5",
         "blob_sha256": "717859e5b6f748f83dbafae439d0c5b9a164f7803457886aa843348c52e226e5"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\mem_hide.c",
+        "path": "modules/KPM/panda_hide/src/mem_hide.c",
         "sha256": "2e5c6c778faf5eaeb286f3ee68fbc2aef3839bbad510e06f411e93b5ab2031fe",
         "blob_sha256": "2e5c6c778faf5eaeb286f3ee68fbc2aef3839bbad510e06f411e93b5ab2031fe"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\mem_hide.h",
+        "path": "modules/KPM/panda_hide/src/mem_hide.h",
         "sha256": "4628c60a5d414add31e2cbd5147d1c279734ce152866ee15fa3e3b51cdfe63f5",
         "blob_sha256": "4628c60a5d414add31e2cbd5147d1c279734ce152866ee15fa3e3b51cdfe63f5"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\net_hide.c",
+        "path": "modules/KPM/panda_hide/src/net_hide.c",
         "sha256": "6d2489f7fb61e73772676e120050a8714da075eed337abcf5bf26e769c659411",
         "blob_sha256": "6d2489f7fb61e73772676e120050a8714da075eed337abcf5bf26e769c659411"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\net_hide.h",
+        "path": "modules/KPM/panda_hide/src/net_hide.h",
         "sha256": "31d57986e93311b63b18ac08670b82ba041c58f78cc6c785bf1fdbf9a351afa9",
         "blob_sha256": "31d57986e93311b63b18ac08670b82ba041c58f78cc6c785bf1fdbf9a351afa9"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\openat_hide.c",
+        "path": "modules/KPM/panda_hide/src/openat_hide.c",
         "sha256": "8d9a43518b8cfc2491ad5d458e35418337a197a24b652105791b2d49848ff0d1",
         "blob_sha256": "8d9a43518b8cfc2491ad5d458e35418337a197a24b652105791b2d49848ff0d1"
       },
       {
-        "path": "modules\\KPM\\panda_hide\\src\\openat_hide.h",
+        "path": "modules/KPM/panda_hide/src/openat_hide.h",
         "sha256": "152a599b05504921d9186395b3aca07a2cf94f0b84d4f1cb5f209993b6321f58",
         "blob_sha256": "152a599b05504921d9186395b3aca07a2cf94f0b84d4f1cb5f209993b6321f58"
       },
@@ -181,8 +181,8 @@
       },
       {
         "path": "tools/identity.py",
-        "sha256": "ac4ed610735d9a80857be294cb73eea3e13a2aef49191b87fefd7043d88e8436",
-        "blob_sha256": "fae3f9f7853efe5942c9a81a935d1a3b90e83d8c8c9224e7627252a1235dfbae"
+        "sha256": "9e4173293cf0f4e8e55bf9d3905f1c7da86b4155a8cf8793e941302f15b3e22b",
+        "blob_sha256": "38b5a470fabe6f24729a5cd56f5f7d4be1ccb699c97c08c20501d339a77884e9"
       }
     ],
     "c1d19a1cd9f816bb5609807b9ff99ff396195c4f678802509c3872c6d7fdd16a": {

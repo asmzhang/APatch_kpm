@@ -3,34 +3,34 @@
   "version": "1.0.0",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-10-31T10:25:51Z",
+  "handoff_at": "2026-10-31T10:34:13Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "mount_hidder",
       "version": "1.0.0",
       "kind": "candidate",
-      "build_id": "mount_hidder-1.0.0+g29060d9da2ba.r7639b275.kpb51197a.ndk26.1.10909125",
+      "build_id": "mount_hidder-1.0.0+g3143c326dc4f.r0b23ffb6.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-10-31T10:25:51Z",
-      "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
+      "recorded_at": "2026-10-31T10:34:13Z",
+      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
       "source_dirty": false,
-      "source_tree_sha256": "29060d9da2ba2b2e16880b470219a04bbe4bfdac67288bd4d290ff9ab58e1cd3",
-      "source_tree_blob_sha256": "f1b3713c2d67466605417ec868dc4d57816d62761c1bebb7a6c28d0db961b1e1",
+      "source_tree_sha256": "3143c326dc4f61eb970744e92d31a1defd28d6aa5dee4ce70986be8d6fa19e5e",
+      "source_tree_blob_sha256": "6d31b78da1640469c529765a7ba149fe417c2386c27c4f913919d5bfaa62a4b6",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "3262ddd4065bd5a7e99fa309ee24d275c8898078521375711d33c46c2955e55e"
+        "data_ref": "56145a3dda83831997fc766a53db4b74b994d048f3f5c979e82745067b2b899e"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "7639b275b3227113b5636df962b86895539715f838aa7bece6d7680341fb40f2",
+      "fingerprint_sha256": "0b23ffb6b35a2d5111dc1f340dc7e42145f82ac858a18770178db352390538ae",
       "recipe": {
         "data_ref": "bb78e9f92f3b9134d127d4971172a49dba4b3e250eb24f265144f97bcc8e53bb"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
-        "source_tree_sha256": "29060d9da2ba2b2e16880b470219a04bbe4bfdac67288bd4d290ff9ab58e1cd3",
+        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+        "source_tree_sha256": "3143c326dc4f61eb970744e92d31a1defd28d6aa5dee4ce70986be8d6fa19e5e",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
         "recipe_sha256": "fff08f187d371acbfde7bb23a682560e9c706f3acd119f9f01b676af82c7a566",
         "input_unchanged": true,
@@ -48,36 +48,36 @@
             "author": "bmax121",
             "description": "hide mount entries from procfs (hide_mount upstream port)"
           },
-          "path": "artifacts\\mount_hidder-1.0.0+g29060d9da2ba.r7639b275.kpb51197a.ndk26.1.10909125\\mount_hidder_1.0.0.kpm"
+          "path": "artifacts/mount_hidder-1.0.0+g3143c326dc4f.r0b23ffb6.kpb51197a.ndk26.1.10909125/mount_hidder_1.0.0.kpm"
         }
       ],
-      "instance_id": "mount_hidder-1.0.0+g29060d9da2ba.r7639b275.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "mount_hidder-1.0.0+g3143c326dc4f.r0b23ffb6.kpb51197a.ndk26.1.10909125#1"
     },
     {
       "module": "mount_hidder",
       "version": "1.0.0",
       "kind": "candidate",
-      "build_id": "mount_hidder-1.0.0_debug+g29060d9da2ba.rc92ad108.kpb51197a.ndk26.1.10909125",
+      "build_id": "mount_hidder-1.0.0_debug+g3143c326dc4f.rfd77625d.kpb51197a.ndk26.1.10909125",
       "variant": "debug",
-      "recorded_at": "2026-10-31T10:25:51Z",
-      "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
+      "recorded_at": "2026-10-31T10:34:13Z",
+      "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
       "source_dirty": false,
-      "source_tree_sha256": "29060d9da2ba2b2e16880b470219a04bbe4bfdac67288bd4d290ff9ab58e1cd3",
-      "source_tree_blob_sha256": "f1b3713c2d67466605417ec868dc4d57816d62761c1bebb7a6c28d0db961b1e1",
+      "source_tree_sha256": "3143c326dc4f61eb970744e92d31a1defd28d6aa5dee4ce70986be8d6fa19e5e",
+      "source_tree_blob_sha256": "6d31b78da1640469c529765a7ba149fe417c2386c27c4f913919d5bfaa62a4b6",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "3262ddd4065bd5a7e99fa309ee24d275c8898078521375711d33c46c2955e55e"
+        "data_ref": "56145a3dda83831997fc766a53db4b74b994d048f3f5c979e82745067b2b899e"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "c92ad1082562196b8bee7e5b3631ca82ada63d8e848334cf484e8a9c7b5f2c99",
+      "fingerprint_sha256": "fd77625d71254aed9e8f61dfddee13f2c9627841761391f9cda9807a3dff93e3",
       "recipe": {
         "data_ref": "bb78e9f92f3b9134d127d4971172a49dba4b3e250eb24f265144f97bcc8e53bb"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "493098236e5549a5255bd7574905266fbf85919e",
-        "source_tree_sha256": "29060d9da2ba2b2e16880b470219a04bbe4bfdac67288bd4d290ff9ab58e1cd3",
+        "source_commit": "3109aa9550be3e7d2a6cc18ef503d60d3876979a",
+        "source_tree_sha256": "3143c326dc4f61eb970744e92d31a1defd28d6aa5dee4ce70986be8d6fa19e5e",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
         "recipe_sha256": "fff08f187d371acbfde7bb23a682560e9c706f3acd119f9f01b676af82c7a566",
         "input_unchanged": true,
@@ -95,32 +95,32 @@
             "author": "bmax121",
             "description": "hide mount entries from procfs (hide_mount upstream port)"
           },
-          "path": "artifacts\\mount_hidder-1.0.0_debug+g29060d9da2ba.rc92ad108.kpb51197a.ndk26.1.10909125\\mount_hidder_1.0.0_debug.kpm"
+          "path": "artifacts/mount_hidder-1.0.0_debug+g3143c326dc4f.rfd77625d.kpb51197a.ndk26.1.10909125/mount_hidder_1.0.0_debug.kpm"
         }
       ],
-      "instance_id": "mount_hidder-1.0.0_debug+g29060d9da2ba.rc92ad108.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "mount_hidder-1.0.0_debug+g3143c326dc4f.rfd77625d.kpb51197a.ndk26.1.10909125#1"
     }
   ],
   "handoff_schema": 2,
   "shared_data": {
-    "3262ddd4065bd5a7e99fa309ee24d275c8898078521375711d33c46c2955e55e": [
+    "56145a3dda83831997fc766a53db4b74b994d048f3f5c979e82745067b2b899e": [
       {
         "path": "kpm_utils.h",
         "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
         "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
       },
       {
-        "path": "modules\\KPM\\mount_hidder\\Makefile",
+        "path": "modules/KPM/mount_hidder/Makefile",
         "sha256": "7fee14a7980e267bee0c956663f3e4eb3fb35a9e1be41a681fa8dda10cc00532",
         "blob_sha256": "2cdfebdd756b9f17af10f801fe2daae566e53b3bf24c5a11ea0a5231e9482208"
       },
       {
-        "path": "modules\\KPM\\mount_hidder\\hide_mount.c",
+        "path": "modules/KPM/mount_hidder/hide_mount.c",
         "sha256": "beaa2daf0354810bfe5ac302d4f1e1fe96a7933809563818d4ea8a845be50124",
         "blob_sha256": "acfe1c4471de17785a3c58895c4fa6fde92b8deff0c7388011ee5125508ad772"
       },
       {
-        "path": "modules\\KPM\\mount_hidder\\hide_mount.h",
+        "path": "modules/KPM/mount_hidder/hide_mount.h",
         "sha256": "743f22f2a6b5e410f62ac6026dbb5a668e8046e960c20f9de55cfe0e0abf2fe8",
         "blob_sha256": "f1e2f6e29ac375879a9de234a7d6caa1f4cdde7e0cf011d93900c10144061170"
       },
@@ -131,8 +131,8 @@
       },
       {
         "path": "tools/identity.py",
-        "sha256": "ac4ed610735d9a80857be294cb73eea3e13a2aef49191b87fefd7043d88e8436",
-        "blob_sha256": "fae3f9f7853efe5942c9a81a935d1a3b90e83d8c8c9224e7627252a1235dfbae"
+        "sha256": "9e4173293cf0f4e8e55bf9d3905f1c7da86b4155a8cf8793e941302f15b3e22b",
+        "blob_sha256": "38b5a470fabe6f24729a5cd56f5f7d4be1ccb699c97c08c20501d339a77884e9"
       }
     ],
     "bb78e9f92f3b9134d127d4971172a49dba4b3e250eb24f265144f97bcc8e53bb": {

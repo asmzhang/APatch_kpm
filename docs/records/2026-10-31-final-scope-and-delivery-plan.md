@@ -107,3 +107,40 @@ R2 与 R5 允许并行（不同模块），R3 必须在 R2 之后，R4 之后需
 - 不做 per-app 改检测结果、不做 TEE/keystore2 层对抗、不做属性层伪装——这些不在 KPM 的能力面内。
 - `stealth_hook` 的 Ghost 不自动隐藏自身 VMA（由 `memcrc` 的 `RANGE` 规则另行下发）；
   PTE 子系统在 6.1+ 返回 `-EOPNOTSUPP`，不静默降级。
+
+## 八、R1 执行记录（2026-10-31）
+
+### 已完成
+
+- **A3 元数据**：`metadata/modules/` 从 9 条增至 16 条。七个模块（`apkey_hide` / `memcrc` /
+  `mount_hidder` / `stealth_hook` / `panda_hide` / `qti_battery_charger` / `xperia_ii_battery_age`）
+  各登记 2 条 candidate 构建（release + debug），共 14 份产物，`identity_hashes` 复算全通过。
+- **A4 工具自检**：`tool_selftest` 在 WSL（Ubuntu-24.04 / python3.12.3）全绿——`37 项工具判据回归通过`。
+  Windows 主机上该检查仍失败，根因是本机 locale 为 gbk 而工具按 UTF-8 读写（`selftest_tools.py`
+  的 `subprocess.run(text=True)` 与多处 `read_text()` 未指定 encoding），属环境问题，不放宽判据。
+  本机执行门禁请用：
+  `wsl.exe -e bash -lc 'cd /mnt/d/work/1/kpm/APatch_kpm && python3 tools/check_repository.py'`
+- **A5 公开文件卫生**：新增两条判据（大写十六进制 12–16 位序列号形态；本工程历史出现过的已知
+  设备标识），并把 `docs/records/2026-10-29-hide-env-rejected.md` 里的序列号替换为 `sha256:433ab88276ec`。
+
+### 期间修掉的工具/构建缺陷（都属实现方范围，判据未变）
+
+- `tools/identity.py`：Windows 上 `Path.relative_to(REPO)` 产出反斜杠并被原样写进
+  `sources[].path`、`artifacts[].path`、`handoff_manifest`，导致 WSL/CI 侧按路径取文件失败
+  （`identity_hashes` 报「无法按绑定提交核验」「产物不在场」）。统一过 `posix_rel()`。
+- `modules/KPM/qti_battery_charger`、`modules/KPM/xperia_ii_battery_age`：Makefile 缺
+  `mingw64_nt-10.0-*-x86_64 -> windows-x86_64` 的 NDK HOST_TAG 映射，`make -n` 能过、真编译必然失败
+  （也导致 `build_candidate` 认不出编译器、拒绝登记）。补上映射后两者首次可构建。
+- 同两个模块的版本宏统一为 `MYKPM_VERSION`（原为 `QBC_VERSION` / `XIIBA_VERSION`），
+  否则记录一旦存在，`version_consistency` 会因 Makefile 缺 `MYKPM_VERSION` 直接失败。
+- 注意：这两个模块的 `debug` 目标没有 `-DCONFIG_DEBUG`，debug 产物与 release 字节相同，
+  属既有实现，本轮不动；Tester 按「只测一个变体」处理即可。
+
+### 当前门禁状态
+
+`14 项检查，0 项失败，2 项警告`。两条警告均为存量历史项（2026-10-11 zram 清单缺 `handoff_by`；
+2026-10-02 冻结候选实例未登记），不属于本轮交付集。
+
+### 下一步
+
+R2 冻结登记已完成（上述 7 模块），可以直接进 R3 独立审计；审计对象是上表 14 份产物对应的实例。

@@ -192,3 +192,41 @@ R2 冻结登记已完成（上述 7 模块），可以直接进 R3 独立审计�
 ### 下一步
 
 R4b 复核 → 若有仍开项继续修；之后进 medium/low 批量清理，再进 R5 真机矩阵。
+
+## 十、R4c 执行记录（2026-10-31）
+
+第三轮复核（`Auditor/reports/2026-10-31-r4b-review.md`）判定 R4b 未达标：
+AUD-a-6 / b-1 / b-2 / b-5 已关闭，AUD-b-3 部分关闭，并新开 AUD-d-1（high）、
+AUD-d-2（high，R4b 引入）、AUD-d-3（high，既有）、AUD-d-4（low）。
+
+### 本轮改动（提交 `71d18c7`）
+
+- AUD-d-2：命令通道串行化从关中断自旋锁改为 mutex（`mutex_lock`/`mutex_unlock`/
+  `__mutex_init` 走 kallsyms，缺符号降级为不串行化并告警）。命令体里有
+  `copy_from_user`/`vmalloc`/`vm_mmap` 等可睡眠操作，关中断自旋锁下执行必然触发
+  `sleeping function called from invalid context`，争用时是 `scheduling while atomic`。
+- AUD-d-1：新增 `sh_addr_is_valid(task, addr)`，HOOK 前校验目标必须是用户地址且能读到
+  完整指令字（同进程 `copy_from_user_nofault`，跨进程 `access_remote_vm`；缺符号时只做
+  区间检查），失败返回 `-22`。
+- AUD-d-3：`rearm_to` 重装断点前用同一函数校验目标（含从 LR 取回的地址），失败置
+  `is_disabled = 1`，不把断点装到内核或无效地址。
+- AUD-d-4：`GHOST_LIST` 与 ALLOC/FREE/WRITE 一起只给 root。
+- AUD-b-3 剩余项沿用 R4b 的 `retired` 语义，仅替换串行化实现。
+
+### 真机自检（Pixel 6，6.1.99-android14，实现方结论）
+
+- shell `ghost list` / `ghost alloc` → `Operation not permitted (errno=1)`；`status` 仍可用。
+- root `selftest` 全通过；连跑前后 `scheduling while atomic` 计数保持 2（均为 R4b 版本
+  t=59s 遗留），无新增——AUD-d-2 修法在真机站得住。
+- `hook 0x10000`（未映射）→ `EINVAL`，dmesg `[hwbp] target not readable user code: 10000`。
+- 卸载 `unload_module: name: stealth_hook, rc: 0`，管理器进程存活。
+
+### 产物（与真机测过的字节一致）
+
+- `stealth_hook_0.3.0.kpm` 30656B `sha256=b6bd597c8ea92645…`
+- `stealth_hook_0.3.0_debug.kpm` 34072B `sha256=c8d9ae8543166961…`
+- instance `stealth_hook-0.3.0+gec933891ab21.ree8c93a8.kpb51197a.ndk26.1.10909125#1`
+
+### 下一步
+
+交同一批审计员做第四轮复核（AUD-b-3 / d-1 / d-2 / d-3 / d-4），通过后进 medium/low。

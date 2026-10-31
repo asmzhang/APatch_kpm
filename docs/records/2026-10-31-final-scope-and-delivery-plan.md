@@ -230,3 +230,75 @@ AUD-d-2（high，R4b 引入）、AUD-d-3（high，既有）、AUD-d-4（low）�
 ### 下一步
 
 交同一批审计员做第四轮复核（AUD-b-3 / d-1 / d-2 / d-3 / d-4），通过后进 medium/low。
+
+## 十二、R4f–R4g 执行记录（2026-10-31，AUD-f-1 根治）
+
+第五轮复核（`Auditor/reports/2026-10-31-r4e-review.md`）认定 R4e 后仍不可交付：
+AUD-f-1（high）——`rearm_to()` 在调试异常上下文调用
+`perf_event_disable → modify_user_hw_breakpoint → perf_event_enable`，
+6.1 内核这条链走 `perf_event_ctx_lock → mutex_lock`，可睡眠。R4f（`39c8254`，
+登记 `25047bd`）修了 AUD-e-4（恢复误删的 `sh_hwbp_cleanup()`）与 AUD-f-2
+（dump 兜底缺 `copy_from_user_nofault` 符号时整体禁用 dump），f-1 先按
+「已接受残余风险」处置；随后维护者决定根治。
+
+### 根治方案论证（为什么不是审计员建议的 pending-rearm）
+
+对 v6.1 `arch/arm64/kernel/hw_breakpoint.c` 的核对推翻了 pending-rearm 方案：
+框架 `breakpoint_handler()` 只对**默认** overflow handler 做 `step = 1` 单步 +
+`toggle_bp_registers` 清/置断点寄存器；本模块注册**自定义 handler**，命中返回后
+BVR 仍指向当前 PC，ERET 立即再次命中 → 无限调试异常循环。R4f 试过的 relay
+双固定断点方案真机自旋（stealth_cli R 状态）正是这个机制。因此 rearm 必须
+**在异常上下文内、免睡眠地当拍完成**。
+
+方案：MSR/MRS 直写 ARM64 调试寄存器。命中匹配靠硬件寄存器值而非 perf 内部
+字段（框架按 `BVR == instruction_pointer & ~0x3` 找槽），故直写 BVR 即改观察
+地址：清 BCR bit0（停用）→ 写 BVR 新地址 → 原样写回 BCR（重新武装），纯寄存器
+操作天然免睡，语义与旧三件套等价。槽位数取 `ID_AA64DFR0_EL1.BRPs`（实现数-1）
+钳到 16。
+
+### 本轮改动（提交 `8654cd0`，登记 `109eb10`）
+
+- `rearm_to()` 重写：越界（`sh_user_addr_ok` 失败）先 disarm 再置 `is_disabled=1`；
+  正常路径走 `sh_hwbp_rearm_msr()`。
+- 新增 `sh_dbg_read/write_bvr/bcr()`（`dbgbvr<n>_el1`/`dbgbcr<n>_el1`，EL1 变体）、
+  `sh_dbg_init_slots()`（DFR0 探测）、`sh_hwbp_rearm_msr()`/`sh_hwbp_disarm_msr()`。
+- SKIP_ORIGIN LR 越界、INLINE trampoline 越界两条路径同样先 disarm（6.1 自定义
+  handler 下留武装断点在原地会无限重触发——隐藏 bug 类）。
+- 移除 `modify_user_hw_breakpoint` 符号依赖（声明/解析/打印）；修正 sh_dbg 符号
+  打印变参错位（格式串残留 `modify=%llx`，实参已删，变参吃栈垃圾——真机
+  `dis=72705f6670625f68` 暴露）。
+
+### 已知局限（写入残余风险）
+
+perf 框架内部（`perf_event.attr.bp_addr`、per-CPU 槽管理）不感知 MSR 直写：
+上下文切换/热插拔/休眠唤醒后 `hw_breakpoint_reset` 会用 perf 记录的旧地址重装
+BVR，断点可能回旧地址**错采一拍**（多记或少记一次命中），自愈不崩溃——以偶发
+错采换确定性死锁，可接受。
+
+### 真机自检（Pixel 6，6.1.99-android14，实现方结论）
+
+- `stealth_cli selftest` 全过：before 68、hook rc=0、query `hits=2 enter=2
+  x0=0x11 x1=0x22 ret_x0=0x44`、modify 546(0x222)、skip(1) 原函数执行、skip
+  override 1911(0x777)、unhook 复原 68。**入口拍 rearm 到 LR 与返回拍 rearm 回
+  原址均当拍生效**（延拍方案下返回拍 never fire、hits 停 1，实测 hits=2 即 MSR
+  直写成功的直接证据）。
+- `status`/`pte query`（6.1 正确降级 supported:no）/`ghost alloc/list/free` 全通。
+- 非法地址 hook → `EINVAL`（AUD-d-1 保持）；卸载 `rc: 0`，cleanup 释放 1 node，
+  管理器存活；全程 dmesg 无 BUG/oops/panic/scheduling while atomic（开机 9.9s/
+  59.2s 两条 Call trace 为启动期旧账，与模块无关）。
+- dbg 打印修正后 `register=.../counter=.../unregister=.../release=.../en=.../
+  dis=...` 六参对齐，与 `/proc/kallsyms` 值一致。
+
+### 产物（冻结提交 `8654cd0`，candidate 档位 verify 16/16 通过）
+
+- base `stealth_hook_0.3.0.kpm` 33856B `sha256=971e47add6d8d6da…`
+  instance `stealth_hook-0.3.0+g28d1a85ed6ce.r41ed197f.kpb51197a.ndk26.1.10909125#1`
+- debug `stealth_hook_0.3.0_debug.kpm` 37440B `sha256=acc2a6a2a8c4c2ec…`
+  instance `stealth_hook-0.3.0_debug+g28d1a85ed6ce.rc9c87052.kpb51197a.ndk26.1.10909125#1`
+- 工具链指纹 `ndk26.1.10909125`（与 R4f 登记一致；`ndk26.3.11579264` 在本机对
+  KP 头文件树汇编失败，`current.h` sp 全局寄存器变量不被接受）
+
+### 下一步
+
+R4f+R4g 独立窄复核（含 AUD-c-5 争议复核）→ 关单处置 → R5 真机全矩阵。
+门禁：14 项检查 0 失败 2 警告（均为存量）。

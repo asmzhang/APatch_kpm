@@ -127,7 +127,6 @@ static int sh_addr_is_valid(void *task, uint64_t addr)
     }
 }
 static void *(*sh_perf_event_create_kernel_counter)(void *attr, int cpu, void *task, void *callback, void *context);
-static int (*sh_modify_user_hw_breakpoint)(void *bp, void *attr);
 static void (*sh_unregister_hw_breakpoint)(void *bp);
 static void (*sh_perf_event_release_kernel)(void *event);
 static void (*sh_perf_event_enable)(void *event);
@@ -204,8 +203,6 @@ static int sh_hwbp_resolve(void)
             kallsyms_lookup_name("register_user_hw_breakpoint");
         sh_perf_event_create_kernel_counter = (typeof(sh_perf_event_create_kernel_counter))
             kallsyms_lookup_name("perf_event_create_kernel_counter");
-        sh_modify_user_hw_breakpoint = (typeof(sh_modify_user_hw_breakpoint))
-            kallsyms_lookup_name("modify_user_hw_breakpoint");
         sh_unregister_hw_breakpoint = (typeof(sh_unregister_hw_breakpoint))
             kallsyms_lookup_name("unregister_hw_breakpoint");
         sh_perf_event_release_kernel = (typeof(sh_perf_event_release_kernel))
@@ -214,10 +211,9 @@ static int sh_hwbp_resolve(void)
             kallsyms_lookup_name("perf_event_enable");
         sh_perf_event_disable = (typeof(sh_perf_event_disable))
             kallsyms_lookup_name("perf_event_disable");
-        sh_dbg("[hwbp] register=%llx counter=%llx modify=%llx unregister=%llx release=%llx en=%llx dis=%llx\n",
+        sh_dbg("[hwbp] register=%llx counter=%llx unregister=%llx release=%llx en=%llx dis=%llx\n",
                (uint64_t)sh_register_user_hw_breakpoint,
                (uint64_t)sh_perf_event_create_kernel_counter,
-               (uint64_t)sh_modify_user_hw_breakpoint,
                (uint64_t)sh_unregister_hw_breakpoint,
                (uint64_t)sh_perf_event_release_kernel,
                (uint64_t)sh_perf_event_enable,
@@ -232,28 +228,146 @@ static int sh_hwbp_resolve(void)
     return 1;
 }
 
-static void rearm_to(struct sh_hwbp_node *node, uint64_t addr)
-{
-    struct sh_perf_event_attr attr;
+/* ============================================================
+ * ARM64 调试寄存器直写（AUD-f-1 根治）
+ *
+ * 断点回调运行在调试异常上下文（框架 breakpoint_handler 持
+ * rcu_read_lock 调进 overflow handler），perf_event_disable /
+ * modify / enable 在 6.1 走 perf_event_ctx_lock → mutex，可睡眠。
+ * 改为 MSR 直写 DBGBCR/DBGVR：纯寄存器操作、天然免睡，语义与旧
+ * 「disable → modify → enable」等价：清 BCR 使能位 → 写 BVR 新
+ * 地址 → 原样武装回 BCR。槽位数取自 ID_AA64DFR0_EL1.BRPs（硬件
+ * 实现数），绝不访问未实现的槽位（读未实现系统寄存器会二次陷入）。
+ *
+ * 已知局限：perf_event 内部 info->address 不同步（同步需 BTF 推导
+ * 偏移，暂不引入）。目标线程被切出再切回 / 跨 CPU 迁移 / 热插拔 /
+ * 休眠唤醒时 perf 会按 info->address 重装 BVR，断点回到旧地址 ——
+ * 观察者状态机最多错采一拍数据、随下一次完整调用自愈，不会崩溃。
+ * 用「偶发一拍错采」换「确定性死锁」。
+ * ============================================================ */
+#define SH_DBG_MAX_BRP  16
 
-    if (!sh_modify_user_hw_breakpoint || !node->bp_handle) {
+#define SH_DBG_SLOTS(F, RS, var) \
+    F(0, RS, var)  F(1, RS, var)  F(2, RS, var)  F(3, RS, var)  \
+    F(4, RS, var)  F(5, RS, var)  F(6, RS, var)  F(7, RS, var)  \
+    F(8, RS, var)  F(9, RS, var)  F(10, RS, var) F(11, RS, var) \
+    F(12, RS, var) F(13, RS, var) F(14, RS, var) F(15, RS, var)
+
+#define SH_DBG_RD(n, RS, var) \
+    case n: __asm__ volatile ("mrs %0, dbgb" RS #n "_el1" : "=r"(var) : : "memory"); break;
+#define SH_DBG_WR(n, RS, var) \
+    case n: __asm__ volatile ("msr dbgb" RS #n "_el1, %0" : : "r"(var) : "memory"); break;
+
+#define SH_DBG_READER(RS, name) \
+    static uint64_t name(int n) \
+    { \
+        uint64_t v = 0; \
+        switch (n) { \
+            SH_DBG_SLOTS(SH_DBG_RD, RS, v) \
+        } \
+        return v; \
+    }
+#define SH_DBG_WRITER(RS, name) \
+    static void name(int n, uint64_t val) \
+    { \
+        switch (n) { \
+            SH_DBG_SLOTS(SH_DBG_WR, RS, val) \
+        } \
+    }
+
+SH_DBG_READER("vr", sh_dbg_read_bvr)
+SH_DBG_WRITER("vr", sh_dbg_write_bvr)
+SH_DBG_READER("cr", sh_dbg_read_bcr)
+SH_DBG_WRITER("cr", sh_dbg_write_bcr)
+
+static uint64_t sh_dbg_slot_count;
+
+static void sh_dbg_init_slots(void)
+{
+    uint64_t dfr0;
+
+    __asm__ volatile ("mrs %0, ID_AA64DFR0_EL1" : "=r"(dfr0) : : "memory");
+    /* BRPs[15:12]：实现数 - 1 */
+    sh_dbg_slot_count = ((dfr0 >> 12) & 0xFULL) + 1;
+    if (sh_dbg_slot_count > SH_DBG_MAX_BRP) {
+        sh_dbg_slot_count = SH_DBG_MAX_BRP;
+    }
+}
+
+/* 把本 CPU 上 BVR 等于 node->bp_addr 的已武装槽位改写到 addr。
+ * 同一地址被重复 hook 时一次改齐所有匹配槽（旧 perf 改法只改触发
+ * 事件的槽，另一个槽留在原地会立刻再命中）。 */
+static void sh_hwbp_rearm_msr(struct sh_hwbp_node *node, uint64_t addr)
+{
+    uint64_t old = node->bp_addr & ~3ULL;
+    uint64_t dst = addr & ~3ULL;
+    int total = (int)sh_dbg_slot_count;
+    int n;
+    int moved = 0;
+
+    if (!total || !dst || dst == old) {
+        node->bp_addr = addr;
         return;
     }
+    for (n = 0; n < total; n++) {
+        uint64_t bcr;
+
+        if (sh_dbg_read_bvr(n) != old) {
+            continue;
+        }
+        bcr = sh_dbg_read_bcr(n);
+        if (!(bcr & 1ULL)) {
+            continue;   /* 槽未武装（如 NO_AUTO_ENABLE），不动 */
+        }
+        sh_dbg_write_bcr(n, bcr & ~1ULL);
+        sh_dbg_write_bvr(n, dst);
+        sh_dbg_write_bcr(n, bcr);
+        moved++;
+    }
+    __asm__ volatile ("isb" : : : "memory");
+    if (!moved) {
+        sh_dbg("[hwbp] rearm: no armed slot for %llx\n", (unsigned long long)old);
+    }
+    node->bp_addr = addr;
+}
+
+/* 摘掉本节点地址的武装（BCR 使能位清零）。用于一切「校验失败置
+ * is_disabled」的路径：只置位不摘武装，断点留在当前 PC，ERET 后
+ * 立即重触发成调试异常死循环。 */
+static void sh_hwbp_disarm_msr(struct sh_hwbp_node *node)
+{
+    uint64_t old = node->bp_addr & ~3ULL;
+    int total = (int)sh_dbg_slot_count;
+    int n;
+
+    for (n = 0; n < total; n++) {
+        uint64_t bcr;
+
+        if (sh_dbg_read_bvr(n) != old) {
+            continue;
+        }
+        bcr = sh_dbg_read_bcr(n);
+        if (!(bcr & 1ULL)) {
+            continue;
+        }
+        sh_dbg_write_bcr(n, bcr & ~1ULL);
+    }
+    __asm__ volatile ("isb" : : : "memory");
+}
+
+static void rearm_to(struct sh_hwbp_node *node, uint64_t addr)
+{
     if (!sh_user_addr_ok(addr)) {
-        /* AUD-d-3 / AUD-e-3：异常上下文只做区间检查；越界就原地禁用，
-         * 绝不在这里调用可能睡眠的 access_remote_vm。 */
+        /* AUD-d-3 / AUD-e-3：异常上下文只做区间检查；越界先摘武装再禁用，
+         * 绝不在这里调可能睡眠的 access_remote_vm / perf API。 */
+        sh_hwbp_disarm_msr(node);
         node->is_disabled = 1;
         return;
     }
-    node->bp_addr = addr;
-    fill_execute_attr(&attr, addr, 0);
-    if (sh_perf_event_disable) {
-        sh_perf_event_disable(node->bp_handle);
+    if (!node->bp_handle) {
+        return;
     }
-    sh_modify_user_hw_breakpoint(node->bp_handle, &attr);
-    if (sh_perf_event_enable) {
-        sh_perf_event_enable(node->bp_handle);
-    }
+    sh_hwbp_rearm_msr(node, addr);
 }
 
 /* 断点触发回调：perf 溢出处理，运行在调试异常上下文（原子、不可睡眠） */
@@ -297,8 +411,10 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
     if (matched->flags & SH_HWBP_FLAG_SKIP_ORIGIN) {
         uint64_t lr = STRIP_PAC(regs->regs[30]);
 
-        /* AUD-d-1 残留：LR 不可信，越界就禁用节点而不是跳到内核地址 */
+        /* AUD-d-1 残留：LR 不可信，越界先摘武装再禁用节点，而不是跳到内核地址
+         * （只置位不摘，断点留在当前 PC，ERET 后立即重触发成调试异常死循环） */
         if (!sh_user_addr_ok(lr)) {
+            sh_hwbp_disarm_msr(matched);
             matched->is_disabled = 1;
             return;
         }
@@ -318,7 +434,9 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
 
     /* INLINE：PC 跳到 trampoline */
     if (matched->flags & SH_HWBP_FLAG_INLINE) {
+        /* 同上：越界先摘武装再禁用，否则断点留在原址无限重触发 */
         if (!sh_user_addr_ok(matched->trampoline_addr)) {
+            sh_hwbp_disarm_msr(matched);
             matched->is_disabled = 1;
             return;
         }
@@ -685,6 +803,7 @@ long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count)
 void sh_hwbp_init(void)
 {
     INIT_LIST_HEAD(&hwbp_list);
+    sh_dbg_init_slots();
     hwbp_list_ready = true;
 }
 

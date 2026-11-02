@@ -41,6 +41,7 @@
 #include <linux/kernel.h>
 #include <linux/mm_types.h>
 #include <pgtable.h>
+#include <asm/ptrace.h>
 
 KPM_NAME("wxs_probe");
 KPM_VERSION("0.0.2");
@@ -265,8 +266,42 @@ static int wxs_dump_page(pid_t pid, uint64_t va, char *out, int outlen)
     return n;
 }
 
+/* ---- P2b 第一步：只挂钩、只记录，不改任何 PTE ---- */
+static void *wxs_do_mem_abort;
+static int wxs_hook_on;
+static unsigned long wxs_fault_count;
+static unsigned int wxs_fault_logged;
+
+static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
+{
+    uint64_t far = args->arg0;
+    uint32_t esr = (uint32_t)args->arg1;
+    uint32_t ec;
+    uint32_t fsc;
+    struct pt_regs *regs = (struct pt_regs *)args->arg2;
+
+    (void)udata;
+    if (wxs_state < 1)
+        return;
+    if (far < wxs_tva || far >= wxs_tva + 4096)
+        return;
+    wxs_fault_count++;
+    if (wxs_fault_logged >= 8)
+        return;
+    wxs_fault_logged++;
+    ec = (esr >> 26) & 0x3f;
+    fsc = esr & 0x3f;
+    logki("wxs_probe: fault far=0x%llx esr=0x%x ec=0x%x fsc=0x%x pc=0x%llx\n",
+          (unsigned long long)far, esr, ec, fsc,
+          (unsigned long long)(regs ? regs->pc : 0));
+}
+
 static void wxs_detach(void)
 {
+    if (wxs_hook_on) {
+        hook_unwrap(wxs_do_mem_abort, (void *)wxs_mem_abort_before, 0);
+        wxs_hook_on = 0;
+    }
     if (wxs_state == 2) {
         /* 复原失败也要把引用放掉，但保留日志让调用方看见。 */
         if (*wxs_ptep == wxs_pte_installed) {
@@ -453,6 +488,47 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
                  (unsigned long long)wxs_page_offset, (int)mm_struct_offset.pgd_offset);
         goto out;
     }
+    if (!strncmp(p, "arm", 3)) {
+        if (wxs_state < 1) {
+            snprintf(buf, sizeof(buf), "arm: attach first\n");
+            goto out;
+        }
+        if (!wxs_do_mem_abort) {
+            snprintf(buf, sizeof(buf), "arm: do_mem_abort not found\n");
+            goto out;
+        }
+        if (wxs_hook_on) {
+            snprintf(buf, sizeof(buf), "arm: already armed\n");
+            goto out;
+        }
+        {
+            long rc = hook_wrap2(wxs_do_mem_abort, wxs_mem_abort_before, 0, 0);
+            if (rc) {
+                snprintf(buf, sizeof(buf), "arm: hook_wrap2 rc=%ld\n", rc);
+                goto out;
+            }
+        }
+        wxs_hook_on = 1;
+        wxs_fault_count = 0;
+        wxs_fault_logged = 0;
+        snprintf(buf, sizeof(buf), "arm ok hook=%d va=0x%llx\n", wxs_hook_on,
+                 (unsigned long long)wxs_tva);
+        goto out;
+    }
+    if (!strncmp(p, "disarm", 6)) {
+        if (wxs_hook_on) {
+            hook_unwrap(wxs_do_mem_abort, (void *)wxs_mem_abort_before, 0);
+            wxs_hook_on = 0;
+        }
+        snprintf(buf, sizeof(buf), "disarm ok\n");
+        goto out;
+    }
+    if (!strncmp(p, "faults", 6)) {
+        snprintf(buf, sizeof(buf), "faults=%lu logged=%u hook=%d va=0x%llx\n",
+                 wxs_fault_count, wxs_fault_logged, wxs_hook_on,
+                 (unsigned long long)wxs_tva);
+        goto out;
+    }
     if (!strncmp(p, "state", 5)) {
         wxs_state_line(buf, (int)sizeof(buf));
         goto out;
@@ -520,6 +596,9 @@ static long wxs_probe_init(const char *args, const char *event, void *__user res
         logke("wxs_probe: symbol missing\n");
         return -1;
     }
+    wxs_do_mem_abort = (void *)kallsyms_lookup_name("do_mem_abort");
+    if (!wxs_do_mem_abort)
+        logkw("wxs_probe: do_mem_abort not found (arm disabled)\n");
     wxs_va_bits = wxs_read_va_bits();
     /* arm64: PAGE_OFFSET = ~0 << VA_BITS（39 → 0xffffff8000000000，48 → 0xffff000000000000） */
     wxs_page_offset = ~0ULL << wxs_va_bits;

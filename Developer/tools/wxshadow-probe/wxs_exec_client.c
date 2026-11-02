@@ -16,9 +16,21 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <signal.h>
+#include <setjmp.h>
 
 /* mov w0, #imm ; ret */
 static const unsigned int CODE_ONE[2] = { 0x52800020u, 0xd65f03c0u };
+
+static sigjmp_buf g_jmp;
+static volatile int g_fault_hit;
+
+static void on_segv(int sig)
+{
+    (void)sig;
+    g_fault_hit = 1;
+    siglongjmp(g_jmp, 1);
+}
 
 int main(int argc, char **argv)
 {
@@ -62,8 +74,27 @@ int main(int argc, char **argv)
         return 1;
     }
     ticks = secs * 2;
+    signal(SIGSEGV, on_segv);
+    signal(SIGBUS, on_segv);
     for (i = 0; i < ticks; i++) {
-        int v = fn();
+        int v;
+        if (i == 6) {
+            /* 制造一次可控缺页：把这页设成 PROT_NONE 再读它，看内核侧能否记到。 */
+            volatile unsigned char sink;
+            if (mprotect(base, pagesz, PROT_NONE) == 0) {
+                if (sigsetjmp(g_jmp, 1) == 0) {
+                    sink = base[0x100];
+                    (void)sink;
+                    fprintf(f, "fault-probe: no fault (unexpected)\n");
+                } else {
+                    fprintf(f, "fault-probe: caught signal, hit=%d\n", g_fault_hit);
+                }
+                mprotect(base, pagesz, PROT_READ | PROT_WRITE | PROT_EXEC);
+                __builtin___clear_cache((char *)code, (char *)code + sizeof(CODE_ONE));
+            }
+            fflush(f);
+        }
+        v = fn();
         if (v != last) {
             fprintf(f, "t=%d ret=%d (changed)\n", i, v);
             last = v;

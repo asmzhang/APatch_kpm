@@ -267,10 +267,16 @@ static int wxs_dump_page(pid_t pid, uint64_t va, char *out, int outlen)
 }
 
 /* ---- P2b 第一步：只挂钩、只记录，不改任何 PTE ---- */
+static uint64_t wxs_pte_uxn;
+static int wxs_uxn_on;
+static int wxs_hold;
+static unsigned long wxs_switch_count;
 static void *wxs_do_mem_abort;
 static int wxs_hook_on;
 static unsigned long wxs_fault_count;
 static unsigned int wxs_fault_logged;
+
+static void wxs_write_pte(uint64_t pte);
 
 static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
 {
@@ -286,11 +292,34 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
     if (far < wxs_tva || far >= wxs_tva + 4096)
         return;
     wxs_fault_count++;
+    ec = (esr >> 26) & 0x3f;
+    fsc = esr & 0x3f;
+
+    /*
+     * 单向切换：取指异常（EC=0x20 来自 EL0 的 IABT）+ 当前是 hold 状态
+     * → 把 PTE 换成影子页、跳过内核默认处理，让 CPU 重试这条指令。
+     * 若同一页连续切换太多次（说明影子页本身也取不到指），放弃处理并报错，
+     * 避免把设备拖进死循环。
+     */
+    if (ec == 0x20 && wxs_hold && wxs_pte_installed) {
+        if (wxs_switch_count < 64) {
+            wxs_switch_count++;
+            wxs_write_pte(wxs_pte_installed);
+            wxs_hold = 0;
+            args->skip_origin = 1;
+            logki("wxs_probe: iabt switch far=0x%llx pc=0x%llx n=%lu\n",
+                  (unsigned long long)far,
+                  (unsigned long long)(regs ? regs->pc : 0), wxs_switch_count);
+            return;
+        }
+        logke("wxs_probe: too many switches, giving up far=0x%llx\n",
+              (unsigned long long)far);
+        wxs_hold = 0;
+    }
+
     if (wxs_fault_logged >= 8)
         return;
     wxs_fault_logged++;
-    ec = (esr >> 26) & 0x3f;
-    fsc = esr & 0x3f;
     logki("wxs_probe: fault far=0x%llx esr=0x%x ec=0x%x fsc=0x%x pc=0x%llx\n",
           (unsigned long long)far, esr, ec, fsc,
           (unsigned long long)(regs ? regs->pc : 0));
@@ -328,6 +357,15 @@ static void wxs_detach(void)
     wxs_tva = 0;
     wxs_toff = 0;
     wxs_state = 0;
+}
+
+static void wxs_write_pte(uint64_t pte)
+{
+    *(volatile uint64_t *)wxs_ptep = pte;
+    dsb(ishst);
+    asm volatile("tlbi vaae1is, %0" : : "r"((wxs_tva >> 12) & 0xffffffffffUL));
+    dsb(ish);
+    isb();
 }
 
 static int wxs_attach(pid_t pid, uint64_t va, char *out, int outlen)
@@ -523,9 +561,56 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
         snprintf(buf, sizeof(buf), "disarm ok\n");
         goto out;
     }
+    if (!strncmp(p, "hold", 4)) {
+        if (wxs_state != 2) {
+            snprintf(buf, sizeof(buf), "hold: install first\n");
+            goto out;
+        }
+        wxs_hold = 1;
+        wxs_switch_count = 0;
+        wxs_write_pte(wxs_pte_orig | PTE_UXN);
+        snprintf(buf, sizeof(buf), "hold ok pte=0x%llx shadow=0x%llx\n",
+                 (unsigned long long)(wxs_pte_orig | PTE_UXN),
+                 (unsigned long long)wxs_pte_installed);
+        goto out;
+    }
+    if (!strncmp(p, "uxnclear", 8)) {
+        if (wxs_state < 1) {
+            snprintf(buf, sizeof(buf), "uxnclear: not attached\n");
+            goto out;
+        }
+        if (!wxs_uxn_on) {
+            snprintf(buf, sizeof(buf), "uxnclear: not set\n");
+            goto out;
+        }
+        wxs_write_pte(wxs_pte_orig);
+        wxs_uxn_on = 0;
+        snprintf(buf, sizeof(buf), "uxnclear ok pte=0x%llx\n",
+                 (unsigned long long)wxs_pte_orig);
+        goto out;
+    }
+    if (!strncmp(p, "uxn", 3)) {
+        uint64_t cur;
+        if (wxs_state < 1) {
+            snprintf(buf, sizeof(buf), "uxn: not attached\n");
+            goto out;
+        }
+        cur = *(volatile uint64_t *)wxs_ptep;
+        if ((cur & (PTE_VALID | PTE_TYPE_MASK)) != (PTE_VALID | PTE_TYPE_PAGE)) {
+            snprintf(buf, sizeof(buf), "uxn: pte changed 0x%llx\n",
+                     (unsigned long long)cur);
+            goto out;
+        }
+        wxs_pte_uxn = cur | PTE_UXN;
+        wxs_write_pte(wxs_pte_uxn);
+        wxs_uxn_on = 1;
+        snprintf(buf, sizeof(buf), "uxn ok old=0x%llx new=0x%llx\n",
+                 (unsigned long long)cur, (unsigned long long)wxs_pte_uxn);
+        goto out;
+    }
     if (!strncmp(p, "faults", 6)) {
-        snprintf(buf, sizeof(buf), "faults=%lu logged=%u hook=%d va=0x%llx\n",
-                 wxs_fault_count, wxs_fault_logged, wxs_hook_on,
+        snprintf(buf, sizeof(buf), "faults=%lu logged=%u hook=%d sw=%lu hold=%d va=0x%llx\n",
+                 wxs_fault_count, wxs_fault_logged, wxs_hook_on, wxs_switch_count, wxs_hold,
                  (unsigned long long)wxs_tva);
         goto out;
     }

@@ -23,12 +23,20 @@
 static const unsigned int CODE_ONE[2] = { 0x52800020u, 0xd65f03c0u };
 
 static sigjmp_buf g_jmp;
+static FILE *g_log;
 static volatile int g_fault_hit;
+
+static volatile int g_in_probe;
 
 static void on_segv(int sig)
 {
     (void)sig;
     g_fault_hit = 1;
+    if (!g_in_probe) {
+        if (g_log)
+            fprintf(g_log, "segv outside probe (sig=%d), exiting\n", sig);
+        _exit(9);
+    }
     siglongjmp(g_jmp, 1);
 }
 
@@ -63,6 +71,7 @@ int main(int argc, char **argv)
         perror("fopen");
         return 1;
     }
+    g_log = f;
     fprintf(f, "pid=%ld\n", pid);
     fprintf(f, "va=%p\n", (void *)code);
     fprintf(f, "expect=%d\n", fn());
@@ -82,6 +91,7 @@ int main(int argc, char **argv)
             /* 制造一次可控缺页：把这页设成 PROT_NONE 再读它，看内核侧能否记到。 */
             volatile unsigned char sink;
             if (mprotect(base, pagesz, PROT_NONE) == 0) {
+                g_in_probe = 1;
                 if (sigsetjmp(g_jmp, 1) == 0) {
                     sink = base[0x100];
                     (void)sink;
@@ -89,6 +99,7 @@ int main(int argc, char **argv)
                 } else {
                     fprintf(f, "fault-probe: caught signal, hit=%d\n", g_fault_hit);
                 }
+                g_in_probe = 0;
                 mprotect(base, pagesz, PROT_READ | PROT_WRITE | PROT_EXEC);
                 __builtin___clear_cache((char *)code, (char *)code + sizeof(CODE_ONE));
             }

@@ -749,7 +749,7 @@ static void apk_status_line(char *buf, int buflen)
     buf[0] = 0;
     if (!apk_snprintf) return;
     apk_snprintf(buf, (size_t)buflen,
-                 "APKey_Hide v3.6.2 hook=%d refresh=%d swept=%d loader=%u mgr=%u "
+                 "APKey_Hide v" MYKPM_VERSION " hook=%d refresh=%d swept=%d loader=%u mgr=%u "
                  "embedded=%d claimed=%u cfgpkg=%s win=%u/%d need_refine=%d refok=%d "
                  "allow=%d deny=%u pass=%u "
                  "n(excl=%u unexcl=%u skip=%u) names=%s,%s,%s,%s",
@@ -947,6 +947,20 @@ static long apk_init(const char *args, const char *event, void *reserved)
     if (!apk_copy_to_user)
         apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
             kallsyms_lookup_name("_copy_to_user");
+    if (!apk_copy_to_user)
+        apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
+            kallsyms_lookup_name("__arch_copy_to_user");
+    /* ★v3.6.3：6.1 GKI 上 copy_to_user / _copy_to_user / __arch_copy_to_user
+     * 都不是 kallsyms 符号（实测 /proc/kallsyms 只有 copy_to_user_page、
+     * copy_to_user_nofault、__copy_from_user_* 之类），上面三级全部落空
+     * ⇒ apk_copy_to_user 为 NULL，ctl0 的 status 行被下面的
+     * `if (out_msg && outlen > 0 && apk_copy_to_user)` 静默吞掉
+     * （表现为 rc=0 但用户缓冲是空的）。兜底改用 KP 自己导出的
+     * compat_copy_to_user：它与本模块其它依赖同属 KP 导出表，
+     * 不新增加载失败面。 */
+    if (!apk_copy_to_user)
+        apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
+            (void *)compat_copy_to_user;
     apk_vmalloc = (void *(*)(unsigned long))kallsyms_lookup_name("vmalloc");
     apk_vfree = (void (*)(const void *))kallsyms_lookup_name("vfree");
     apk_filp_open = (void *(*)(const char *, int, int))kallsyms_lookup_name("filp_open");
@@ -1043,7 +1057,7 @@ static long apk_init(const char *args, const char *event, void *reserved)
             apk_window_closed, apk_cfg_valid, apk_refresh_hooked, apk_mgr_cnt,
             apk_need_refine);
 
-    APK_LOG("init v3.6.2 done loader=%u hook=%d swept=%d mgr=%u embedded=%d "
+    APK_LOG("init v" MYKPM_VERSION " done loader=%u hook=%d swept=%d mgr=%u embedded=%d "
             "need_refine=%d cfg=%d winclosed=%d\n",
             (unsigned)apk_loader_uid, apk_hook_ok, apk_swept,
             (unsigned)apk_mgr_uid, apk_embedded, apk_need_refine, apk_cfg_valid,

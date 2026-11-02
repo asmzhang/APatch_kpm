@@ -99,3 +99,36 @@ python tools/check_repository.py → exit 0；ci_build_selection 将 apkey_hide 
 - ctl0 非受信返回 `-ENOENT`（模拟 find_module NULL）而非 `-EPERM`——审计请验证与「模块不存在」返回面逐位一致的结论（module.c:548-550）。
 - TOFU 窗口期（嵌入模式、管理器 uid 未确认时放行应用段 [10000,90000) 触达 KP 原生鉴权）是设计上的开放面：窗口上限 8192 次，超限永久关窗；请审计关窗判据 `apk_mgr_cnt>0`（v3.6.2 修正）在 /data 未挂载时序下的完整性。
 - 禁用 `__atomic/__sync` 的约束依赖源码自耦；若后续改动引入内建原子会生成 `__aarch64_*` libgcc 符号导致加载失败——建议 CI 加导入表黑名单断言（本轮只人工核对）。
+
+## 3.6.3 补丁（本仓，R5 真机矩阵发现）
+
+R5 逐条验证 `ctl0` 时发现：`ctl0` 返回 `rc=0` 但输出缓冲是空的。定位过程与结论：
+
+- 设备：Pixel 6 / Android 15 / 6.1.99-android14 / APatch 11282。
+- `grep -c copy_to_user /proc/kallsyms` 的结果里**没有** `copy_to_user`、`_copy_to_user`、`__arch_copy_to_user`
+  这三个符号（只有 `copy_to_user_page`、`copy_to_user_nofault`、`bpf_copy_to_user` 等）。
+  模块 init 里三级 `kallsyms_lookup_name` 全部返回 NULL ⇒ `apk_copy_to_user == NULL`
+  ⇒ `apk_ctl0()` 末尾 `if (out_msg && outlen > 0 && apk_copy_to_user)` 整段跳过 ⇒ 静默无输出。
+- 同一轮还发现 status 行与 init 日志把版本写死成 `3.6.2`，与 `MYKPM_VERSION` 脱钩。
+
+修法（两处，业务逻辑未动）：
+
+1. `apk_copy_to_user` 解析链补第四级兜底 `compat_copy_to_user`（KP 导出）。
+2. status 行与 `APK_LOG("init ...")` 的版本串改用 `MYKPM_VERSION`。
+
+产物：`apkey_hide_3.6.3.kpm` 22800B `sha256=8a340d1b1a7dc9fee5a6e43bcf851a39549dae9c9ca09b4acdc71f12bc379ac0`；
+debug 28368B `sha256=e448167959534fe5c69943b4b2523a5ae3a03d588391d006919c03bfef497bb3`。
+导入表 11 个 UND 全为 KP 导出（新增 `compat_copy_to_user`）。
+
+真机复验（同一设备，`kpmctl 10273` 以管理器 uid 身份调用）：
+
+| 命令 | 输出（节选） |
+| --- | --- |
+| `status` | `APKey_Hide v3.6.3 hook=1 refresh=0 swept=0 loader=10273 mgr=0 ... need_refine=1 refok=0` |
+| `sweep` | `mgr=10273 ... win=0/1 need_refine=0 refok=1`（读 packages.list 成功，管理器按包名确认） |
+| `allow=2000` | `allow=1` |
+| `deny=2000` | `n(excl=1 ...)`（uid 2000 被排除） |
+| `pkg=me.bmax.apatch` | `cfgpkg=me.bmax.apatch ... mgr=0 need_refine=1`（按设计重置并请求重扫） |
+| `unclaim` | 同上，窗口重开 |
+
+未覆盖：`refresh=0` 说明 `refresh_trusted_manager_state` 在本内核上解析失败（设计内的降级路径，见「未解决项」表）。

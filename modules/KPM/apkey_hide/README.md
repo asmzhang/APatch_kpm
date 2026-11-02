@@ -55,3 +55,14 @@ make all debug
 
 debug 变体额外定义 `-DCONFIG_DEBUG -DAPK_DEBUG_LOG`，会打印 `[APKey_Hide]` 前缀的调试日志；
 release 变体零 printk。
+
+## 更新记录
+
+- **3.6.3（本仓补丁）**：两处只在部分内核上暴露的问题。
+  1. `copy_to_user` / `_copy_to_user` / `__arch_copy_to_user` 在 6.1 GKI 上**都不是 kallsyms 符号**
+     （实测 `/proc/kallsyms` 只有 `copy_to_user_page`、`copy_to_user_nofault`、`__copy_from_user_*` 之类），
+     原实现三级解析全部落空 ⇒ `apk_copy_to_user` 为 NULL ⇒ `ctl0` 的 status 行被
+     `if (out_msg && outlen > 0 && apk_copy_to_user)` 静默吞掉，表现为 **`rc=0` 但用户缓冲为空**。
+     改为兜底使用 KP 导出的 `compat_copy_to_user`（与本模块其它依赖同属 KP 导出表，不新增加载失败面）。
+  2. status 行与 init 日志里的版本号原来是硬编码 `3.6.2`，改为 `MYKPM_VERSION`，避免升版本后输出对不上。
+- **3.6.2（上游）**：TOFU 关窗判据修正（只按「管理器 uid 已知」关，不再按 cfg 关）、status 缓冲 448→768。

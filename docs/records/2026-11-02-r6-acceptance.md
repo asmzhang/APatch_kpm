@@ -62,6 +62,9 @@ Pixel 6（Android 15 / 6.1.99-android14 / APatch 11282）为唯一可加载 KPM 
 
 1. **PTE@5.10**：唯一 5.10 设备（小米 13）为 APatch LKM 模式，KPM 加载 `rc=-1`（dmesg 只有 `layout done`，init 无输出），
    因此 PTE 真实重定向从未在支持的内核上执行过。当前行为：6.1 上命令返回 `-95`（-EOPNOTSUPP），这是已实现并可复现的。
+   根因已定位（2026-11-02）：LKM 模式的 KPM 符号面窄于内核集成模式，`stealth_hook` 需要的
+   `inline_wrap_syscalln` / `cred_offset` 在该模式不存在，加载停在符号解析阶段——
+   见 [2026-11-02-mi13-lkm-kpm-symbols.md](2026-11-02-mi13-lkm-kpm-symbols.md)。
 2. **qti_battery_charger / xperia_ii_battery_age 真机**：无对应机型/内核路径，只有构建、身份与静态审计证据。
 3. **apkey_hide 嵌入模式**：未测（需管理器以嵌入方式加载）。
 4. **stealth_hook PTE 全链路**：依赖用户态 DBI（`dbi_recompiler`）给 `offset_map`，本轮未移植。

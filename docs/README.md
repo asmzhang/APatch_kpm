@@ -10,6 +10,7 @@
 - 反模式：[process/06-antipatterns.md](process/06-antipatterns.md)
 - **真机死机/卡死升级流程（Tester 必读）**：[process/07-escalation-device.md](process/07-escalation-device.md)
 - **复核经济学（成本与影响成比例：分类关闭、批量更正、先入库再引用、报告版本索引）**：[process/08-review-economics.md](process/08-review-economics.md)
+- **加载形态（kernel / lkm 是环境不是分类，一份源码一个产物，可移植符号子集与检查工具）**：[process/09-load-forms.md](process/09-load-forms.md)
 - 角色手册：[Developer](process/developer-handbook.md) / [Auditor](process/auditor-handbook.md) / [Tester](process/tester-handbook.md)
 - 报告与问题单模板：[templates/](templates/)
 - 覆盖矩阵（模块 × 内核 × 验证层级）：[coverage.md](coverage.md)

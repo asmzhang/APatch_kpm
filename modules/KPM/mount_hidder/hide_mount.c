@@ -172,6 +172,21 @@ static void hm_before(hook_fargs2_t *args, void *udata)
     args->local.data0 = (uint64_t)m->count + 1;
 }
 
+/* 定长查找。不用 linux/string.h 的 strnstr：它展开成 kf_strnstr，而库函数
+ * kfunc 槽位只在 KernelPatch 编进内核的形态里存在，LKM 形态（原厂内核 +
+ * kernelpatch.ko）没有这个符号，装载期就报 unknown symbol。这里用两种形态
+ * 都导出的 kf_memcmp 自己找，产物即可通用。 */
+static const char *hm_strnstr(const char *buf, size_t len, const char *needle, size_t nlen)
+{
+    size_t i;
+
+    if (!nlen || nlen > len) return 0;
+    for (i = 0; i + nlen <= len; i++) {
+        if (buf[i] == needle[0] && !kf_memcmp(buf + i, needle, nlen)) return buf + i;
+    }
+    return 0;
+}
+
 /* mountinfo 每行是空格分隔字段，挂载点是第 5 个字段。
  * 只在挂载点字段上匹配，避免在 root/source/superopts 里误命中（AUD-b-8 / R4j）。 */
 static int hm_mountpoint(const char *buf, size_t len, int want, size_t *off, size_t *flen)
@@ -182,7 +197,7 @@ static int hm_mountpoint(const char *buf, size_t len, int want, size_t *off, siz
     /* want == 0：/proc/self/mountstats 的格式是 "device X mounted on <挂载点> with fstype Y"，
      * 挂载点不在固定字段号上，只能按 " mounted on " 定位。 */
     if (want == 0) {
-        const char *p = strnstr(buf, " mounted on ", len);
+        const char *p = hm_strnstr(buf, len, " mounted on ", sizeof(" mounted on ") - 1);
         if (!p) return 0;
         start = (size_t)(p - buf) + sizeof(" mounted on ") - 1;
         if (start >= len) return 0;

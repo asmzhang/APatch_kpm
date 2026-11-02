@@ -6,6 +6,9 @@
 钩 `show_vfsmnt` / `show_mountinfo` / `show_vfsstat` 三个 seq_file 输出函数：命中路径就回滚
 `seq_file->count`，整条记录不出现；不命中就原样放行。
 
+1.0.3 起同一份产物同时支持两种装载形态（KernelPatch 编进内核 / 原厂内核 + `kernelpatch.ko`），
+判据见 [docs/process/09-load-forms.md](../../../docs/process/09-load-forms.md)。
+
 ## 它做什么
 
 - 三个钩子分别对应 `/proc/self/mountinfo`、`/proc/mounts`、`/proc/self/mountstats`。
@@ -73,6 +76,20 @@ Pixel 6（Android 15，6.1.99-android14）：加载后 dmesg 显示三个符号�
 `add` / `del` / `clear` / `status` 四条命令均已真机验证（1.0.0 时代这两条通道被输入法与 SELinux 堵住，
 改用管理器 uid 直接发 supercall 后打通）。
 
+## 加载形态（1.0.3）
+
+上游用 `linux/string.h` 的 `strnstr` 定位 mountstats 里的 `" mounted on "`，它展开成 `kf_strnstr`。
+`kf_strnstr` 这个库函数槽位只在「KernelPatch 编进内核」的形态里存在；LKM 形态（原厂内核 +
+`kernelpatch.ko`）的兼容表没有它，装载期就报 `unknown symbol: kf_strnstr`，`init` 不会执行。
+1.0.3 用 `kf_memcmp` 自己实现 `hm_strnstr()`，产物同时落在两种形态的符号面内：
+
+| 设备 | 形态 | 结果 |
+| --- | --- | --- |
+| Pixel 6（6.1.99-android14 / APatch 11282） | kernel | `load rc=0`；`add:/apex` 后 ` /apex` 83 → 0 → 83 |
+| 小米 13（5.10.149-android12-9 / `kernelpatch-lkm`） | lkm | `load rc=0`，`init paths=3 hooks=3`；` /apex` 56 → 0 → 56 |
+
+自检：`python tools/load_forms.py --module mount_hidder --strict`。
+
 ## 构建
 
 ```bash
@@ -81,6 +98,11 @@ make all debug
 ```
 
 ## 更新记录
+
+### 1.0.3
+
+- 去掉 `kf_strnstr` 依赖（改用本地 `hm_strnstr()` + `kf_memcmp`），同一份产物在 kernel 与 lkm
+  两种装载形态下都能装载（Pixel 6 / 小米 13 实测）；判定方法见 `docs/process/09-load-forms.md`。
 
 ### 1.0.2
 

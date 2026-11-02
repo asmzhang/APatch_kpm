@@ -739,6 +739,64 @@ def check_handoff_registration(rep):
               warn_only=True)
 
 
+def check_load_forms(rep):
+    """声明了 load_forms 的构建，产物必须真的落在那些形态的符号面内。
+
+    符号面由 tools/load_forms.py 从 KernelPatch 源码离线推导；没有 KernelPatch 源码
+    （夹具仓库）时跳过。没声明 load_forms 的构建不在判据范围内。
+    """
+    if not os.path.isdir(os.path.join(REPO, "KernelPatch")):
+        rep.check("load_forms", True, "跳过：没有 KernelPatch 源码")
+        return
+    sys.path.insert(0, HERE)
+    os.environ["LOAD_FORMS_REPO"] = REPO
+    try:
+        import importlib
+        if "load_forms" in sys.modules:
+            load_forms = importlib.reload(sys.modules["load_forms"])
+        else:
+            import load_forms
+        kernel_surface = load_forms.kernel_surface()
+        lkm_surface = load_forms.lkm_surface()
+    except Exception as exc:
+        rep.check("load_forms", False, f"符号面推导失败: {exc}")
+        return
+
+    problems, checked = [], 0
+    modules_dir = os.path.join(REPO, "metadata", "modules")
+    names = sorted(os.listdir(modules_dir)) if os.path.isdir(modules_dir) else []
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        record = json.load(open(os.path.join(modules_dir, name), encoding="utf-8"))
+        for build in record.get("builds", []):
+            forms = build.get("load_forms")
+            if not forms:
+                continue
+            for art in build.get("artifacts", []):
+                path = os.path.join(REPO, art.get("path") or "")
+                if not art.get("path") or not os.path.exists(path):
+                    problems.append(f"{art.get('name')}: 产物不存在")
+                    continue
+                checked += 1
+                try:
+                    und = load_forms.elf_und_symbols(path)
+                except Exception as exc:
+                    problems.append(f"{art.get('name')}: 解析失败 {exc}")
+                    continue
+                miss_kernel, _ = load_forms.classify(und, kernel_surface, lkm_surface, None)
+                miss_lkm, _ = load_forms.classify(und, lkm_surface, kernel_surface, None)
+                for form in forms:
+                    miss = {"kernel": miss_kernel, "lkm": miss_lkm}.get(form)
+                    if miss is None:
+                        problems.append(f"{art.get('name')}: 未知形态 {form}")
+                    elif miss:
+                        problems.append(f"{art.get('name')}: 声明 {form} 但缺 "
+                                        + ", ".join(miss[:5]))
+    rep.check("load_forms", not problems,
+              "; ".join(problems) if problems else f"{checked} 份产物与其声明的形态一致")
+
+
 def check_auditor_independence(rep):
     """审计工具不得把实现方/维护方工具当作结论来源（代码级检查，注释与文档字符串不算）。"""
     tools_dir = os.path.join(REPO, "Auditor", "tools")
@@ -1095,6 +1153,7 @@ def main():
         ("check_tool_selftest", lambda: check_tool_selftest(rep)),
         ("check_developer_artifacts", lambda: check_developer_artifacts(rep)),
         ("check_handoff_registration", lambda: check_handoff_registration(rep)),
+        ("check_load_forms", lambda: check_load_forms(rep)),
         ("check_auditor_independence", lambda: check_auditor_independence(rep)),
         ("check_hygiene", lambda: check_hygiene(rep)),
     ]

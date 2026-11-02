@@ -1,29 +1,32 @@
-# LKM 形态模块（当前为空）
+# LKM 形态（不存放同一模块的第二份源码）
 
-`modules/` 按**运行前提**分两层：
+`modules/` 以前按「运行前提」分两层，`modules/LKM/` 预留给「原厂内核 + `kernelpatch.ko`」的
+适配产物。现在这条路线改成**一份源码、一个产物、两种装载环境**，理由与判据见
+[docs/process/09-load-forms.md](../../docs/process/09-load-forms.md)。
 
-| 目录 | 含义 |
-| --- | --- |
-| `modules/KPM/` | 现有全部模块。产物是 `.kpm`，由 kpatch / APatch 在内核里加载。 |
-| `modules/LKM/` | 预留给 LKM 形态（原厂内核 + `kernelpatch.ko`）的适配产物。当前为空。 |
+## 结论
 
-## 为什么现在为空
+- `modules/KPM/<模块>/` 的源码是**唯一**一份；`.kpm` 产物默认同时面向两种装载环境。
+- 本目录**不再承接「把同一模块的源码复制一份」**。同一份代码两份拷贝会漂移、双份审计、
+  身份翻倍，而真实差异通常只是一个符号。
+- 只有将来出现**只能编成 `.ko`** 的东西（不是 `.kpm` 的另一种符号面，而是真的内核模块），
+  才在这里新建 `<模块>/`，并在 `metadata/modules/<模块>.json` 的 build 记录里写明 `load_forms`。
 
-现有 11 个模块的产物都是 `.kpm`，但**能否装载取决于内核对外导出哪些符号**，两种形态并不等价：
+## 怎么判断一个模块能不能在两种形态下装载
 
-- 依赖 `kallsyms_lookup_name_by_suffix`：`nomount`、`run_cmd_demo`、`zram_zstd`。
-  该符号只在内建 KernelPatch（APatch 这种把 KernelPatch 编进内核的形态）里导出，
-  LKM 形态的导出表中没有，装载会报 `unknown symbol`。
-- 依赖 `task_ext` / `kf_task_ext_ensure`：`dont_kill_freeze`、`lmkd_dont_kill`、`re_kernel`。
-- 无特殊符号依赖：`cgroupv2_freeze`、`qti_battery_charger`、`re_kernel_x`、`xperia_ii_battery_age`。
-- `hosts_redirect` 已去掉 `accctl.h`/`task_ext` 依赖，两种形态都可用（Pixel 6 / Android 15 / 6.1.99 实测）。
+```bash
+python tools/load_forms.py --module <模块>              # 看产物在两种形态下的缺失符号
+python tools/load_forms.py --module <模块> --strict     # 按 build 记录的 load_forms 判定
+python tools/load_forms.py --subset                     # 两形态都提供的 60 个名字
+python tools/load_forms.py --kallsyms <导出表>           # 把内核符号也核到具体目标内核
+```
 
-所以「全部先放 KPM」是当前事实，而不是最终分类；等某个模块做出 LKM 适配版本后，
-把**那一份**源码放进 `modules/LKM/<模块>/`，`modules/KPM/<模块>/` 保留 KPM 版本。
-两层同名不算冲突：`tools/identity.py` 按模块名解析目录时会先找 `modules/*/<name>`。
+## 已知形态差异（2026-11-02 实测）
 
-## 放进来之前必须确认
+| 类别 | kernel 形态 | lkm 形态 |
+| --- | --- | --- |
+| 自带符号表 | 173 个 | 62 个 |
+| 可移植子集 | 两形态共有 60 个 | 同左 |
+| 典型专属符号 | `kallsyms_lookup_name_by_suffix`、`cred_offset`、`inline_wrap_syscalln`、`fp_wrap_syscalln`、`is_trusted_manager_uid_android`、`kf_strnstr` | `kf_kmemdup`、`kf_kstrdup` |
 
-1. 该模块在 LKM 形态下**确实装载成功**（`kpatch`/`insmod` 后 `dmesg` 无 `unknown symbol`）。
-2. `Makefile` 的相对路径按新深度写：`KP_DIR = ../../../KernelPatch`，共享文件用 `../../../kpm_utils.h`。
-3. 构建与门禁能识别：CI 与 `tools/` 已支持一层（`modules/<模块>/`）与两层（`modules/<形态>/<模块>/`）。
+首个两形态通用的模块是 `mount_hidder` 1.0.3（Pixel 6 与小米 13 上都实测加载并生效）。

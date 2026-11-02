@@ -236,3 +236,30 @@ $ ls /data/local/tmp/debug_ramdisk | wc -l      # 15 → 挂载确实生效（�
 | `add:/apex<TAB>` | status 回显 `/apex`；apex 83 → **0** | 规整生效 |
 | `clear<CR>` / `clear<TAB>` | `out: rc=0 paths=0` | 白名单生效 |
 
+
+## 1.0.3：去掉 `kf_strnstr`，产物同时支持两种装载形态（2026-11-02）
+
+**触发**：小米 13（`kernelpatch-lkm`，5.10.149）加载 1.0.2 报
+`unknown symbol: kf_strnstr`，`init` 未执行。根因是上游用 `linux/string.h` 的 `strnstr`
+定位 mountstats 的 `" mounted on "`，而该 inline 展开成库函数槽位 `kf_strnstr`，这个槽位只在
+「KernelPatch 编进内核」的形态里导出；LKM 形态的兼容表没有它。详见
+`docs/records/2026-11-02-mi13-lkm-kpm-symbols.md` 与 `docs/process/09-load-forms.md`。
+
+**改动**：新增 `hm_strnstr(buf, len, needle, nlen)`，用两形态都导出的 `kf_memcmp` 做定长查找，
+替换 `hm_mountpoint()` 里的 `strnstr` 调用。业务语义不变（仍在 `" mounted on "` 之后取到空格为止）。
+
+**符号面自检**：
+
+```
+python tools/load_forms.py --artifact modules/KPM/mount_hidder/mount_hidder_1.0.3.kpm
+mount_hidder_1.0.3.kpm   und=11   形态=kernel,lkm   kernel缺=0  lkm缺=0
+```
+
+**真机（同一份字节，两种装载器）**：
+
+| 设备 / 形态 | 加载 | 功能差分 |
+| --- | --- | --- |
+| Pixel 6 / kernel / 6.1.99-android14 | `load rc=0` | `add:/apex` 后 `grep -c " /apex" /proc/mounts` 83 → **0**，`clear` 后回 83 |
+| 小米 13 / lkm / 5.10.149-android12-9 | `load rc=0`，dmesg `symbols resolved` → `relocations applied` → `init paths=3 hooks=3` | `add:/apex` 56 → **0**，`clear` 后回 56 |
+
+**产物（本轮源码）**：构建与登记见 metadata 的 1.0.3 条目。

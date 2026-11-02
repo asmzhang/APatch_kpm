@@ -74,6 +74,26 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
 - 代价是每个 syscall 一个 inline hook（有代码补丁指纹），全局 dispatcher 没有这个指纹。
   所以只在**必须阻断**时这么做，纯观察型钩子继续用 `hook_syscalln`。
 
+## 多个模块挂同一函数：只准用链式钩子，`local` 槽位要分工
+
+两条 `show_*` / `seq_file` 函数经常被不同模块同时看上（例如 `show_vfsmnt` 既被
+`mount_hidder` 用来藏挂载点，也被 `memcrc` 用来裁行）。两条硬约束：
+
+1. **不要用 `hook()` 做整函数替换。** `hook()` 要在原始函数头几条指令上重定位
+   （`KernelPatch/kernel/base/hook.c:549-589`），如果那里已经是别人 `hook_wrap2` 打下的跳转，
+   重定位失败直接返回 `-HOOK_BAD_RELO`（-4092）。实测：5.10 LKM 上先加载 `mount_hidder` 再加载
+   用 `hook()` 的 `memcrc` 0.2.3，`feature_init()` 第一个钩子就报 -4092。
+   改用 `hook_wrap()` / `hook_wrap2()` 后按 `hook_chain` 追加，多模块共存。
+2. **`fargs->local` 是整条链共享的**（`_transit4()` 里同一个 `hook_fargs4_t` 传给所有 before/after），
+   所以同一个槽位只能有一个模块用。当前分配：
+
+| 槽位 | 归属 | 用途 |
+| --- | --- | --- |
+| `data0` | `mount_hidder` | `m->count + 1`，0 表示无效 |
+| `data7` | `memcrc` | `m->count + 1`，0 表示无效 |
+| `data1`..`data6` | 空闲 | 新模块从这里取，并更新本表 |
+
+`local` 在 transit 里是栈上未初始化内存，before 回调必须**先写再读**（不能只依赖 after 里判断非零）。
 ## 声明与检查
 
 - build 记录可写 `load_forms` 字段（`["kernel"]` / `["lkm"]` / `["kernel","lkm"]`）；不写按 `["kernel"]` 看待。
@@ -89,7 +109,7 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
 | --- | --- | --- | --- |
 | A | 模块侧去掉对形态专属符号的依赖 | 改模块源码，一次改动长期有效 | **已选**，mount_hidder 1.0.3 走完 |
 | B | 扩 `kernelpatch.ko` 兼容层（补齐 `kf_strnstr` 等） | 要按目标内核源码重编 `.ko` 并重装 | 不做，成本与风险都不划算 |
-| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | memcrc 暂按此处理（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4、stealth_hook 0.3.4 已改走 A） |
+| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | 目前没有模块走这条（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4、stealth_hook 0.3.4、memcrc 0.2.4 都已改走 A） |
 
 ## 为什么不再按形态放源码
 
@@ -126,3 +146,10 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
   - `sh_current_uid()` 改用 KP 导出的 `current_uid()`；syscall 桥改
     `syscalln_addr()` + `hook_wrap()`，与 KP 的 `inline_wrap_syscalln` 同构；
   - 小米 13 与 Pixel 6 都 `load rc=0`，`ctl0 status` 与 `stealth_cli selftest` 全通过。
+- `memcrc` 0.2.4（去掉 9 个形态专属符号 + procfs 钩子改链式）：
+  - Pixel 6：`load rc=0`，`PTRACE:2000` 让 uid 2000 进程的 `State:` 变 `R (running)`，
+    `RANGE:2000:…` 让目标进程 `maps` 141 → 140、`[stack]` 1 → 0；
+  - 同一台机器上再加载 `mount_hidder` 1.0.3 + `add:/apex`，`/proc/mounts` 83 → 0，
+    且 memcrc 的规则仍然生效 —— 两个模块挂在同一批 `show_*` 上互不影响；
+  - 小米 13 待重测（0.2.3 的第二次加载把 `kpmctl` 卡在 `misc_register()`，见
+    [2026-11-02-mi13-memcrc-hang.md](../records/2026-11-02-mi13-memcrc-hang.md)）。

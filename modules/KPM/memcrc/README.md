@@ -60,6 +60,32 @@ printf 'CMD:CLEAR\n' > /tmp/r.txt && dd if=/tmp/r.txt of=/dev/yuuki_misc conv=no
 
 无结构体偏移依赖，同一产物可用于 5.10～6.1 的 ARM64 内核；`struct seq_file`、`struct file_operations` 按内核版本手写快照，6.12 及以上需另行核对。
 
+## 加载形态（0.2.3 / 0.2.4 起）
+
+同一份 `.kpm` 同时支持 kernel 形态（APatch 内核集成）与 lkm 形态（原厂内核 + `kernelpatch.ko`）。
+依据与判据见 [docs/process/09-load-forms.md](../../docs/process/09-load-forms.md)。
+
+**0.2.3：去掉形态专属符号。** 原先依赖的 `cred_offset`、`fp_wrap_syscalln`、`fp_unwrap_syscalln`、
+`inline_wrap_syscalln`、`inline_unwrap_syscalln`、`kf_strnstr`、`kf_strpbrk`、`kf_strsep`、`kf_strspn`
+在 lkm 形态的符号面里都不存在，装载器会以 `unknown symbol` + `-ENOENT` 在 `apply_relocations()` 前中止。
+改用 `portable.c`：
+
+- 字符串处理改成自己实现的 `mc_strnstr` / `mc_strspn` / `mc_strpbrk` / `mc_strsep`；
+- uid 读取改用两形态都导出的 `current_uid()`；跨任务取 uid 用 `mc_task_uid()`，
+  偏移由 `init_cred` 的结构特征推导（`usage` 非零 + 其后 `uid..fsgid` 连续 8 个 4 字节为 0），
+  并用当前进程的 cred 交叉验证，推不出来就返回 -1 按「非目标进程」处理，不猜偏移；
+- syscall 钩子改用 `syscalln_addr()` + `hook_wrap()`，不再依赖 `fp_*` / `inline_*` 包装。
+
+**0.2.4：procfs 钩子改链式。** 五个 `show_*` 钩子原先用 `hook()` 做整函数替换，
+在已存在链式钩子的函数上会返回 `-HOOK_BAD_RELO`（5.10 LKM 上 mount_hidder 先挂了 `show_vfsmnt`）。
+改成 `hook_wrap(func, 2, before, after)` 后按 KP 的 `hook_chain` 追加，多个模块可共存。
+旧 `count` 存在 `fargs->local.data7`（见 09 文档的槽位表）。
+
+自检：
+
+```bash
+python3 tools/load_forms.py --module memcrc --strict
+```
 ## 边界
 
 - 只改写 procfs 文本输出与 open 路径，不改任何系统调用的返回值，也不隐藏自身存在（`/dev/yuuki_misc` 可被枚举）。
@@ -68,6 +94,19 @@ printf 'CMD:CLEAR\n' > /tmp/r.txt && dd if=/tmp/r.txt of=/dev/yuuki_misc conv=no
 
 ## 更新记录
 
+### 0.2.4
+
+procfs 的五个 `show_*` 钩子从整函数替换（`hook()`）改成链式 before/after（`hook_wrap()`）：
+`hook()` 无法安装在已被别人打过补丁的函数上（5.10 LKM 上 mount_hidder 先用 `hook_wrap2` 钩了
+`show_vfsmnt`，`hook()` 直接返回 `-HOOK_BAD_RELO`）。改成链式后两者是追加关系。
+旧 `count` 存进 `hook_fargs` 的 `local.data7`，槽位约定见 09 文档。
+
+### 0.2.3
+
+去掉 9 个只有 kernel 形态才导出的符号（`cred_offset`、`fp_*syscalln`、`inline_*syscalln`、
+`kf_strnstr`、`kf_strpbrk`、`kf_strsep`、`kf_strspn`），改用 `portable.c` 自实现字符串函数、
+`current_uid()` 与特征推导的 cred uid 偏移、`syscalln_addr()` + `hook_wrap()`。
+`tools/load_forms.py` 复算：`und=27`，两形态缺失均为 0。
 ### 0.2.1
 
 `komm.c` 空表覆盖分支的 `snprintf` 返回值按实际写入长度钳制（AUD-c-10）：

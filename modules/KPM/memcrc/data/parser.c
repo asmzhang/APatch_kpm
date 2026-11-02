@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "shared_data.h"
 #include "kstring.h"
+#include "portable.h"
 
 bool parser_is_command(const char *str) {
     if (!str) {
@@ -31,7 +32,7 @@ int parser_parse_command_args(const char *cmd_str, char *cmd, char *arg1, char *
 
     remaining = buffer;
 
-    token = strsep(&remaining, ":");
+    token = mc_strsep(&remaining, ":");
     if (token) {
         strncpy(cmd, token, 63);
         cmd[63] = '\0';
@@ -39,7 +40,7 @@ int parser_parse_command_args(const char *cmd_str, char *cmd, char *arg1, char *
         return PARSER_ERR_INVALID;
     }
 
-    token = strsep(&remaining, ":");
+    token = mc_strsep(&remaining, ":");
     if (token) {
         strncpy(arg1, token, 63);
         arg1[63] = '\0';

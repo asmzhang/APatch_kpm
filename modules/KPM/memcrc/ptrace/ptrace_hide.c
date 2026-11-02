@@ -12,6 +12,7 @@
 #include <kputils.h>
 #include "ptrace_hide.h"
 #include "shared_data.h"
+#include "portable.h"
 
 static hook_err_t hook_err = HOOK_NOT_HOOK;
 
@@ -19,9 +20,9 @@ static int (*backup_proc_pid_status)(struct seq_file *m, struct pid_namespace *n
 static int (*backup_do_task_stat)(struct seq_file *m, struct pid_namespace *ns, struct pid *pid, struct task_struct *task, int whole);
 
 static uid_t get_task_uid(struct task_struct* task) {
-    struct cred* cred = *(struct cred**)((uintptr_t)task + task_struct_offset.cred_offset);
-    uid_t uid = *(uid_t*)((uintptr_t)cred + cred_offset.uid_offset);
-    return uid;
+    /* ★v0.2.3：cred 内 uid 的偏移由 portable.c 从 init_cred 推导，
+     * 不再引用只有内核形态导出的 cred_offset。 */
+    return mc_task_uid(task);
 }
 
 static bool is_ptrace_target_uid(uid_t uid) {
@@ -309,7 +310,7 @@ static int rep_proc_pid_status(struct seq_file *m, struct pid_namespace *ns, str
         char *buf_start = m->buf + old_count;
         size_t len = m->count - old_count;
 
-        char *state_pos = strnstr(buf_start, "State:", len);
+        char *state_pos = mc_strnstr(buf_start, "State:", len);
         if (state_pos) {
             char *state_value = state_pos + 6;
             while (*state_value == ' ' || *state_value == '\t') {
@@ -346,7 +347,7 @@ static int rep_proc_pid_status(struct seq_file *m, struct pid_namespace *ns, str
         buf_start = m->buf + old_count;
         len = m->count - old_count;
 
-        char *tracer_pos = strnstr(buf_start, "TracerPid:", len);
+        char *tracer_pos = mc_strnstr(buf_start, "TracerPid:", len);
         if (tracer_pos) {
             char *tracer_value = tracer_pos + 10;
             while (*tracer_value == ' ' || *tracer_value == '\t') {
@@ -456,7 +457,7 @@ static inline bool hook_stat() {
             return false;
         }
 
-        hook_err = fp_hook_syscalln(__NR_ptrace, 4, syscall_before_ptrace, syscall_after_ptrace, 0);
+        hook_err = mc_hook_syscall(__NR_ptrace, 4, syscall_before_ptrace, syscall_after_ptrace, 0);
         if (hook_err != HOOK_NO_ERR) {
             pr_err("[yuuki] hook ptrace error: %d\n", hook_err);
             unhook((void *)ori_proc_pid_status);
@@ -498,7 +499,7 @@ static inline bool uninstall_hook() {
 
     unhook((void *)ori_proc_pid_status);
     unhook((void *)ori_do_task_stat);
-    fp_unhook_syscalln(__NR_ptrace, syscall_before_ptrace, syscall_after_ptrace);
+    mc_unhook_syscall(__NR_ptrace, syscall_before_ptrace, syscall_after_ptrace);
 
     hook_err = HOOK_NOT_HOOK;
     pr_info("[yuuki] ptrace_hide hook uninstalled successfully\n");

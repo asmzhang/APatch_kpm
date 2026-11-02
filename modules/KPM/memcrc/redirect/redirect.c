@@ -10,6 +10,7 @@
 #include <linux/cred.h>
 #include "redirect.h"
 #include "shared_data.h"
+#include "portable.h"
 
 static hook_err_t hook_err = HOOK_NOT_HOOK;
 static do_filp_open_func_t backup_do_filp_open;
@@ -23,9 +24,8 @@ static do_filp_open_func_t backup_do_filp_open;
  */
 
 static inline uid_t get_current_uid(void) {
-    struct cred* cred = *(struct cred**)((uintptr_t)current + task_struct_offset.cred_offset);
-    uid_t current_uid = *(uid_t*)((uintptr_t)cred + cred_offset.uid_offset);
-    return current_uid;
+    /* ★v0.2.3：改用 current_uid()，去掉对 cred_offset 数据符号的依赖 */
+    return mc_current_uid();
 }
 
 // 使用cat命令读取文件，安卓会有content provider 的代理机制 或 Android 系统的

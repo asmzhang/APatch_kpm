@@ -221,3 +221,44 @@ SELinux 的 `setattr` 检查挡成 `EACCES`（与模块无关，读和 `>>` 都�
 证明守卫未破坏正常路径，无法构造越界样本；按「防御性守卫」记录。
 
 版本 0.2.1 → 0.2.2。
+
+## 0.2.3 / 0.2.4：去掉形态专属符号，并把 procfs 钩子改链式（2026-11-02）
+
+触发：小米 13 是 APatch 的 `kernelpatch-lkm` 形态，`memcrc_0.2.2.kpm` 报 `unknown symbol`
+（9 个）。逐条按 [09-load-forms.md](../../docs/process/09-load-forms.md) 的路线 A 处理。
+
+**0.2.3（符号面）** 新增 `portable.c` / `portable.h`：
+
+| 原依赖 | 替代 | 说明 |
+| --- | --- | --- |
+| `kf_strnstr` / `kf_strspn` / `kf_strpbrk` / `kf_strsep` | `mc_strnstr` 等 | 纯逐字节循环，只用两形态都有的 `kf_memcpy` / `kf_strlen` |
+| `cred_offset`（当前进程） | `current_uid()` | KP 两形态都导出 |
+| `cred_offset`（别的任务） | `mc_task_uid()` | 从 `init_cred` 结构特征推导偏移，交叉验证后使用，推不出来返回 -1 |
+| `fp_*syscalln` / `inline_*syscalln` | `mc_hook_syscall()` | `syscalln_addr(nr, 0)` + `hook_wrap(addr, has_syscall_wrapper ? 1 : narg, ...)` |
+
+构建后 `tools/load_forms.py`：`und=27 形态=kernel,lkm kernel缺=0 lkm缺=0`（0.2.2 是 lkm 缺 9）。
+
+**0.2.4（钩子机制）** 小米 13 上 0.2.3 的 init 走到 `feature_init()` 时报
+`[yuuki] hook failed at 0 with error -4092`（`-HOOK_BAD_RELO`）。原因是 `feature.c` 的五个
+`show_*` 钩子用 `hook()` 做整函数替换，而当时 `mount_hidder` 已经用 `hook_wrap2` 把
+`show_vfsmnt` 打成了链式桩，`hook()` 在那条跳转上无法重定位。
+
+改成链式钩子：`mc_before_count()` 把 `m->count + 1` 存进 `fargs->local.data7`，五个
+`mc_after_*()` 在原始函数返回后做同样的裁剪；`hook_all()` / `uninstall_hook()` 改走
+`hook_wrap()` / `hook_unwrap()`，失败时逐个回退。
+
+**真机（Pixel 6 / 6.1.99-android14 / kernel 形态 / uid 10273）**
+
+| 用例 | 观察 |
+| --- | --- |
+| `load memcrc_0.2.4.kpm` | `load rc=0`，`komm` / `feature hook` / `redirect hook` / `getcwd syscall` / `ptrace_hide` 五条 installed |
+| `PTRACE:2000` 后读 uid 2000 的 `sleep` 进程 | `State:` 由 `S (sleeping)` 变 `R (running)`（跨任务 uid 推导成立） |
+| `RANGE:2000:<start>:<end>` | 目标进程 `maps` 行数 141 → 140，`[stack]` 1 → 0 |
+| 再加载 `mount_hidder` 1.0.3 + `add:/apex` | `/proc/mounts` 的 ` /apex` 83 → 0（146 → 63），同时 memcrc 的 `RANGE` 仍生效 —— 两个模块挂在同一批 `show_*` 上互不影响 |
+
+**未覆盖**
+
+- 小米 13（lkm 形态）上 0.2.4 的加载与功能：设备在 0.2.3 的第二次加载里把 `kpmctl` 卡在
+  `misc_register()`（D 状态），需重启后重测，事故记录见
+  [2026-11-02-mi13-memcrc-hang.md](../../docs/records/2026-11-02-mi13-memcrc-hang.md)。
+- `mc_task_uid()` 的偏移推导在 6.1 与 5.10 上各验一次即止，没有覆盖 `init_cred` 布局差异更大的内核。

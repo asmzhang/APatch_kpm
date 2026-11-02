@@ -7,14 +7,23 @@
 #include <linux/cred.h>
 #include "feature.h"
 #include "shared_data.h"
+#include "portable.h"
 
-static vfs_show_func_t backup_show_vfsmnt;
-static vfs_show_func_t backup_show_mountinfo;
-static vfs_show_func_t backup_show_vfsstat;
-static map_show_func_t backup_show_map_vma;
-static smap_show_func_t backup_show_smap;
+/*
+ * ★v0.2.4：五个钩子从「整函数替换（hook）」改成「链式 before/after（hook_wrap）」。
+ * 原因：hook() 要在原始函数头部重定位，而那里已经被别人打上了跳转（例：5.10 LKM 上
+ * mount_hidder 先用 hook_wrap2 钩住 show_vfsmnt），于是直接返回 -HOOK_BAD_RELO；
+ * 链式钩子按 KP 的 hook_chain 追加，多个模块可以挂在同一函数上。
+ *
+ * local 槽位约定（hook_fargs 的 local 是整条链共享的）：
+ *   data0 -> mount_hidder（hide_mount.c）
+ *   data7 -> memcrc（本文件），存 count + 1，0 表示无效
+ * 新模块请从 data1..data6 里取，并更新 docs/process/09-load-forms.md。
+ */
+#define MC_LOCAL_COUNT_SLOT data7
 
-static hook_err_t hook_err = HOOK_NOT_HOOK;
+/* 这些函数都是「调原函数」之后再修改缓冲区，所以天然适合 after 回调。 */
+static int hook_installed;
 
 static inline bool is_proc_effective(void) {
     struct mm_struct *mm = NULL;
@@ -45,7 +54,7 @@ static void replace_sensitive(char *str, size_t len, const char *keyword, size_t
         return;
     }
 
-    while (remaining > 0 && (pos = strnstr(currents, keyword, remaining)) != NULL) {
+    while (remaining > 0 && (pos = mc_strnstr(currents, keyword, remaining)) != NULL) {
         size_t offset = pos - currents;
 
         for (size_t i = 0; i < keyword_len && (i < remaining - offset); i++) {
@@ -77,7 +86,7 @@ static inline bool contains_keyword(char *str, size_t len) {
         unsigned int global_index;
         if (shared_data_get_type_entry_info(SHARED_DATA_TYPE_SINGLE_PATH, i,
                                             &global_index, &entry) == SHARED_DATA_SUCCESS) {
-            if (strnstr(str, entry.data.single.path, len)) {
+            if (mc_strnstr(str, entry.data.single.path, len)) {
                 return true;
             }
         }
@@ -121,46 +130,58 @@ static inline bool filter_output(struct seq_file *m, size_t old_count, bool repl
     return false;
 }
 
-static int rep_show_vfsmnt(struct seq_file *m, struct vfsmount *mnt) {
-    size_t old_count;
-    int ret;
+/* local 在 KP 的 transit 里是栈上未初始化内存，必须先写再读（同 mount_hidder）。 */
+static void mc_before_count(hook_fargs2_t *args, void *udata) {
+    struct seq_file *m = (struct seq_file *)args->arg0;
 
-    old_count = m->count;
-    ret = backup_show_vfsmnt(m, mnt);
-
-    if (ret == 0 && is_proc_effective()) {
-        filter_output(m, old_count, false);
+    (void)udata;
+    args->local.MC_LOCAL_COUNT_SLOT = 0;
+    if (m) {
+        args->local.MC_LOCAL_COUNT_SLOT = (uint64_t)m->count + 1;
     }
-
-    return ret;
 }
 
-static int rep_show_mountinfo(struct seq_file *m, struct vfsmount *mnt) {
-    size_t old_count;
-    int ret;
-
-    old_count = m->count;
-    ret = backup_show_mountinfo(m, mnt);
-
-    if (ret == 0 && is_proc_effective()) {
-        filter_output(m, old_count, true);
-    }
-
-    return ret;
+static inline size_t mc_saved_count(hook_fargs2_t *args) {
+    return (size_t)(args->local.MC_LOCAL_COUNT_SLOT - 1);
 }
 
-static int rep_show_vfsstat(struct seq_file *m, struct vfsmount *mnt) {
-    size_t old_count;
-    int ret;
+static void mc_after_vfsmnt(hook_fargs2_t *args, void *udata) {
+    struct seq_file *m = (struct seq_file *)args->arg0;
 
-    old_count = m->count;
-    ret = backup_show_vfsstat(m, mnt);
-
-    if (ret == 0 && is_proc_effective()) {
-        filter_output(m, old_count, false);
+    (void)udata;
+    if (!m || !args->local.MC_LOCAL_COUNT_SLOT) {
+        return;
     }
+    if ((int)args->ret != 0 || !is_proc_effective()) {
+        return;
+    }
+    filter_output(m, mc_saved_count(args), false);
+}
 
-    return ret;
+static void mc_after_mountinfo(hook_fargs2_t *args, void *udata) {
+    struct seq_file *m = (struct seq_file *)args->arg0;
+
+    (void)udata;
+    if (!m || !args->local.MC_LOCAL_COUNT_SLOT) {
+        return;
+    }
+    if ((int)args->ret != 0 || !is_proc_effective()) {
+        return;
+    }
+    filter_output(m, mc_saved_count(args), true);
+}
+
+static void mc_after_vfsstat(hook_fargs2_t *args, void *udata) {
+    struct seq_file *m = (struct seq_file *)args->arg0;
+
+    (void)udata;
+    if (!m || !args->local.MC_LOCAL_COUNT_SLOT) {
+        return;
+    }
+    if ((int)args->ret != 0 || !is_proc_effective()) {
+        return;
+    }
+    filter_output(m, mc_saved_count(args), false);
 }
 
 /*
@@ -234,8 +255,8 @@ static inline bool parse_maps_range(const char *s, size_t len, unsigned long *st
 }
 
 static inline uid_t current_uid_value(void) {
-    struct cred *cred = *(struct cred **)((uintptr_t)current + task_struct_offset.cred_offset);
-    return *(uid_t *)((uintptr_t)cred + cred_offset.uid_offset);
+    /* ★v0.2.3：见 control_current_uid，改用 current_uid() 去掉 cred_offset 依赖 */
+    return mc_current_uid();
 }
 
 static void filter_maps_range(struct seq_file *m, size_t old_count) {
@@ -254,67 +275,87 @@ static void filter_maps_range(struct seq_file *m, size_t old_count) {
     }
 }
 
-static void rep_show_map_vma(struct seq_file *m, struct vm_area_struct *vma) {
-    size_t old_count;
+static void mc_after_map_vma(hook_fargs2_t *args, void *udata) {
+    struct seq_file *m = (struct seq_file *)args->arg0;
 
-    old_count = m->count;
-    backup_show_map_vma(m, vma);
-
-    if (is_proc_effective()) {
-        filter_output(m, old_count, false);
-        filter_maps_range(m, old_count);
+    (void)udata;
+    if (!m || !args->local.MC_LOCAL_COUNT_SLOT || !is_proc_effective()) {
+        return;
     }
+    filter_output(m, mc_saved_count(args), false);
+    filter_maps_range(m, mc_saved_count(args));
 }
 
-static int rep_show_smap(struct seq_file *m, void *v) {
-    size_t old_count;
-    int ret;
+static void mc_after_smap(hook_fargs2_t *args, void *udata) {
+    struct seq_file *m = (struct seq_file *)args->arg0;
 
-    old_count = m->count;
-    ret = backup_show_smap(m, v);
-
-    if (ret == 0 && is_proc_effective()) {
-        filter_output(m, old_count, false);
+    (void)udata;
+    if (!m || !args->local.MC_LOCAL_COUNT_SLOT) {
+        return;
     }
+    if ((int)args->ret != 0 || !is_proc_effective()) {
+        return;
+    }
+    filter_output(m, mc_saved_count(args), false);
+}
 
-    return ret;
+struct mc_hook_desc {
+    void *func;
+    void *after;
+    const char *name;
+};
+
+static void mc_fill_hooks(struct mc_hook_desc *out) {
+    out[0].func = (void *)ori_show_vfsmnt;
+    out[0].after = (void *)mc_after_vfsmnt;
+    out[0].name = "show_vfsmnt";
+    out[1].func = (void *)ori_show_mountinfo;
+    out[1].after = (void *)mc_after_mountinfo;
+    out[1].name = "show_mountinfo";
+    out[2].func = (void *)ori_show_vfsstat;
+    out[2].after = (void *)mc_after_vfsstat;
+    out[2].name = "show_vfsstat";
+    out[3].func = (void *)ori_show_map_vma;
+    out[3].after = (void *)mc_after_map_vma;
+    out[3].name = "show_map_vma";
+    out[4].func = (void *)ori_show_smap;
+    out[4].after = (void *)mc_after_smap;
+    out[4].name = "show_smap";
 }
 
 static bool hook_all(void) {
-    struct hook_funcs hooks[] = {
-            { ori_show_vfsmnt, rep_show_vfsmnt, (void **)&backup_show_vfsmnt },
-            { ori_show_mountinfo, rep_show_mountinfo, (void **)&backup_show_mountinfo },
-            { ori_show_vfsstat, rep_show_vfsstat, (void **)&backup_show_vfsstat },
-            { ori_show_map_vma, rep_show_map_vma, (void **)&backup_show_map_vma },
-            { ori_show_smap, rep_show_smap, (void **)&backup_show_smap },
-    };
+    struct mc_hook_desc hooks[5];
+    hook_err_t err = HOOK_NO_ERR;
+    size_t i;
 
-    for (size_t i = 0; i < ARRAY_SIZE(hooks); i++) {
-        if (!hooks[i].original) {
-            pr_err("[yuuki] missing symbol for hook %zu\n", i);
+    mc_fill_hooks(hooks);
+
+    for (i = 0; i < ARRAY_SIZE(hooks); i++) {
+        if (!hooks[i].func) {
+            pr_err("[yuuki] missing symbol for hook %s\n", hooks[i].name);
             return false;
         }
     }
 
-    for (size_t i = 0; i < ARRAY_SIZE(hooks); i++) {
-        hook_err = hook(hooks[i].original, hooks[i].replacement, hooks[i].backup);
-        if (hook_err != HOOK_NO_ERR) {
-            pr_err("[yuuki] hook failed at %zu with error %d\n", i, hook_err);
+    for (i = 0; i < ARRAY_SIZE(hooks); i++) {
+        err = hook_wrap(hooks[i].func, 2, (void *)mc_before_count, hooks[i].after, 0);
+        if (err != HOOK_NO_ERR) {
+            pr_err("[yuuki] hook %s failed: %d\n", hooks[i].name, err);
 
             for (size_t j = 0; j < i; j++) {
-                unhook(hooks[j].original);
+                hook_unwrap(hooks[j].func, (void *)mc_before_count, hooks[j].after);
             }
 
-            hook_err = HOOK_NOT_HOOK;
             return false;
         }
     }
 
+    hook_installed = 1;
     return true;
 }
 
 static inline bool install_hook(void) {
-    if (hook_err == HOOK_NO_ERR) {
+    if (hook_installed) {
         pr_info("[yuuki] hook already installed, skipping...\n");
         return true;
     }
@@ -329,18 +370,18 @@ static inline bool install_hook(void) {
 }
 
 static inline bool uninstall_hook(void) {
-    if (hook_err != HOOK_NO_ERR) {
+    if (!hook_installed) {
         pr_info("[yuuki] not hooked, skipping uninstall...\n");
         return true;
     }
 
-    if (ori_show_vfsmnt) unhook(ori_show_vfsmnt);
-    if (ori_show_mountinfo) unhook(ori_show_mountinfo);
-    if (ori_show_vfsstat) unhook(ori_show_vfsstat);
-    if (ori_show_map_vma) unhook(ori_show_map_vma);
-    if (ori_show_smap) unhook(ori_show_smap);
+    if (ori_show_vfsmnt) hook_unwrap((void *)ori_show_vfsmnt, (void *)mc_before_count, (void *)mc_after_vfsmnt);
+    if (ori_show_mountinfo) hook_unwrap((void *)ori_show_mountinfo, (void *)mc_before_count, (void *)mc_after_mountinfo);
+    if (ori_show_vfsstat) hook_unwrap((void *)ori_show_vfsstat, (void *)mc_before_count, (void *)mc_after_vfsstat);
+    if (ori_show_map_vma) hook_unwrap((void *)ori_show_map_vma, (void *)mc_before_count, (void *)mc_after_map_vma);
+    if (ori_show_smap) hook_unwrap((void *)ori_show_smap, (void *)mc_before_count, (void *)mc_after_smap);
 
-    hook_err = HOOK_NOT_HOOK;
+    hook_installed = 0;
     pr_info("[yuuki] feature hooks uninstalled successfully\n");
     return true;
 }

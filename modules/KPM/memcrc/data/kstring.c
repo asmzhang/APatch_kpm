@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include "kstring.h"
+#include "portable.h"
 
 /**
  * kstring_strtok_r - 线程安全的字符串分割函数
@@ -13,14 +14,14 @@ char *kstring_strtok_r(char *str, const char *delim, char **saveptr)
         str = *saveptr;
     }
 
-    str += strspn(str, delim);
+    str += mc_strspn(str, delim);
     if (*str == '\0') {
         *saveptr = str;
         return NULL;
     }
 
     token = str;
-    str = strpbrk(token, delim);
+    str = mc_strpbrk(token, delim);
     if (str == NULL) {
         *saveptr = strchr(token, '\0');
     } else {

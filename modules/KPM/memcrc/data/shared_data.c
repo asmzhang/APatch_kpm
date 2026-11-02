@@ -4,6 +4,7 @@
 #include <baselib.h>
 #include "shared_data.h"
 #include "kstring.h"
+#include "portable.h"
 
 struct internal_entry {
     struct shared_data_entry entry;
@@ -1013,19 +1014,19 @@ int shared_data_parse_addr_range(const char *str, uid_t *uid, unsigned long *sta
 
     remaining = buffer;
 
-    token = strsep(&remaining, ":");
+    token = mc_strsep(&remaining, ":");
     if (!token || kstring_strtoul(token, 10, &value) != 0) {
         return SHARED_DATA_ERR_PARSE;
     }
     *uid = (uid_t)value;
 
-    token = strsep(&remaining, ":");
+    token = mc_strsep(&remaining, ":");
     if (!token || parse_hex_ul(token, &value) != 0) {
         return SHARED_DATA_ERR_PARSE;
     }
     *start = value;
 
-    token = strsep(&remaining, ":");
+    token = mc_strsep(&remaining, ":");
     if (!token || parse_hex_ul(token, &value) != 0) {
         return SHARED_DATA_ERR_PARSE;
     }

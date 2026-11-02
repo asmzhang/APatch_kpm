@@ -1,4 +1,4 @@
-MYKPM_VERSION := 0.2.2
+MYKPM_VERSION := 0.2.4
 
 ifndef KP_DIR
     KP_DIR = ../../../KernelPatch
@@ -36,6 +36,7 @@ INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 INCLUDE_FLAGS += -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace
 
 C_FILES := mod_main.c
+C_FILES += portable.c
 C_FILES += control/control.c
 C_FILES += komm/komm.c
 C_FILES += redirect/redirect.c

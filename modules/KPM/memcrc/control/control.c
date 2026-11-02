@@ -11,6 +11,7 @@
 #include "control.h"
 #include "kstring.h"
 #include "shared_data.h"
+#include "portable.h"
 
 hook_err_t err = HOOK_NO_ERR;
 
@@ -29,8 +30,9 @@ static uid_t cm_allow_uids[CM_MAX_ALLOW] = { 0, 2000 };
 static int cm_allow_count = 2;
 
 uid_t control_current_uid(void) {
-    struct cred *cred = *(struct cred **)((uintptr_t)current + task_struct_offset.cred_offset);
-    return *(uid_t *)((uintptr_t)cred + cred_offset.uid_offset);
+    /* ★v0.2.3：cred_offset 是 KP 的内核形态专属数据符号，LKM 兼容表里没有，
+     * 这里只取当前进程 uid，用两形态都导出的 current_uid() 即可。 */
+    return mc_current_uid();
 }
 
 bool control_is_privileged(uid_t uid) {
@@ -174,7 +176,7 @@ void before_getcwd(hook_fargs1_t *args, void *udata) {
 
 long syscall_init() {
 
-    err = inline_hook_syscalln(__NR_getcwd, 2, before_getcwd, 0, 0);
+    err = mc_hook_syscall(__NR_getcwd, 2, before_getcwd, 0, 0);
 
     if (err) {
         pr_err("[yuuki] Failed to hook getcwd syscall, error: %d\n", err);
@@ -186,7 +188,7 @@ long syscall_init() {
 }
 
 long syscall_exit() {
-    inline_unhook_syscalln(__NR_getcwd, before_getcwd, 0);
+    mc_unhook_syscall(__NR_getcwd, before_getcwd, 0);
     pr_info("[yuuki] getcwd syscall uninstalled successfully\n");
     return 0;
 }

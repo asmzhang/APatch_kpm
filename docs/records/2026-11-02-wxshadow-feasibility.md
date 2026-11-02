@@ -117,7 +117,7 @@
 
 | 风险 | 说明 | 缓解 |
 | --- | --- | --- |
-| `struct break_hook` ABI | wxshadow 自己定义了 `struct wx_break_hook { struct list_head node; int (*fn)(...); u16 imm; u16 mask; }` 并传给内核的 `register_user_break_hook`；布局若与目标内核不一致会直接崩 | 优先走「直接钩 `brk_handler`」；`register` 路径加运行时自校验（注册后用 `BRK #imm` 触发一次，确认回调被调用）；两设备都要实测 |
+| `struct break_hook` ABI（**已实测，见 §10**） | wxshadow 自己定义了 `struct wx_break_hook { struct list_head node; int (*fn)(...); u16 imm; u16 mask; }` 并传给内核的 `register_user_break_hook`；布局若与目标内核不一致会直接崩 | 优先走「直接钩 `brk_handler`」；`register` 路径加运行时自校验（注册后用 `BRK #imm` 触发一次，确认回调被调用）；两设备都要实测 |
 | PTE 操作边界 | huge page、COW、MTE/TBI、`--x` 页被 `mprotect`/`mremap` 打断 | 上游已有 `__split_huge_pmd` 与 TBI 处理；验收时加 `mprotect`/`mremap` 干扰用例 |
 | 与检测侧的对抗 | 我们的 n171–n174 都不覆盖它；反过来它会暴露新特征（`--x` 且不可读的匿名可执行页、`maps` 与实际 PTE 不一致） | 补一条检测（见 §6 P3），既是能力也是验证手段 |
 | 性能 | 每次断点命中两次异常 + TLB flush | 上游有 `SET_TLB_MODE` 三档；验收时测热路径 |
@@ -181,3 +181,43 @@
 - 要「隐藏代码字节」→ 用 wxshadow，该地址不要挂 HWBP。
 - 要「看寄存器 / 跳一条 / 伪造返回值」且不需要改字节 → 用 HWBP，该地址不要设 shadow。
 - 两者都要时，选**相邻但不重合**的地址分工（例如函数入口用 wxshadow 改字节，函数内部某条指令用 HWBP 观察）。
+
+## 10. ABI 探针实测（2026-11-02，两台设备）
+
+§5 第一行那条风险是这次移植里唯一「读源码也定不了」的事：wxshadow 自己抄了一份
+`struct wx_break_hook` 传给内核的 `register_user_break_hook`，布局若差一个字段就会踩到别人的函数指针。
+所以先做了一个只做一件事的探针：`Developer/tools/wxprobe/`（源码在库内，产物不入库）。
+
+探针行为：解析 `register_user_break_hook` / `unregister_user_break_hook`，按候选布局注册
+`imm=0x5758`、`mask=0` 的用户态 BRK 钩子；回调里累加计数、记录 `regs->pc` / `esr`，并 `regs->pc += 4` 越过 BRK；
+客户端 `brk_client` 在自己进程里执行 `BRK #0x5758`（对照 `BRK #0x1234`），ctl0 回读计数。
+
+| 设备 | 形态 | 加载 | `BRK #0x5758` | `BRK #0x1234`（对照） | 回读 |
+| --- | --- | --- | --- | --- | --- |
+| Pixel 6（6.1.99-android14） | kernel | `load rc=0` | 客户端打印 `after brk (returned)`、`rc=0` | `SIGTRAP (no hook)`、`rc=3` | `reg=1 hits=1 pc=0x221d04 esr=0xf2005758` |
+| 小米 13（5.10.149-android12-9） | lkm | `load rc=0` | 同上 | 同上 | `reg=1 hits=1 pc=0x221d04 esr=0xf2005758` |
+
+`esr=0xf2005758` 的 EC 位是 `0x3C`（AArch64 BRK），ISS 正是 `0x5758` —— 说明这条异常确实走到了我们注册的回调。
+
+**结论（两形态都成立）**：
+
+1. `struct break_hook` 的布局就是 `node`(0x00) / `fn`(0x10) / `imm`(0x18) / `mask`(0x1a)，v5.10 与 v6.1 一致；
+   `fn` 偏移正确由「回调被调到且 `regs` 可读可写」直接证明，不是靠读头文件推断。
+2. `register_user_break_hook` / `unregister_user_break_hook` 在两种装载形态下都能解析并生效，LKM 形态不需要兼容层补符号。
+3. 回调里 `regs->pc += 4` 生效（客户端继续往下跑而不是反复重入），wxshadow 的「跑一条被替换的指令再切回」有可用的落点。
+
+**踩到的坑（写下来避免移植时重犯）**：内核的匹配式是
+
+```c
+unsigned long comment = esr & ESR_ELx_BRK64_ISS_COMMENT_MASK;
+if ((comment & ~hook->mask) == hook->imm)
+    fn = hook->fn;
+```
+
+也就是 `mask` 里**置 1 的位表示不比较**（v5.10 `arch/arm64/kernel/debug-monitors.c:318`、v6.1 `:317`）。
+第一版探针把 `mask` 写成 `0xffff`（想表达「全匹配」），结果 `~mask` 变成 `0xffff0000`，
+等于只比较高位，钩子永远不命中 —— 表现是「模块加载成功、客户端照吃 SIGTRAP、计数一直是 0」，不报错也不崩。
+要精确匹配必须 `mask = 0`。上游 `kpms/wxshadow/wxshadow.c:163` 用的正是 `.mask = 0`，与实测一致。
+
+顺带记录：`call_break_hook` 是**遍历整条链表、取最后一个命中者**（没有 break），所以多个模块注册同一 `imm` 时行为取决于链表顺序；
+移植后 wxshadow 自用 `0x007`（`kpms/wxshadow/wxshadow.h:36`），我们的探针用 `0x5758`，两者不冲突。

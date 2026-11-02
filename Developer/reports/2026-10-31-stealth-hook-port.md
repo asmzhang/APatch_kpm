@@ -285,3 +285,42 @@ query: hits=2 enter=2 total=1 x0=0x11 x1=0x22 lr=0x224b80 ret_x0=0x44
 unhook: rc=1 / call after unhook: 68
 ```
 
+
+## 0.3.4：去掉 LKM 形态缺失的三个符号（2026-11-02）
+
+### 触发
+
+小米 13（`kernelpatch-lkm`，5.10.149-android12-9）加载 0.3.3 报 `unknown symbol`：
+先 `inline_wrap_syscalln`，改掉后又依次暴露 `inline_unwrap_syscalln`、`cred_offset`。
+三者都只有内核集成形态导出，LKM 兼容表里没有；装载器不看 weak binding，
+解析失败即 `-ENOENT`，在 `apply_relocations()` 之前中止，`init` 从不执行。
+
+### 改动
+
+1. `sh_current_uid()`（`stealth_hook.c:43-47`）原本自己算
+   `*(struct cred **)(current + task_struct_offset.cred_offset)` 再取
+   `cred + cred_offset.uid_offset`；改为 `return current_uid();`。
+   `current_uid` 在 kernel 形态由 `kernel/patch/common/utils.c:178` 导出、
+   LKM 形态在 `symbols.c` 兼容表里，两形态都可解析。
+2. syscall 桥：`inline_hook_syscalln(SH_SYSCALL_NR, 6, ...)` 改为
+   `sh_syscall_addr = syscalln_addr(SH_SYSCALL_NR, 0); hook_wrap(addr, has_syscall_wrapper ? 1 : 6, ...)`；
+   exit 侧 `inline_unhook_syscalln(...)` 改为 `hook_unwrap(addr, ...)` 并清空地址。
+   与 KP `syscall.c:313-330` 的 `inline_wrap_syscalln` / `inline_unwrap_syscalln` 同构。
+3. 版本号：status 原先读手写宏 `SH_VERSION_CODE`（0x00000303），升 0.3.3 时漏改；
+   改为 `sh_ver_triple()` 从 `MYKPM_VERSION` 解析，删掉该宏。
+
+### 符号面
+
+`tools/load_forms.py --artifact stealth_hook_0.3.4.kpm` → `und=19 形态=kernel,lkm kernel缺=0 lkm缺=0`
+（0.3.3 为 `und=22`、lkm 缺 3）。
+
+### 真机（同一份产物）
+
+| 设备 | 形态 | 观测 |
+| --- | --- | --- |
+| Pixel 6（uid 10273） | kernel | `load rc=0`；`ctl0 status` → `stealth_hook v0.3.4 nr=427 allowlist: 0 2000`；`selftest` 全通过 |
+| 小米 13（uid 10270） | lkm | `load rc=0`；同样 status 与 `selftest` 全通过（`rehook diff flags: rc=-1 errno=17`、`skip count=1: rc=1`、`unhook: rc=1`、`call after unhook: 68`） |
+
+### 未覆盖
+
+- PTE 能力探测在 6.1 上返回 -95（已知，见未覆盖项表）；5.10 上仍依赖未移植的 DBI。

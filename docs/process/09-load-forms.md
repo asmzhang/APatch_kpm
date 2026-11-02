@@ -89,7 +89,7 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
 | --- | --- | --- | --- |
 | A | 模块侧去掉对形态专属符号的依赖 | 改模块源码，一次改动长期有效 | **已选**，mount_hidder 1.0.3 走完 |
 | B | 扩 `kernelpatch.ko` 兼容层（补齐 `kf_strnstr` 等） | 要按目标内核源码重编 `.ko` 并重装 | 不做，成本与风险都不划算 |
-| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | stealth_hook / memcrc 暂按此处理（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4 已改走 A） |
+| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | memcrc 暂按此处理（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4、stealth_hook 0.3.4 已改走 A） |
 
 ## 为什么不再按形态放源码
 
@@ -122,3 +122,7 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
     被 `_copy_to_user` 截成 8 字节）；Pixel 6：`load rc=0`；
   - 代价：该符号在内核 kallsyms 表里也不存在，两形态 `sig=0`，管理器识别退回包名匹配。
     这类「只能动态解析、解析不到就降级」的符号，是路线 A 的常见形态。
+- `stealth_hook` 0.3.4（去掉 `cred_offset` + `inline_wrap/unwrap_syscalln`）：
+  - `sh_current_uid()` 改用 KP 导出的 `current_uid()`；syscall 桥改
+    `syscalln_addr()` + `hook_wrap()`，与 KP 的 `inline_wrap_syscalln` 同构；
+  - 小米 13 与 Pixel 6 都 `load rc=0`，`ctl0 status` 与 `stealth_cli selftest` 全通过。

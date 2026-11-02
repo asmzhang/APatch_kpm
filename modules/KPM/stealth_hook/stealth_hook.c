@@ -33,6 +33,9 @@ KPM_LICENSE("GPL v2");
 KPM_AUTHOR("xiaojianbang");
 KPM_DESCRIPTION("HWBP / PTE / ghost memory toolkit (xiaojianbang-stealth-hook port)");
 
+/* ★v0.3.4：自己保存 syscall 包装函数地址，不再靠 inline_*_syscalln（内核形态专有）。 */
+static uintptr_t sh_syscall_addr;
+
 /* ============================================================
  * 信任模型
  * ============================================================ */
@@ -40,10 +43,13 @@ KPM_DESCRIPTION("HWBP / PTE / ghost memory toolkit (xiaojianbang-stealth-hook po
 static uid_t sh_allow_uids[SH_ALLOW_MAX] = { 0, 2000 };
 static int sh_allow_count = 2;
 
+/* ★v0.3.4：改用 KP 导出的 current_uid()。
+ * 原实现依赖 cred_offset（内核形态专有的数据符号），LKM 形态的兼容表里没有它，
+ * UND 解析失败会让整个模块装不上。current_uid() 在两种形态的导出表里都有
+ * （kernel 形态 patch/common/utils.c 导出，LKM 形态 symbols.c 兼容表）。 */
 static inline uid_t sh_current_uid(void)
 {
-    struct cred *cred = *(struct cred **)((uintptr_t)current + task_struct_offset.cred_offset);
-    return *(uid_t *)((uintptr_t)cred + cred_offset.uid_offset);
+    return current_uid();
 }
 
 static bool sh_is_privileged(uid_t uid)
@@ -305,6 +311,28 @@ static void sh_syscall_before(hook_fargs6_t *args, void *udata)
  * 生命周期
  * ============================================================ */
 
+/* ★v0.3.4：版本号从 MYKPM_VERSION 字面量解析，不再维护第二份 SH_VERSION_CODE。
+ * 之前两处硬编码已经漂移过一次（Makefile 升了、status 还报旧版本）。 */
+static void sh_ver_triple(int *a, int *b, int *c)
+{
+    const char *p = MYKPM_VERSION;
+    int v[3] = { 0, 0, 0 };
+    int i = 0;
+
+    while (*p && i < 3) {
+        if (*p >= '0' && *p <= '9') {
+            v[i] = v[i] * 10 + (int)(*p - '0');
+        } else if (*p == '.') {
+            i++;
+        } else {
+            break;
+        }
+        p++;
+    }
+    *a = v[0];
+    *b = v[1];
+    *c = v[2];
+}
 static long stealth_hook_init(const char *args, const char *event, void *__user reserved)
 {
     hook_err_t err;
@@ -320,7 +348,15 @@ static long stealth_hook_init(const char *args, const char *event, void *__user 
     sh_ghost_init();
     sh_hwbp_init();
 
-    err = inline_hook_syscalln(SH_SYSCALL_NR, 6, sh_syscall_before, 0, 0);
+    /* ★v0.3.4：inline_wrap_syscalln 只在内核形态导出，LKM 兼容表里没有它。
+     * 改为 syscalln_addr() + hook_wrap()，与 KP 自己的 inline_wrap_syscalln 同构
+     * （同样按 has_syscall_wrapper 把参数个数收窄到 1）。 */
+    sh_syscall_addr = syscalln_addr(SH_SYSCALL_NR, 0);
+    if (!sh_syscall_addr) {
+        pr_err("[stealth-hook] resolve syscall #%d failed\n", SH_SYSCALL_NR);
+        return -1;
+    }
+    err = hook_wrap((void *)sh_syscall_addr, has_syscall_wrapper ? 1 : 6, sh_syscall_before, 0, 0);
     if (err) {
         pr_err("[stealth-hook] hook syscall #%d failed: %d\n", SH_SYSCALL_NR, err);
         return -1;
@@ -433,9 +469,10 @@ static long stealth_hook_control(const char *args, char *__user out_msg, int out
         n += sh_dump_allow(buf + n, sizeof(buf) - n);
         handled = 1;
     } else if (sh_is_word(args, "status")) {
+        int v1 = 0, v2 = 0, v3 = 0;
+        sh_ver_triple(&v1, &v2, &v3);
         n = sh_app(buf, sizeof(buf), n, "stealth_hook v%d.%d.%d nr=%d",
-                   (int)((SH_VERSION_CODE >> 16) & 0xFF), (int)((SH_VERSION_CODE >> 8) & 0xFF),
-                   (int)(SH_VERSION_CODE & 0xFF), SH_SYSCALL_NR);
+                   v1, v2, v3, SH_SYSCALL_NR);
         n += sh_dump_allow(buf + n, sizeof(buf) - n);
         handled = 1;
     }
@@ -459,7 +496,10 @@ static long stealth_hook_exit(void *__user reserved)
 
     /* AUD-b-6：inline_unhook_syscalln 返回 void（KernelPatch syscall.h:144），
      * 无法在此判定失败；卸载是否干净由 load/unload 的 rc 观测。 */
-    inline_unhook_syscalln(SH_SYSCALL_NR, sh_syscall_before, 0);
+    if (sh_syscall_addr) {
+        hook_unwrap((void *)sh_syscall_addr, sh_syscall_before, 0);
+        sh_syscall_addr = 0;
+    }
     /* AUD-e-4：R4d 误删了这行。没有它，perf 断点、task 引用、节点内存都不会释放，
      * 卸载后活跃断点回调会跳进已卸载的模块。 */
     sh_hwbp_cleanup();

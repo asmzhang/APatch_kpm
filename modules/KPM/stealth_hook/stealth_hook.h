@@ -76,7 +76,7 @@
 #define SH_PROT_EXEC        (1u << 2)
 
 #define SH_STATUS_MAGIC     0x53484F4B  /* "SHOK" */
-#define SH_VERSION_CODE     0x00000303  /* 0x00MMmmpp：major/minor/patch = 0.3.3 */
+/* 0.3.4 起版本号直接从 MYKPM_VERSION 解析（sh_ver_triple），不再维护宏。 */
 
 /* 受信 uid 表：只有这些 uid 能下发命令（默认 root / shell） */
 #define SH_ALLOW_MAX        8

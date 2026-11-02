@@ -114,6 +114,24 @@ stealth_cli unhook 0x7a1b2c3d4e --tid all
 - **模块卸载不 munmap**：卸载发生在管理器上下文，拿调用方地址去 munmap 会误伤管理器；
   只回收记账节点，VMA 交目标进程退出时回收。
 
+## 加载形态（0.3.4）
+
+0.3.3 及更早只在 kernel 形态装得上，小米 13（`kernelpatch-lkm`）上会依次报三个
+`unknown symbol`：`inline_wrap_syscalln`、`inline_unwrap_syscalln`、`cred_offset`。
+两个 `inline_*_syscalln` 与 `cred_offset` 都只有内核集成形态导出（`KP_EXPORT_SYMBOL`），
+LKM 兼容表里没有；装载器不分 weak/binding，解析不到就在 `apply_relocations()` 前中止。
+
+0.3.4 的两处替换：
+
+1. `sh_current_uid()` 改为调用 KP 导出的 `current_uid()`（`kernel/patch/common/utils.c:178`
+   + LKM 兼容表两边都有），不再自己算 `task_struct_offset.cred_offset` + `cred_offset.uid_offset`。
+2. syscall 桥改为 `syscalln_addr(SH_SYSCALL_NR, 0)` + `hook_wrap()`，与 KP 自己的
+   `inline_wrap_syscalln()` 同构（同样按 `has_syscall_wrapper` 把参数个数收窄到 1）。
+   `syscalln_addr` 两形态都导出，`inline_wrap_syscalln` 只有内核形态有。
+
+顺带修掉版本号漂移：status 不再读手写的 `SH_VERSION_CODE`，改从 `MYKPM_VERSION` 解析。
+0.3.3 升版本时忘了改宏，status 一直报旧版本 —— 这类双份常量只留一份。
+
 ## 构建
 
 ```bash
@@ -124,6 +142,11 @@ make all debug
 
 ## 更新记录
 
+- **0.3.4（本仓补丁）**：两种装载形态同一份产物。
+  1. `sh_current_uid()` 改用 KP 导出的 `current_uid()`，去掉 `cred_offset` 依赖。
+  2. syscall 桥改 `syscalln_addr()` + `hook_wrap()`，去掉 `inline_wrap_syscalln` /
+     `inline_unwrap_syscalln` 依赖。
+  3. status 的版本号改从 `MYKPM_VERSION` 解析，删掉 `SH_VERSION_CODE`。
 - **0.3.1** — 可用性一轮（AUD-B-1 根治）：`HWBP_HOOK` 按 `(addr, tid)` 去重
   （同参数幂等返回 0、不同参数 `-EEXIST`）；`unhook`/`enable`/`disable`/`set_skip`
   支持 `tid=0` 通配并返回影响个数——此前只改第一个匹配节点，同址多线程的其余节点

@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdint.h>
@@ -159,8 +160,8 @@ static void usage(void)
         "stealth_cli —— stealth_hook 客户端（syscall %d, magic 0x%lX）\n"
         "\n"
         "  status                             查询模块状态\n"
-        "  hook <addr> [--tid N] [--dump N] [--flags F] [--inline ADDR] [--listen-ret]\n"
-        "                                     下硬件执行断点（默认挂当前线程）\n"
+        "  hook <addr> [--tid N | --pid P] [--dump N] [--flags F] [--inline ADDR] [--listen-ret]\n"
+        "                                     下硬件执行断点（默认当前线程；--pid 挂该进程全部线程）\n"
         "  unhook <addr> [--tid N|all]        摘断点（all 或 0 = 该地址全部线程）\n"
         "  enable|disable <addr> [--tid N|all] 启停断点\n"
         "  list                               列出所有已挂断点\n"
@@ -207,14 +208,30 @@ static int cmd_pte(const char *sub)
     return 0;
 }
 
-static int cmd_hook(int argc, char **argv)
+static int hook_one(uint64_t addr, uint32_t tid, uint32_t flags, uint64_t tramp,
+                    uint32_t dump, long *rc_out)
 {
     struct sh_hwbp_request req;
+
+    memset(&req, 0, sizeof(req));
+    req.target_addr = addr;
+    req.target_pid = tid;
+    req.flags = flags;
+    req.trampoline_addr = tramp;
+    req.dump_size = dump;
+
+    *rc_out = sh_call(SH_CMD_HWBP_HOOK, (long)&req, 0, 0, 0);
+    return *rc_out < 0 ? -1 : 0;
+}
+
+static int cmd_hook(int argc, char **argv)
+{
     uint64_t addr = 0;
     uint32_t tid = (uint32_t)syscall(SYS_gettid);
     uint32_t dump = 0;
     uint32_t flags = SH_HWBP_FLAG_EXECUTE;
     uint64_t tramp = 0;
+    uint32_t pid = 0;
     int i;
     long rc;
 
@@ -225,6 +242,8 @@ static int cmd_hook(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--tid") && i + 1 < argc) {
             tid = parse_tid(argv[++i]);
+        } else if (!strcmp(argv[i], "--pid") && i + 1 < argc) {
+            pid = parse_tid(argv[++i]);
         } else if (!strcmp(argv[i], "--dump") && i + 1 < argc) {
             dump = (uint32_t)parse_tid(argv[++i]);
         } else if (!strcmp(argv[i], "--flags") && i + 1 < argc) {
@@ -242,15 +261,50 @@ static int cmd_hook(int argc, char **argv)
         }
     }
 
-    memset(&req, 0, sizeof(req));
-    req.target_addr = addr;
-    req.target_pid = tid;
-    req.flags = flags;
-    req.trampoline_addr = tramp;
-    req.dump_size = dump;
+    if (pid) {
+        /*
+         * 进程级：内核侧一个 tid 一个节点，这里按 /proc/<pid>/task 逐个挂。
+         *
+         * 两个已知边界（2026-11-03 实测）：
+         *   1. 只覆盖「此刻已存在」的线程，之后新建的线程要再挂一次；
+         *   2. 多线程进程的组长线程（tid == pid）挂不上：hook 返回 0、list 里
+         *      也在，但断点从不触发（enter 不增长、目标行为不变）。单线程进程
+         *      的组长没有这个问题。
+         */
+        char path[64];
+        DIR *d;
+        struct dirent *e;
+        int ok = 0, fail = 0;
 
-    rc = sh_call(SH_CMD_HWBP_HOOK, (long)&req, 0, 0, 0);
-    if (rc < 0) {
+        snprintf(path, sizeof(path), "/proc/%u/task", pid);
+        d = opendir(path);
+        if (!d) {
+            fprintf(stderr, "hook: open %s: %s\n", path, strerror(errno));
+            return 1;
+        }
+        while ((e = readdir(d)) != NULL) {
+            uint32_t t;
+            if (e->d_name[0] < '0' || e->d_name[0] > '9') {
+                continue;
+            }
+            t = (uint32_t)strtoul(e->d_name, NULL, 10);
+            if (!t) {
+                continue;
+            }
+            if (hook_one(addr, t, flags, tramp, dump, &rc) == 0) {
+                ok++;
+            } else {
+                fail++;
+                fprintf(stderr, "hook: tid %u rc=%ld\n", t, rc);
+            }
+        }
+        closedir(d);
+        printf("hook: pid=%u addr=0x%llx flags=0x%x threads ok=%d fail=%d\n",
+               pid, (unsigned long long)addr, flags, ok, fail);
+        return fail ? 1 : 0;
+    }
+
+    if (hook_one(addr, tid, flags, tramp, dump, &rc) != 0) {
         die("hook", rc);
     }
     printf("hook: rc=%ld addr=0x%llx tid=%u flags=0x%x\n", rc,

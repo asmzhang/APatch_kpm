@@ -23,8 +23,9 @@ adb shell chmod 755 /data/local/tmp/stealth_cli
 
 ```
 status                              查询模块状态（返回 0x53484F4B + 版本码）
-hook <addr> [--tid N] [--dump N] [--flags F] [--inline ADDR] [--listen-ret]
-                                    下硬件执行断点，默认挂当前线程
+hook <addr> [--tid N | --pid P] [--dump N] [--flags F] [--inline ADDR] [--listen-ret]
+                                    下硬件执行断点，默认挂当前线程；--pid 挂该进程
+                                    全部已存在的线程
 unhook <addr> [--tid N]             摘断点
 enable|disable <addr> [--tid N]     启停断点
 query <addr> [--tid N] [--index N]  读命中记录（入口 X0–X7、LR、返回值、指针 dump）
@@ -42,6 +43,20 @@ selftest                            对自己进程里的目标函数跑完整�
 ```
 
 地址可写 `0x...` 或十进制；`--tid` 省略时用当前线程。
+
+### `--pid` 的两个边界（2026-11-03 实测）
+
+`hook <addr> --pid P` 由客户端枚举 `/proc/<pid>/task` 逐个挂，覆盖「此刻已存在」的线程：
+
+| 场景 | 结果 |
+| --- | --- |
+| 普通工作线程 | 生效，`worker0/worker1 got=7`（原值 41） |
+| 之后新建的线程 | **不覆盖**，要再挂一次 |
+| 多线程进程的组长线程（tid == pid） | **挂不上**：`hook` 返回 0、`list` 里也在，但断点从不触发（`enter` 不增长、行为不变） |
+| 单线程进程的组长线程 | 正常生效（`state=CLEAN ret=7`） |
+
+组长线程这条是内核侧 `perf_event_create_kernel_counter(attr, -1, task, ...)` 在多线程进程里的行为差异，
+未定位；在修好之前，需要覆盖组长时请换一条线程或改用页级方案。
 
 ## 权限
 

@@ -358,3 +358,33 @@ Pixel 6（Android 15 / 6.1.99-android14 / APatch 11282）：
 ### 状态
 
 待登记冻结构建并交同一批独立审计员复核（AUD-B-1 / AUD-c-10 / NEW-g-3）。
+
+## 十三、R4i 执行记录（2026-11-02）
+
+### 范围
+
+第六轮复核留下的 4 条：AUD-B-2-1（medium，幂等单向子集）、AUD-B-2-2（low，skip 不回传
+个数）、AUD-C-11（medium，komm 读路径截断越界）、AUD-C-12（medium，ctl0 累加式 snprintf）。
+
+### 做了什么
+
+- `hwbp.c`：去重比较改双向相等；`sh_hwbp_set_skip` 返回影响个数。
+- `stealth_cli`：`skip` 打 `changed=`；`selftest` 增加幂等/EEXIST 两条回归。
+- `komm.c`：11 处读路径判长加 `temp_len < sizeof(temp)` 前置条件。
+- `control.c`：新增 `cm_append()`，`ALLOWLIST` 输出按实际写入位置饱和。
+- 版本：stealth_hook 0.3.2、memcrc 0.2.2。
+
+### 真机
+
+Pixel 6（Android 15 / 6.1.99-android14 / APatch 11282）：
+- stealth_hook 0.3.2：`rehook same` → 0；`rehook diff flags` → `-1/EEXIST`；
+  `skip` → `rc=1`；selftest 其余步骤（query 命中、modify 546、SKIP_ORIGIN 1911、
+  unhook 复原 68）全部符合预期。
+- memcrc 0.2.2：小 count 读安全（8→7、1→1）、六段 dump 完整、MAP 重定向与 PATH 过滤
+  回归正常、`CMD:CLEAR` 归零。
+
+### 未覆盖
+
+AUD-C-11 的越界样本构造不出来（两个写通道都送不进 ≥512 字节的规则），只能作为
+防御性守卫记录；AUD-C-12 的 `ALLOWLIST` 输出未真机触发（ctl0 需要 superkey 或管理器
+身份，本轮未走 UI 参数框）。

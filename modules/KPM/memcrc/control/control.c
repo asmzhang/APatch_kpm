@@ -84,6 +84,19 @@ int control_deny_uid(uid_t uid) {
     return 0;
 }
 
+/* AUD-C-12：snprintf 返回「本应写入长度」，直接累加会让 n 越过 size、
+ * 后续 size - n 下溢。按实际写入位置饱和。 */
+static int cm_append(char *buf, unsigned long size, int n, int wrote)
+{
+    if (wrote < 0) {
+        return n;
+    }
+    if ((unsigned long)n + (unsigned long)wrote >= size) {
+        return (int)(size - 1);
+    }
+    return n + wrote;
+}
+
 int control_dump_allow(char *buf, unsigned long size) {
     int i, n = 0;
 
@@ -91,9 +104,11 @@ int control_dump_allow(char *buf, unsigned long size) {
         return 0;
     }
 
-    n += snprintf(buf + n, size - (unsigned long)n, "allow(%d):", cm_allow_count);
+    n = cm_append(buf, size, n,
+                  snprintf(buf + n, size - (unsigned long)n, "allow(%d):", cm_allow_count));
     for (i = 0; i < cm_allow_count && n > 0 && (unsigned long)n < size; i++) {
-        n += snprintf(buf + n, size - (unsigned long)n, " %u", cm_allow_uids[i]);
+        n = cm_append(buf, size, n,
+                      snprintf(buf + n, size - (unsigned long)n, " %u", cm_allow_uids[i]));
     }
 
     return n;

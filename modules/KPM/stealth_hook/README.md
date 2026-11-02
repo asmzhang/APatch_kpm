@@ -137,3 +137,13 @@ make all debug
   dump 兜底缺符号时整体禁用。
 - **0.2.0** — 加 GHOST（`vm_mmap` + 读写 + 列表）。
 - **0.1.0** — 骨架：syscall 427 通道、STATUS/ECHO、uid 门。
+
+### 0.3.2
+
+- **去重比较改为双向相等**（AUD-B-2-1）：原来用 `(dup->flags & mask) == (req.flags & mask)`
+  只要求「新请求的 flag 是旧的子集」，于是「先挂 `--listen-ret`、再用更少 flag 重挂」
+  会被误判幂等并返回 0。现在要求掩码内完全相等，参数不同一律 `-EEXIST`。
+- **`skip` 返回影响个数**（AUD-B-2-2）：与 `unhook`/`enable`/`disable` 一致，
+  不再恒返回 0。
+- `selftest` 增加两条回归：同参数重挂返回 0、异参数重挂返回 `-EEXIST`(17)；
+  `skip` 那一行改为打印期望的影响节点数。

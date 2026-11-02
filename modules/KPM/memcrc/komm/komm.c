@@ -133,7 +133,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     regs_count = shared_data_get_count_by_type(SHARED_DATA_TYPE_PTRACE_REGS);
 
     temp_len = snprintf(temp, sizeof(temp), "[MAPPINGS:%u]\n", map_count);
-    if (total_len + temp_len < count) {
+    /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
         memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
@@ -149,7 +151,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.mapping.src_path,
                                 entry.data.mapping.dst_path);
 
-            if (total_len + temp_len < count) {
+            /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
                 memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
@@ -159,7 +163,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     }
 
     temp_len = snprintf(temp, sizeof(temp), "[PATHS:%u]\n", path_count);
-    if (total_len + temp_len < count) {
+    /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
         memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
@@ -173,7 +179,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
             temp_len = snprintf(temp, sizeof(temp), "%s\n",
                                 entry.data.single.path);
 
-            if (total_len + temp_len < count) {
+            /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
                 memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
@@ -183,7 +191,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     }
 
     temp_len = snprintf(temp, sizeof(temp), "[PTRACE:%u]\n", ptrace_count);
-    if (total_len + temp_len < count) {
+    /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
         memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
@@ -197,7 +207,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
             temp_len = snprintf(temp, sizeof(temp), "%u\n",
                                 entry.data.ptrace_uid.uid);
 
-            if (total_len + temp_len < count) {
+            /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
                 memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
@@ -207,7 +219,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     }
 
     temp_len = snprintf(temp, sizeof(temp), "[RANGES:%u]\n", range_count);
-    if (total_len + temp_len < count) {
+    /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
         memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
@@ -223,7 +237,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                                 entry.data.range.start,
                                 entry.data.range.end);
 
-            if (total_len + temp_len < count) {
+            /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
                 memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
@@ -233,7 +249,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     }
 
     temp_len = snprintf(temp, sizeof(temp), "[REGS:%u]\n", regs_count);
-    if (total_len + temp_len < count) {
+    /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
         memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     } else {
@@ -247,7 +265,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
             temp_len = snprintf(temp, sizeof(temp), "%u\n",
                                 entry.data.ptrace_uid.uid);
 
-            if (total_len + temp_len < count) {
+            /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
                 memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
                 total_len += temp_len;
             } else {
@@ -257,7 +277,9 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
     }
 
     temp_len = snprintf(temp, sizeof(temp), "[END]\n");
-    if (total_len + temp_len < count) {
+    /* AUD-C-11：temp_len 是 snprintf 的「本应写入长度」，>= sizeof(temp) 时
+             * 说明已截断，此时 memcpy(temp, temp_len) 会读越界。 */
+            if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count) {
         memcpy(kernel_buf + total_len, temp, (size_t)temp_len);
         total_len += temp_len;
     }

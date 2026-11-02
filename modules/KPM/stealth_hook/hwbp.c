@@ -585,7 +585,9 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
                             SH_HWBP_FLAG_LISTEN_RET | SH_HWBP_FLAG_INLINE |
                             SH_HWBP_FLAG_NO_AUTO_ENABLE;
 
-            if ((dup->flags & (req.flags & mask)) == (req.flags & mask) &&
+            /* AUD-B-2-1：必须双向相等。单向子集比较会把「先挂带 LISTEN_RET、
+             * 再用更少 flags 重挂」误判成幂等，调用方以为新配置生效。 */
+            if ((dup->flags & mask) == (req.flags & mask) &&
                 dup->dump_size == dump && dup->trampoline_addr == req.trampoline_addr) {
                 return 0;
             }
@@ -855,7 +857,7 @@ long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count, uint32_t tid)
             found++;
         }
     }
-    return found > 0 ? 0 : -2;
+    return found > 0 ? found : -2;   /* AUD-B-2-2：与 unhook/enable 一致，返回影响个数 */
 }
 
 void sh_hwbp_init(void)

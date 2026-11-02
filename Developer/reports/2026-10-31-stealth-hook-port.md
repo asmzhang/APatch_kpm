@@ -226,3 +226,30 @@ return」，同 `(addr, tid)` 第二次 hook 出来的节点没有任何命令�
 - `unhook`/`enable` 的返回值从 0 变成「个数」，调用方若断言 `rc == 0` 需要改成
   `rc >= 0`；CLI 已同步。
 - 未变：链表仍无锁（AUD-b-3 的残余）、rearm 仍在异常上下文直写 MSR。
+
+## R4i：去重双向相等与 skip 计数（0.3.2）
+
+第六轮复核（`Auditor/reports/2026-11-02-r4h-review-a.md`）判 AUD-B-1「部分修好」，
+留了两条：
+
+- **AUD-B-2-1（medium）**：幂等判断写成单向子集比较
+  `(dup->flags & (req.flags & mask)) == (req.flags & mask)`，只要新请求的 flag 是旧的
+  子集就返回 0。「先挂 `--listen-ret` 再用更少 flag 重挂」因此被静默当成成功——
+  正是本轮要消灭的失败模式。改成 `(dup->flags & mask) == (req.flags & mask)`。
+- **AUD-B-2-2（low）**：`sh_hwbp_set_skip` 仍 `return found > 0 ? 0 : -2`，没按契约
+  回传影响个数。改成 `return found > 0 ? found : -2`，CLI 打 `changed=`。
+
+`selftest` 补两条回归（同参数重挂 → 0；异参数重挂 → `-EEXIST`），并在真机验证：
+
+```
+hook: rc=0
+rehook same: rc=0 (expect 0, 幂等)
+rehook diff flags: rc=-1 errno=17 (expect -1 / 17 EEXIST)
+query: rc=0 hits=2 enter=2 total=1 x0=0x11 x1=0x22 lr=0x224ac0 ret_x0=0x44
+override modify: rc=0 ; call with modify: 546
+skip count=1: rc=1 (expect 1 = 影响节点数)
+override skip: rc=0 ; call with skip: 1911
+unhook: rc=1 ; call after unhook: 68
+```
+
+版本 0.3.1 → 0.3.2。

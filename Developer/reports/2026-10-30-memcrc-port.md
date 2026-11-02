@@ -195,3 +195,29 @@ R5 前独立审计 **AUD-c-10（medium）**：`komm/komm.c` 的空表覆盖分�
 `/dev/yuuki_misc` 是 `0600 root:root`，`>`（`O_TRUNC`）打开在该机型上会被
 SELinux 的 `setattr` 检查挡成 `EACCES`（与模块无关，读和 `>>` 都正常）。
 写规则请用 `>>` 或 `dd conv=notrunc`，已写进 README。
+
+## R4i：读路径截断守卫与 ctl0 钳制（0.2.2）
+
+第六轮复核（`Auditor/reports/2026-11-02-r4h-review-b.md`）关掉 AUD-c-10，新开两条：
+
+- **AUD-C-11（medium）**：`komm.c` 的 11 处 `snprintf(temp, sizeof(temp), ...)` 里，
+  MAP 条目的格式 `%u:%s:%s\n` 最长 525 字节 > `temp[512]`。`snprintf` 返回「本应写入
+  长度」，原实现拿它 `memcpy(temp, temp_len)` 会读越界 13 字节栈内存（写侧因
+  `total_len + temp_len < count` 而不越界）。统一改成
+  `if (temp_len >= 0 && temp_len < (int)sizeof(temp) && total_len + temp_len < count)`，
+  截断时走 `buffer_full`。
+- **AUD-C-12（medium）**：`control_dump_allow` 的 `n += snprintf(buf + n, size - n, ...)`
+  同属「返回值当长度」，缓冲不足时 `n` 越过 `size`、后续 `size - n` 下溢。新增
+  `cm_append()` 按实际写入位置饱和到 `size - 1`。
+
+真机（Pixel 6 / 6.1.99-android14 / memcrc 0.2.2）：
+`head -c 8 /dev/yuuki_misc` → 7 字节、`head -c 1` → 1 字节、`cat` 六段完整（60 字节）；
+`MAP:0:/data/local/tmp/mc_a.txt:/data/local/tmp/mc_b.txt` → `cat mc_a.txt` 得 `BBB_MC`；
+`PATH:/system/bin/toybox` → `grep -c toybox /proc/self/maps` 0；`CMD:CLEAR` 归零。
+
+未覆盖：AUD-C-11 的触发条件（单条 MAP 规则格式化后 ≥512 字节）在现有通道下拿不到——
+`/dev/yuuki_misc` 的写缓冲是 255 字节（`SHARED_DATA_MAX_STR_LEN`），getcwd 通道注入
+254+254 字符的规则也被上游解析链提前拒绝（`MAPPINGS:0`，无规则入库）。因此本次只能
+证明守卫未破坏正常路径，无法构造越界样本；按「防御性守卫」记录。
+
+版本 0.2.1 → 0.2.2。

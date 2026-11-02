@@ -489,7 +489,7 @@ static int cmd_skip(int argc, char **argv)
     if (rc < 0) {
         die("skip", rc);
     }
-    printf("skip: rc=%ld count=%u (接下来 %u 次命中不记录参数/返回值)\n", rc, count, count);
+    printf("skip: changed=%ld count=%u (接下来 %u 次命中不记录参数/返回值)\n", rc, count, count);
     return 0;
 }
 
@@ -650,6 +650,23 @@ static int cmd_selftest(void)
     }
     printf("hook: rc=%ld\n", rc);
 
+    /* AUD-B-2-1 回归：同参数幂等、异参数 EEXIST（去重比较必须双向相等） */
+    {
+        struct sh_hwbp_request dup;
+
+        memset(&dup, 0, sizeof(dup));
+        dup.target_addr = addr;
+        dup.target_pid = tid;
+        dup.flags = SH_HWBP_FLAG_EXECUTE;
+        rc = sh_call(SH_CMD_HWBP_HOOK, (long)&dup, 0, 0, 0);
+        printf("rehook same: rc=%ld (expect 0, 幂等)\n", rc);
+
+        dup.flags = SH_HWBP_FLAG_EXECUTE | SH_HWBP_FLAG_LISTEN_RET;
+        errno = 0;
+        rc = sh_call(SH_CMD_HWBP_HOOK, (long)&dup, 0, 0, 0);
+        printf("rehook diff flags: rc=%ld errno=%d (expect -1 / 17 EEXIST)\n", rc, errno);
+    }
+
     v = st_target(st_a, st_b);
     printf("call with hook: %d (expect 68)\n", v);
 
@@ -677,7 +694,7 @@ static int cmd_selftest(void)
     printf("call with modify: %d (expect 546)\n", v);
 
     rc = sh_call(SH_CMD_HWBP_SET_SKIP, (long)addr, 1, 0, 0);
-    printf("skip count=1: rc=%ld\n", rc);
+    printf("skip count=1: rc=%ld (expect 1 = 影响节点数)\n", rc);
     v = st_target(st_a, st_b);
     printf("call with skip(1): %d (仍执行原函数，skip 只跳过记录)\n", v);
     v = st_target(st_a, st_b);

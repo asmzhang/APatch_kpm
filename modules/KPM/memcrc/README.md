@@ -95,3 +95,13 @@ printf 'CMD:CLEAR\n' > /tmp/r.txt && dd if=/tmp/r.txt of=/dev/yuuki_misc conv=no
 ## 来源
 
 基于 [memcrc](https://github.com/yuuki-kokoro/memcrc)（作者 yuuki），原始思路见 [看雪论坛帖](https://bbs.kanxue.com/thread-288041.htm)。移植改动见 `Developer/reports/2026-10-30-memcrc-port.md`。
+
+### 0.2.2
+
+- **`komm` 读路径的 snprintf 截断守卫**（AUD-C-11）：`temp[512]` 的格式化最长可达 525
+  字节（`%u:%s:%s` + 两条 255 字节路径），`snprintf` 返回「本应写入长度」，
+  原实现直接拿它 `memcpy` 会读越界 13 字节栈内存。11 处 `total_len + temp_len < count`
+  判断统一加 `temp_len < (int)sizeof(temp)` 前置条件，截断时走 `buffer_full`。
+- **ctl0 `ALLOWLIST` 的累加式 snprintf 钳制**（AUD-C-12）：`control_dump_allow` 原来
+  `n += snprintf(...)`，缓冲不足时 `n` 会越过 `size`、后续 `size - n` 下溢。
+  新增 `cm_append()` 按实际写入位置饱和到 `size - 1`。

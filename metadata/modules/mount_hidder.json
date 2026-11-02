@@ -890,6 +890,18 @@
       "accepted_at": "2026-11-02T02:55:59Z",
       "report": "docs/records/2026-11-02-r6-acceptance.md",
       "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    },
+    {
+      "instance_id": "mount_hidder-1.0.3+gc417ca5a5cb3.r40e04ffe.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "8a9c4426f71c4b0ee5ed11053a9173f49c51f2f0",
+      "fingerprint_sha256": "40e04ffef01fda4a3a000e3b0d1f16f101725d19601db79614569040d0b4f0bb",
+      "artifacts": {
+        "mount_hidder_1.0.3.kpm": "30e4b2181b6c2c99a992aff2e48710d1e9d76b4ebb0b6df2023904e9c698a579"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T05:26:20Z",
+      "report": "docs/records/2026-11-02-r7-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。两形态（kernel/lkm）真机均验：Pixel 6 与小米 13 各自 `load rc=0`，`add:/apex` 83→0 / 56→0。"
     }
   ],
   "deliveries": [],

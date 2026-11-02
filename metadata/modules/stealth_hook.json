@@ -2328,6 +2328,18 @@
       "accepted_at": "2026-11-02T02:55:59Z",
       "report": "docs/records/2026-11-02-r6-acceptance.md",
       "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    },
+    {
+      "instance_id": "stealth_hook-0.3.4+ga078f964bb00.r963abeef.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "48e9c4e01ef8d884fb1d3b0eecc1ea2f083a9053",
+      "fingerprint_sha256": "963abeefb1c8ab39e1df905cd705018954819f16019a61aebe0f174f3c8fa690",
+      "artifacts": {
+        "stealth_hook_0.3.4.kpm": "490009c86a16cdaa1c8fb23a8b5910a70f4ece0321222aa04964377d64e4846b"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T05:26:20Z",
+      "report": "docs/records/2026-11-02-r7-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。两形态真机均验：Pixel 6 与小米 13 各自 `load rc=0`、`ctl0 status` 与 `stealth_cli selftest` 全通过。"
     }
   ],
   "deliveries": [],

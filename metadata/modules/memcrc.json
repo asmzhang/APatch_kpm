@@ -2458,6 +2458,18 @@
       "accepted_at": "2026-11-02T02:55:59Z",
       "report": "docs/records/2026-11-02-r6-acceptance.md",
       "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    },
+    {
+      "instance_id": "memcrc-0.2.5+gcb6d49690719.r8a3f4b71.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "01890d88c53cca78b37bebce01a2b0986d4a6d2a",
+      "fingerprint_sha256": "8a3f4b71fee809ba0bedfda8946be9349545a600e792df731625882176b5b991",
+      "artifacts": {
+        "memcrc_0.2.5.kpm": "0ffdf5f79307a5cdbe2ca26997c41f5dd48b715c72be77f9b34c18d16804b84d"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T05:26:38Z",
+      "report": "docs/records/2026-11-02-r7-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。两形态真机均验：Pixel 6 与小米 13 各自 `load rc=0`，`PTRACE:` / `RANGE:` 生效、与 `mount_hidder` 共存；5.10 卸载幂等见 `docs/records/2026-11-02-mi13-memcrc-hang.md`。"
     }
   ],
   "deliveries": [],

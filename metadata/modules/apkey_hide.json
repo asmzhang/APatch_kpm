@@ -516,6 +516,18 @@
       "accepted_at": "2026-11-02T02:55:59Z",
       "report": "docs/records/2026-11-02-r6-acceptance.md",
       "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    },
+    {
+      "instance_id": "apkey_hide-3.6.4+gf70b85de3409.r299d55c4.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "a88c30f28f74753c2776d19c24e1043145803d54",
+      "fingerprint_sha256": "299d55c48246a51eb6aec48845b8fc10d4f63142e1ef9f77b11bc371ec6c9eab",
+      "artifacts": {
+        "apkey_hide_3.6.4.kpm": "9a39ec5294ca25fdb3173dc4ff42b390f3a4aadcfeb27b9cac9e4fbc37840b9e"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T05:26:20Z",
+      "report": "docs/records/2026-11-02-r7-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。两形态真机均验：Pixel 6 与小米 13 各自 `load rc=0`、`ctl0 status` 输出完整；`sig=0` 为记录在案的能力降级（见 09 文档）。"
     }
   ],
   "deliveries": [],

@@ -1138,6 +1138,18 @@
       "accepted_at": "2026-11-02T02:55:59Z",
       "report": "docs/records/2026-11-02-r6-acceptance.md",
       "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    },
+    {
+      "instance_id": "panda_hide-2.0.1+gba54f2717ba5.r8a9f0a97.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "3c900af7e625887561ecd0144141bfc1f84de35b",
+      "fingerprint_sha256": "8a9f0a970b742dbc733255950f47013aa1bf235ed39522cfb6a7b97e31a17d22",
+      "artifacts": {
+        "panda_hide_2.0.1.kpm": "f4f82fb103c62c4f45102f14f17a208fb534e9a8f7a4b12c26a1fa0dade30e6b"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T05:26:20Z",
+      "report": "docs/records/2026-11-02-r7-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。两形态真机均验：Pixel 6 与小米 13 各自 `load rc=0`，openat/faccessat 探测 ENOENT、connect 被拦。"
     }
   ],
   "deliveries": [],

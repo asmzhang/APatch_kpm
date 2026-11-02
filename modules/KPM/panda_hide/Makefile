@@ -1,4 +1,4 @@
-MYKPM_VERSION := 2.0.0
+MYKPM_VERSION := 2.0.1
 
 KP_DIR ?= ../../../KernelPatch
 
@@ -28,7 +28,7 @@ CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector
 	-DMYKPM_VERSION=\"$(MYKPM_VERSION)$(PH_VER)\" \
 	$(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir)) -Isrc
 
-C_FILES := src/main.c src/debugger_hide.c src/frida_hide.c src/openat_hide.c src/net_hide.c src/mem_hide.c
+C_FILES := src/main.c src/debugger_hide.c src/frida_hide.c src/openat_hide.c src/net_hide.c src/mem_hide.c src/syscall_portable.c
 objs := $(C_FILES:.c=.o)
 debug_objs := $(addprefix debug/,$(objs))
 

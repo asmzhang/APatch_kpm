@@ -10,6 +10,7 @@
 #include "net_hide.h"
 
 #include "common.h"
+#include "syscall_portable.h"
 #include <compiler.h>
 #include <hook.h>
 #include <kputils.h>
@@ -76,7 +77,7 @@ void panda_net_hide_install() {
     }
 
     if (__arch_copy_from_user_fn) {
-        hook_err_t err = fp_hook_syscalln(__NR_connect, 3, before_connect, NULL, NULL);
+        hook_err_t err = panda_hook_syscall("sys_connect", 3, before_connect, NULL, NULL);
         if (err) {
             pr_err("panda_hide: hook connect failed %d\n", err);
         } else {
@@ -89,7 +90,7 @@ void panda_net_hide_install() {
 
 void panda_net_hide_uninstall() {
     if (connect_hook_status) {
-        fp_unhook_syscalln(__NR_connect, before_connect, NULL);
+        panda_unhook_syscall("sys_connect", before_connect, NULL);
         connect_hook_status = 0;
     }
     pr_info("panda_hide: net hide uninstalled\n");

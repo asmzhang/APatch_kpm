@@ -10,8 +10,8 @@
 | --- | --- | --- |
 | `debugger_hide.c` | `seq_put_decimal_ull`、`seq_puts`、`proc_pid_wchan`、`do_task_stat` | `/proc/<pid>/status` 的 `TracerPid:` 归 0、`t (tracing stop)` → `S (sleeping)`；`/proc/<pid>/wchan` → `0`；`/proc/<pid>/stat` 的第三字段 `t` → `S` |
 | `frida_hide.c` | `show_map_vma`、`__get_task_comm` | `/proc/<pid>/maps` 里含 `frida`/`gadget`/`linjector`/`gmain` 的行整条回滚；线程名含 `gum-js-loop`/`pool-frida`/`linjector` 等改成 `binder` |
-| `openat_hide.c` | `__NR_openat`、`__NR_faccessat` | 路径含 `re.frida.server`、`frida-agent*.so`、`frida-gadget`、`linjector` 时返回 `-ENOENT`（`/memfd:` 例外放行） |
-| `net_hide.c` | `__NR_connect` | 连 27042 / 27043 / 23946 / 31415 端口返回 `-ECONNREFUSED`；`adbd` 进程放行 |
+| `openat_hide.c` | `__arm64_sys_openat`、`__arm64_sys_faccessat` | 路径含 `re.frida.server`、`frida-agent*.so`、`frida-gadget`、`linjector` 时返回 `-ENOENT`（`/memfd:` 例外放行） |
+| `net_hide.c` | `__arm64_sys_connect` | 连 27042 / 27043 / 23946 / 31415 端口返回 `-ECONNREFUSED`；`adbd` 进程放行 |
 | `mem_hide.c` | `access_remote_vm` | 别人通过 `/proc/<pid>/mem` 读目标进程内存时，把 `LIBFRIDA`、`frida-agent`、`frida:rpc`、`GumScript` 等特征串就地清零（只处理读方向） |
 
 ## 命令（ctl0）
@@ -31,6 +31,32 @@
 | `main.c` 参数 | `pr_info("%s", args)` 不判空 | 加空值兜底 | `args` 为 `NULL` 时上游会打 `(null)` 之外的空指针风险；`strncat` 长度也改成按缓冲区剩余量 |
 | 函数属性 | `__attribute__((optimize("O0")))` | `__attribute__((optnone))` | clang 不认 `optimize`，会报 `-Wunknown-attributes` |
 | 日志前缀 | `panda-hide:` | `panda_hide:` | 与模块名一致，便于 grep |
+
+## 加载形态（2.0.1）
+
+2.0.0 的 openat / net 两个子系统用 `fp_hook_syscalln()`（inline 包装，展开成 `fp_wrap_syscalln`），
+这个符号只在 kernel 形态导出，LKM 形态（原厂内核 + `kernelpatch.ko`）会在装载阶段报
+`unknown symbol: fp_wrap_syscalln` 并返回 `-ENOENT`，模块 `init` 根本不执行。
+
+2.0.1 起改用 `src/syscall_portable.c`：两种形态都导出的 `kallsyms_lookup_name` + `hook_wrap`，
+自己解析 `__arm64_sys_openat` / `__arm64_sys_faccessat` / `__arm64_sys_connect` 再挂 inline hook，
+参数个数按 `has_syscall_wrapper ? 1 : narg` 记账。同一份 `.kpm` 字节两种装载器都能装。
+
+这里没有用 `hook_syscalln()`（它两形态都有）：kernel 形态下它优先注册到全局 syscall dispatcher，
+注册时 `allow_skip=0`，回调里的 `skip_origin` 不被采纳——`openat BLOCKED` 日志会照打，文件仍能打开。
+实测对比见 `docs/process/09-load-forms.md`「阻断型 syscall 钩子」一节。
+
+真机（同一份 `panda_hide_2.0.1.kpm`，`load rc=0` / `init returned 0`）：
+
+| 设备 | 形态 | 探针 | 加载前 | 加载后 | 卸载后 |
+| --- | --- | --- | --- | --- | --- |
+| Pixel 6（6.1.99-android14） | kernel | `cat /data/local/tmp/linjector_probe` | `hi` | `ENOENT` | `hi` |
+| Pixel 6 | kernel | `faccessat(path, F_OK)` | `rc=0` | `rc=-1 errno=2` | `rc=0` |
+| Pixel 6 | kernel | `connect 127.0.0.1:27042` | `errno=111`（无监听） | `errno=111` + dmesg `connect BLOCKED port=27042 comm=probe_acc` | —— |
+| 小米 13（5.10.149-android12-9，LKM） | lkm | `cat /data/local/tmp/linjector_probe` | `hi` | `ENOENT` | `hi` |
+
+`cat` / `faccessat` 用的是仓外静态 aarch64 探针（uid 0，comm 非 adbd）。
+`connect` 在无监听端口上两种状态都返回 `ECONNREFUSED`，判据取 dmesg 里的 BLOCKED 行。
 
 ## 边界
 
@@ -79,7 +105,19 @@ panda_hide: all modules installed
 若再开启 memcrc 的 `PTRACE:<uid>` 规则，`PTRACE_ATTACH` 会先被 memcrc 拦掉，本模块的状态伪装在该路径上观察不到。
 
 未覆盖项：只测了 release 变体（真机每目标只测一个变体）；ctl0 回显未测（无配置语义）；
-`mem_hide` 的 `process_vm_readv` 路径未单独构造用例；小米 13（5.10）未测。
+`mem_hide` 的 `process_vm_readv` 路径未单独构造用例；2.0.0 的小米 13 加载失败即本文
+「加载形态（2.0.1）」所述的 `fp_wrap_syscalln` 缺失，2.0.1 已修并在该机验证。
+
+## 更新记录
+
+### 2.0.1
+
+- syscall 钩子改用 `src/syscall_portable.c`（`hook_wrap` + kallsyms），去掉 `fp_wrap_syscalln` /
+  `fp_unwrap_syscalln` 两个只在 kernel 形态导出的符号，同一份产物同时支持 kernel / lkm 形态。
+- 顺带修掉一个**阻断失效**问题：改用 `hook_syscalln()` 时 kernel 形态会注册到全局 dispatcher
+  （`allow_skip=0`），`skip_origin` 不被采纳，openat/faccessat 只打日志不阻断。详见
+  `docs/process/09-load-forms.md`。
+
 
 ## 构建
 

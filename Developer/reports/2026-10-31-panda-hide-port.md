@@ -140,3 +140,66 @@ panda_hide: all modules installed
   截断后仍可能命中前缀（属宽松匹配，不是漏洞，但会漏判/误判）。
 - `net_hide.c` 只拦 `connect`，不拦 `sendto`/UDP；`adbd` 放行按 `comm` 子串判断，改名即可绕过（上游设计如此）。
 - `main.c` 的 `KPM_CTL1` 空实现被注册，但本仓未定义任何 `ctl1` 语义——若上层误用 `ctl1` 会得到 `0`（成功）。
+
+## 2.0.1：去掉形态专属符号，并修掉一处阻断失效（2026-11-02）
+
+### 触发
+
+`docs/records/2026-11-02-mi13-lkm-kpm-symbols.md` 的全量可加载性实测：`panda_hide_2.0.0.kpm`
+在小米 13（`kernelpatch-lkm`，5.10.149-android12-9）上 `load rc=-1`，dmesg 报
+`unknown symbol: fp_wrap_syscalln`（`fp_unwrap_syscalln` 同理）。装载器在 `apply_relocations()`
+之前中止，`init` 从未执行。
+
+定位：`openat_hide.c` 与 `net_hide.c` 用的 `fp_hook_syscalln()` / `fp_unhook_syscalln()`
+是 `KernelPatch/kernel/patch/include/syscall.h:98-123` 的 inline 包装，分别展开成
+`fp_wrap_syscalln` / `fp_unwrap_syscalln`——这两个符号只在 kernel 形态导出
+（`kernel/patch/common/syscall.c:284/297`，`KP_EXPORT_SYMBOL` 有、`lkm/kpm/symbols.c` 兼容表里没有）。
+
+### 第一版改法（不可用，留作教训）
+
+把两个调用换成 `hook_syscalln()` / `unhook_syscalln()`（两形态都有）。结果：
+
+- 小米 13：`load rc=0`，`cat` 探测文件 ENOENT —— 看起来对；
+- Pixel 6（kernel 形态）：`load rc=0`、dmesg 有 `panda_hide: openat BLOCKED: /data/local/tmp/linjector_probe`，
+  但文件照样能打开（`cat` 返回内容、`faccessat rc=0`）。
+
+根因在 `kernel/patch/common/syscall.c:664-671`：`hook_syscalln()` 在 `syscall_hook_global` 为真时
+走 `syscall_hook_add(nr, 0, before, after, udata, 0, 0)`，第六个参数 `allow_skip=0`。
+全局 dispatcher 分支里的回调照常执行，但 `args->skip_origin` / `args->ret` 不被采纳；
+认 skip 的只有 `hook_syscalln_override()`（`allow_skip=1`，且要求 handler 粒度 `invoke_syscall`），
+而它只在 kernel 形态导出。**只验证了 LKM 设备就以为改对了**，是这轮的方法错误。
+
+### 最终实现
+
+新增 `src/syscall_portable.c` / `src/syscall_portable.h`，只依赖两形态都有的
+`kallsyms_lookup_name` + `hook_wrap` / `hook_unwrap`：
+
+- `panda_syscall_addr(name)`：候选顺序与 KP 的 `syscalln_name_addr()` 一致——前缀 `__arm64_` → 空，
+  后缀 `.cfi_jt` → `.cfi` → 空；
+- `panda_hook_syscall(name, narg, before, after, udata)`：`has_syscall_wrapper` 为真时把
+  `narg` 记成 1（arm64 GKI 的 `__arm64_sys_xxx` 只收 `struct pt_regs *`），再 `hook_wrap`；
+- `panda_unhook_syscall(name, before, after)`：`hook_unwrap`。
+
+`openat_hide.c` → `sys_openat` / `sys_faccessat`；`net_hide.c` → `sys_connect`；
+`Makefile` 的 `C_FILES` 加 `src/syscall_portable.c`；`MYKPM_VERSION := 2.0.1`。
+
+符号面：`python tools/load_forms.py --artifact modules/KPM/panda_hide/panda_hide_2.0.1.kpm --kallsyms local/mi13_kallsyms.txt`
+→ `und=20 形态=kernel,lkm kernel缺=0 lkm缺=0`。
+
+### 真机（同一份 `panda_hide_2.0.1.kpm`，26936 B）
+
+| 设备 | 形态 | 观测 |
+| --- | --- | --- |
+| Pixel 6（6.1.99-android14，管理器 uid 10273） | kernel | `load rc=0`、`init returned 0`（`succeed with [(null)]`）；`cat` 探测 ENOENT；`faccessat` `rc=-1 errno=2`；`connect 127.0.0.1:27042` dmesg `connect BLOCKED port=27042 comm=probe_acc`，非 frida 端口（443）不拦；`unload rc=0` 后 `cat` 恢复、`faccessat rc=0` |
+| 小米 13（5.10.149-android12-9，`kernelpatch-lkm`，管理器 uid 10270） | lkm | `load rc=0`、`init returned 0`、五个子系统 installed；`cat` 探测 ENOENT；`unload rc=0` 后恢复 |
+
+`cat` / `faccessat` / `connect` 用仓外静态 aarch64 探针（`local/probe_acc.c`，uid 0，comm 非 adbd）。
+`connect` 在无监听端口上两种状态都是 `ECONNREFUSED`，所以判据取 dmesg 的 BLOCKED 行。
+
+### 未覆盖
+
+- 只测 release 变体（真机每目标一个变体）；
+- 小米 13 只跑了 openat 路径（faccessat / connect 未在该机重复）；
+- `net_hide` 的 `read()` 后置过滤（`/proc/net/tcp` 行过滤）未单独构造用例——该钩子仍走
+  `hook_wrap`，与本次改动无关，但形态一致性未在 LKM 上验证。
+

@@ -42,13 +42,37 @@ unknown symbol: kf_strnstr
 
 | 用途 | 用这些（两形态都有） | 别用（只有 kernel 形态有） |
 | --- | --- | --- |
-| 挂钩 | `hook` / `hook_wrap` / `hook_syscalln` / `unhook` / `hook_unwrap_remove` | `inline_wrap_syscalln` / `fp_wrap_syscalln` / `hotpatch` |
+| 挂钩 | `hook` / `hook_wrap` / `hook_syscalln` / `unhook` / `hook_unwrap_remove`（阻断型见下节） | `inline_wrap_syscalln` / `fp_wrap_syscalln` / `hotpatch` |
 | 符号查找 | `kallsyms_lookup_name` / `kallsyms_on_each_symbol` | `kallsyms_lookup_name_by_suffix` / `symbol_lookup_name` |
 | 字符串内存 | `kf_strlen` / `kf_memcmp` / `kf_memcpy` / `kf_memset` / `kf_strncmp` 等 22 个 | `kf_strnstr` / `kf_strpbrk` / `kf_strsep` / `kf_strspn` |
 | 结构体偏移 | `task_struct_offset` / `mm_struct_offset` / `pgtable_entry` | `cred_offset` |
 
 缺什么就本地实现一份，别等兼容层。示例：`modules/KPM/mount_hidder/hide_mount.c` 的
 `hm_strnstr()` 用 `kf_memcmp` 自己找子串，替掉 `linux/string.h` 里展开成 `kf_strnstr` 的 `strnstr`。
+
+## 阻断型 syscall 钩子：`hook_syscalln` 在 kernel 形态不认 `skip_origin`
+
+`hook_syscalln` 两形态都有，但 `KernelPatch/kernel/patch/common/syscall.c:664-671` 是按环境分派的：
+
+```c
+if (syscall_hook_global) return syscall_hook_add(nr, 0, before, after, udata, 0, 0);
+if (sys_call_table) return fp_wrap_syscalln(nr, narg, 0, before, after, udata);
+return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
+```
+
+第一分支注册时 `allow_skip=0`。一旦全局 dispatcher 生效（`el0_svc_common`），回调照跑，
+但回调里设的 `args->skip_origin` / `args->ret` **不被采纳**——「假装文件不存在」就退化成
+「打一条 BLOCKED 日志，文件照样能打开」。认 skip 的只有 `hook_syscalln_override`
+（`allow_skip=1`，且要求 handler 粒度 `invoke_syscall`），而它只在 kernel 形态导出。
+
+两形态都成立的写法：自己解析 `__arm64_sys_xxx` 地址再 `hook_wrap`，参数个数按
+`has_syscall_wrapper ? 1 : narg` 记账（arm64 GKI 的 syscall 函数只收一个 `struct pt_regs *`）。
+参考实现 `modules/KPM/panda_hide/src/syscall_portable.c`：
+
+- 名字候选顺序与 KP 的 `syscalln_name_addr()` 一致：前缀 `__arm64_` → 空，后缀 `.cfi_jt` → `.cfi` → 空；
+- 卸载用 `hook_unwrap(addr, before, after)`；
+- 代价是每个 syscall 一个 inline hook（有代码补丁指纹），全局 dispatcher 没有这个指纹。
+  所以只在**必须阻断**时这么做，纯观察型钩子继续用 `hook_syscalln`。
 
 ## 声明与检查
 
@@ -65,7 +89,7 @@ unknown symbol: kf_strnstr
 | --- | --- | --- | --- |
 | A | 模块侧去掉对形态专属符号的依赖 | 改模块源码，一次改动长期有效 | **已选**，mount_hidder 1.0.3 走完 |
 | B | 扩 `kernelpatch.ko` 兼容层（补齐 `kf_strnstr` 等） | 要按目标内核源码重编 `.ko` 并重装 | 不做，成本与风险都不划算 |
-| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | 复杂模块（stealth_hook/memcrc/panda_hide）暂按此处理 |
+| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | stealth_hook / memcrc 暂按此处理（panda_hide 2.0.1 已改走 A） |
 
 ## 为什么不再按形态放源码
 
@@ -88,3 +112,8 @@ unknown symbol: kf_strnstr
   - 小米 13：`load rc=0`，`init paths=3 hooks=3`，`/proc/mounts` 里 ` /apex` 命中 56 → 0 → 56；
   - Pixel 6（kernel 形态）：83 → 0 → 83。
   同一个 `.kpm` 字节在两种装载器下都能跑起来。
+- `panda_hide` 2.0.1（去掉 `fp_wrap_syscalln` / `fp_unwrap_syscalln`，改为 `hook_wrap` 到
+  `__arm64_sys_openat` / `__arm64_sys_faccessat` / `__arm64_sys_connect`）：
+  - 小米 13：`load rc=0`，`cat` 探测文件返回 ENOENT，卸载后恢复；
+  - Pixel 6：同样成立。此前一版用 `hook_syscalln` 时，`openat BLOCKED` 日志有、文件仍能打开——
+    就是上面那节说的 `allow_skip=0`。

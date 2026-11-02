@@ -67,9 +67,12 @@ kernelpatch-lkm: unknown symbol: kf_strnstr
 | `stealth_hook_0.3.3.kpm` | 3 | `cred_offset` `inline_unwrap_syscalln` `inline_wrap_syscalln` |
 | `memcrc_0.2.2.kpm` | 9 | `cred_offset` `fp_*syscalln` `inline_*syscalln` `kf_strnstr` `kf_strpbrk` `kf_strsep` `kf_strspn` |
 
-## 4. 结论
+**后续进展（2026-11-02）**：`mount_hidder` 1.0.3 与 `panda_hide` 2.0.1 已按「去掉形态专属符号」
+改成两形态通用，同一份字节在小米 13 上实测 `load rc=0` 并生效（`kf_strnstr` → 本地 `hm_strnstr`；
+`fp_*syscalln` → `hook_wrap` 到 `__arm64_sys_xxx`）。上表是 1.0.2 / 2.0.0 的实测结果，保留作对照，
+判据与做法见 [process/09-load-forms.md](../process/09-load-forms.md)。
 
-1. 小米 13 的 `rc=-1` **不是偏移推导问题、也不是产物损坏**，是 LKM 模式的 KPM 符号面窄于内核集成模式；
+## 4. 结论1. 小米 13 的 `rc=-1` **不是偏移推导问题、也不是产物损坏**，是 LKM 模式的 KPM 符号面窄于内核集成模式；
    加载在符号解析阶段即失败，任何 `init` 侧逻辑（含 PTE 能力探测）都没有机会执行。
 2. 这解释了为什么 PTE@5.10 至今无法真机取证：唯一的 5.10 设备跑的是 LKM 模式，而 stealth_hook 依赖
    `inline_wrap_syscalln` 与 `cred_offset`，在该模式下不可加载。

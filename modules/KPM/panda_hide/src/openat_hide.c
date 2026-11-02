@@ -20,6 +20,7 @@
 #include <linux/kallsyms.h>
 
 #include "common.h"
+#include "syscall_portable.h"
 
 static char *(*__get_task_comm_fn)(char *buf, size_t buf_size, struct task_struct *tsk) = 0;
 
@@ -93,14 +94,14 @@ void panda_openat_hide_install() {
     if (!__get_task_comm_fn)
         pr_warn("panda_hide: openat_hide: __get_task_comm not found\n");
 
-    err = fp_hook_syscalln(__NR_openat, 4, before_openat, NULL, NULL);
+    err = panda_hook_syscall("sys_openat", 4, before_openat, NULL, NULL);
     if (err) {
         pr_err("panda_hide: hook openat failed %d\n", err);
     } else {
         hook_openat_status = 1;
     }
 
-    err = fp_hook_syscalln(__NR_faccessat, 4, before_faccessat, NULL, NULL);
+    err = panda_hook_syscall("sys_faccessat", 4, before_faccessat, NULL, NULL);
     if (err) {
         pr_err("panda_hide: hook faccessat failed %d\n", err);
     } else {
@@ -112,11 +113,11 @@ void panda_openat_hide_install() {
 
 void panda_openat_hide_uninstall() {
     if (hook_openat_status) {
-        fp_unhook_syscalln(__NR_openat, before_openat, NULL);
+        panda_unhook_syscall("sys_openat", before_openat, NULL);
         hook_openat_status = 0;
     }
     if (hook_faccessat_status) {
-        fp_unhook_syscalln(__NR_faccessat, before_faccessat, NULL);
+        panda_unhook_syscall("sys_faccessat", before_faccessat, NULL);
         hook_faccessat_status = 0;
     }
     pr_info("panda_hide: openat hide uninstalled\n");

@@ -89,7 +89,7 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
 | --- | --- | --- | --- |
 | A | 模块侧去掉对形态专属符号的依赖 | 改模块源码，一次改动长期有效 | **已选**，mount_hidder 1.0.3 走完 |
 | B | 扩 `kernelpatch.ko` 兼容层（补齐 `kf_strnstr` 等） | 要按目标内核源码重编 `.ko` 并重装 | 不做，成本与风险都不划算 |
-| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | stealth_hook / memcrc 暂按此处理（panda_hide 2.0.1 已改走 A） |
+| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | stealth_hook / memcrc 暂按此处理（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4 已改走 A） |
 
 ## 为什么不再按形态放源码
 
@@ -117,3 +117,8 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
   - 小米 13：`load rc=0`，`cat` 探测文件返回 ENOENT，卸载后恢复；
   - Pixel 6：同样成立。此前一版用 `hook_syscalln` 时，`openat BLOCKED` 日志有、文件仍能打开——
     就是上面那节说的 `allow_skip=0`。
+- `apkey_hide` 3.6.4（去掉 `is_trusted_manager_uid_android` 的 extern，改为运行时解析）：
+  - 小米 13：`load rc=0`，`ctl0 status` 输出完整（3.6.3 加载失败，更早的 3.6.2 在 LKM 上还会
+    被 `_copy_to_user` 截成 8 字节）；Pixel 6：`load rc=0`；
+  - 代价：该符号在内核 kallsyms 表里也不存在，两形态 `sig=0`，管理器识别退回包名匹配。
+    这类「只能动态解析、解析不到就降级」的符号，是路线 A 的常见形态。

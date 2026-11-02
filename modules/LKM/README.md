@@ -29,6 +29,6 @@ python tools/load_forms.py --kallsyms <导出表>           # 把内核符号也
 | 可移植子集 | 两形态共有 60 个 | 同左 |
 | 典型专属符号 | `kallsyms_lookup_name_by_suffix`、`cred_offset`、`inline_wrap_syscalln`、`fp_wrap_syscalln`、`is_trusted_manager_uid_android`、`kf_strnstr` | `kf_kmemdup`、`kf_kstrdup` |
 
-目前两形态通用的模块：`mount_hidder` 1.0.3 与 `panda_hide` 2.0.1（Pixel 6 与小米 13 上都实测加载并生效）。
+目前两形态通用的模块：`mount_hidder` 1.0.3、`panda_hide` 2.0.1、`apkey_hide` 3.6.4（Pixel 6 与小米 13 上都实测加载成功；前两个在小米 13 上验到功能生效）。
 后者的额外收获：`hook_syscalln()` 在 kernel 形态不认 `skip_origin`，阻断型钩子要自己
 `hook_wrap` 到 `__arm64_sys_xxx`，见 [09-load-forms.md](../../docs/process/09-load-forms.md)「阻断型 syscall 钩子」一节。

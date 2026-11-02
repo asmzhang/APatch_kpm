@@ -219,9 +219,6 @@ extern int  is_su_allow_uid(uid_t uid);
  * -DAPK_NO_KP_USERD 关闭此处 userd.c 派生能力，其余功能不受影响。
  * 注：refresh_trusted_manager_state 走 kallsyms 动态解析，本就没有链接期符号依赖，
  * 因此不受该开关影响（解析失败只会降级，不会让模块不加载）。 */
-#ifndef APK_NO_KP_USERD
-extern int  is_trusted_manager_uid_android(uid_t uid);
-#endif
 
 static int   (*apk_snprintf)(char *, size_t, const char *, ...);
 static long  (*apk_copy_to_user)(void *, const void *, unsigned long);
@@ -243,6 +240,13 @@ static int      apk_refresh_hooked;
  * __attribute__((unused))：-DAPK_NO_KP_USERD 下这个变量只在 status 行/日志里被
  * 读到，编译器在某些配置下会判"未使用"，显式标注以保持 -Wall -Wextra 零告警。 */
 static void    *apk_refresh_fn __attribute__((unused));
+/* ★v3.6.4：KP 的签名校验受信管理器判定改成【动态解析】。
+ * LKM 形态（kernelpatch.ko）的 KPM 兼容符号表不含 is_trusted_manager_uid_android
+ * （只在 kernel 形态导出），extern 会让 LKM 装载器在 apply_relocations() 前
+ * 报 unknown symbol 并【整模块不加载】——比丢一条判定更糟。改成尽力解析：
+ * 解析到就等价于原来的调用，解析不到就跳过这一条（其余信任来源不变）。
+ * 两形态都能加载；status 行的 sig= 是这条能力的可观测位。 */
+static int    (*apk_is_trusted_mgr)(uid_t uid);
 static uint32_t apk_mgr_uid;               /* 已确认的管理器 uid（0=未知） */
 static int      apk_need_refine = 1;       /* 待特权域做一次精确修正 */
 /* ★v3.6.2：【诊断用】apk_refine 至少成功读到过一次 packages.list（不管有没有
@@ -643,7 +647,7 @@ static int apk_trusted_uid(uint32_t u)
      * 摘要比对，拿不到私钥就伪造不了）。接它进来的唯一目的是保证真管理器不被
      * 我们误杀——误杀 = 功能缺失 = 本身就是可观测痕迹。KP 的 before() 本来也
      * 会调它（supercall.c:406），这里多调一次不新增任何可观测面。 */
-    if (is_trusted_manager_uid_android((uid_t)u))
+    if (apk_is_trusted_mgr && apk_is_trusted_mgr((uid_t)u))
         return 1;
 #endif
     return 0;
@@ -750,7 +754,7 @@ static void apk_status_line(char *buf, int buflen)
     if (!apk_snprintf) return;
     apk_snprintf(buf, (size_t)buflen,
                  "APKey_Hide v" MYKPM_VERSION " hook=%d refresh=%d swept=%d loader=%u mgr=%u "
-                 "embedded=%d claimed=%u cfgpkg=%s win=%u/%d need_refine=%d refok=%d "
+                 "embedded=%d claimed=%u cfgpkg=%s win=%u/%d need_refine=%d refok=%d sig=%d "
                  "allow=%d deny=%u pass=%u "
                  "n(excl=%u unexcl=%u skip=%u) names=%s,%s,%s,%s",
                  apk_hook_ok, apk_refresh_hooked, apk_swept, (unsigned)apk_loader_uid,
@@ -758,7 +762,8 @@ static void apk_status_line(char *buf, int buflen)
                  (unsigned)apk_claimed_uid,
                  apk_cfg_valid ? apk_cfg_pkg : "-",
                  (unsigned)apk_window_calls, apk_window_closed,
-                 apk_need_refine, apk_refine_read_ok, apk_allow_cnt,
+                 apk_need_refine, apk_refine_read_ok,
+                 apk_is_trusted_mgr ? 1 : 0, apk_allow_cnt,
                  (unsigned)apk_n_deny, (unsigned)apk_n_pass,
                  (unsigned)apk_n_excl, (unsigned)apk_n_unexcl,
                  (unsigned)apk_n_skip,
@@ -942,8 +947,17 @@ static long apk_init(const char *args, const char *event, void *reserved)
     if (!apk_snprintf)
         apk_snprintf = (int (*)(char *, size_t, const char *, ...))
             kallsyms_lookup_name("snprintf");
+    /* ★v3.6.4：优先用 KP 导出的 compat_copy_to_user（两形态都在），kallsyms 兜底。
+     * 起因：LKM + 5.10 上 kallsyms 命中 `_copy_to_user`（本地符号）后，ctl0 的输出
+     * 只到达用户 8 字节（内核侧 strlen(out)=227，已用调试打印确认），
+     * 说明该符号在本内核上的行为与 (void*, const void*, unsigned long) 调用约定
+     * 不一致。KP 的包装器语义明确（copy_to_user 成功返回 len），
+     * 且已在 6.1 GKI 上验证过，故改为首选。 */
     apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
-        kallsyms_lookup_name("copy_to_user");
+        (void *)compat_copy_to_user;
+    if (!apk_copy_to_user)
+        apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
+            kallsyms_lookup_name("copy_to_user");
     if (!apk_copy_to_user)
         apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
             kallsyms_lookup_name("_copy_to_user");
@@ -958,9 +972,7 @@ static long apk_init(const char *args, const char *event, void *reserved)
      * （表现为 rc=0 但用户缓冲是空的）。兜底改用 KP 自己导出的
      * compat_copy_to_user：它与本模块其它依赖同属 KP 导出表，
      * 不新增加载失败面。 */
-    if (!apk_copy_to_user)
-        apk_copy_to_user = (long (*)(void *, const void *, unsigned long))
-            (void *)compat_copy_to_user;
+    /* （compat_copy_to_user 已在上方作为首选，此处不再重复） */
     apk_vmalloc = (void *(*)(unsigned long))kallsyms_lookup_name("vmalloc");
     apk_vfree = (void (*)(const void *))kallsyms_lookup_name("vfree");
     apk_filp_open = (void *(*)(const char *, int, int))kallsyms_lookup_name("filp_open");
@@ -1023,6 +1035,11 @@ static long apk_init(const char *args, const char *event, void *reserved)
         apk_refresh_hooked = 1;
     APK_LOG("init: refresh fn=%llx hooked=%d\n",
             (unsigned long long)(unsigned long)apk_refresh_fn, apk_refresh_hooked);
+
+    /* ★v3.6.4：KP 签名校验受信管理器判定。kernel 形态在 KP 导出表里，
+     * kallsyms 也能解析；LKM 形态解析不到就为 NULL → 跳过该条，不影响加载。 */
+    apk_is_trusted_mgr = (int (*)(uid_t))kallsyms_lookup_name("is_trusted_manager_uid_android");
+    APK_LOG("init: trusted-mgr sig check=%s\n", apk_is_trusted_mgr ? "on" : "unavailable");
 #endif
 
     /* ④ ★v3.6.2【关窗判据修正 —— 只按"管理器 uid 已知"关，不再按 cfg 关】

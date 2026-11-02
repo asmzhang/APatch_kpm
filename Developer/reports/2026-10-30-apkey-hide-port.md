@@ -132,3 +132,45 @@ debug 28368B `sha256=e448167959534fe5c69943b4b2523a5ae3a03d588391d006919c03bfef4
 | `unclaim` | 同上，窗口重开 |
 
 未覆盖：`refresh=0` 说明 `refresh_trusted_manager_state` 在本内核上解析失败（设计内的降级路径，见「未解决项」表）。
+
+## 3.6.4：去掉 LKM 形态缺失的符号，并修掉 LKM 上的 8 字节截断（2026-11-02）
+
+### 触发
+
+小米 13（`kernelpatch-lkm`，5.10.149-android12-9）加载 3.6.3 报 `unknown symbol: is_trusted_manager_uid_android`。
+该符号只在内核集成形态导出（`KernelPatch/kernel/patch/android/userd.c:1159`），
+LKM 兼容表里没有；两个装载器（`KernelPatch/lkm/kpm/module.c:394-406`、
+`KernelPatch/kernel/patch/module/module.c:227-233`）都不看 weak binding，解析失败即 `-ENOENT`，
+在 `apply_relocations()` 之前中止，整个模块不加载。
+
+### 改动
+
+1. `APKey_Hide.c:223` 的 `extern int is_trusted_manager_uid_android(uid_t)` 换成无条件函数指针
+   `apk_is_trusted_mgr`，init 里 `kallsyms_lookup_name` 解析；调用点判空。
+2. `status` 行新增 `sig=%d`，把「签名校验这条路是否可用」显式暴露出来。
+3. `apk_copy_to_user` 首选 `compat_copy_to_user`（KP 导出），三级 kallsyms 链降为兜底。
+
+第 3 条是本轮顺带发现的独立缺陷：小米 13 上所有 `ctl0` 命令只回 8 字节（`APKey_Hi`）。
+临时打印确认内核侧 `strlen(out)=227`、`outlen=1024` 都对，问题在拷贝函数 ——
+`_copy_to_user` 是本地符号，命中后按 `copy_to_user` 的约定调用只搬 8 字节。Pixel 6 上同样的
+三级链没命中该符号，所以问题只在 LKM + 5.10 上出现。
+
+### 产物与符号面
+
+`apkey_hide_3.6.4.kpm` 22752B、`apkey_hide_3.6.4_debug.kpm` 28592B；
+`tools/load_forms.py` → `und=10 形态=kernel,lkm kernel缺=0 lkm缺=0`（3.6.3 为 `und=11`、lkm 缺 1）。
+
+### 真机（同一份 22752B 字节）
+
+| 设备 | 形态 | 观测 |
+| --- | --- | --- |
+| Pixel 6（kernel，uid 10273） | kernel | `load rc=0`；`sweep` → `loader=10273 mgr=10273 ... refok=1 sig=0` |
+| 小米 13（lkm，uid 10270） | lkm | `load rc=0`；`sweep` → `loader=10270 mgr=10270 ... refok=1 sig=0`；status 输出完整 |
+
+### 未覆盖 / 降级
+
+- `sig=0` 是两形态共同事实：KP 内部符号不在内核 kallsyms 表里（kernel 形态 KP 是独立镜像，
+  LKM 形态更不在），因此「KP 签名校验的管理器」这条判定在 3.6.4 里不可用。
+  管理器识别由 `packages.list` 包名匹配承担；改名后的包两边都不认，等价性成立。
+- 未做「把 `is_trusted_manager_uid_android` 加进 LKM 兼容表」的路线：要重编 `kernelpatch.ko`，
+  与 [09-load-forms.md](../../docs/process/09-load-forms.md) 路线 B 同因不做。

@@ -45,6 +45,24 @@
 - 不负责文件层痕迹（`/data/adb/ap` 目录本身、管理器 APK 的包名等）。
 - 与 `APKey_Hide_S`（自杀模式）**绝不同时加载**。
 
+## 加载形态（3.6.4）
+
+3.6.3 及更早的产物只在 kernel 形态装得上：`is_trusted_manager_uid_android` 只有内核集成形态
+用 `KP_EXPORT_SYMBOL` 导出（`KernelPatch/kernel/patch/android/userd.c:1159`），
+LKM 兼容表 `KernelPatch/lkm/kpm/symbols.c` 里没有它。装载器不区分 weak/binding，
+UND 解析不到就 `unknown symbol` 并在 `apply_relocations()` 前中止 —— 整个模块不加载，
+不是丢一条判定。
+
+3.6.4 起改成 init 里 `kallsyms_lookup_name` 动态解析 + 空指针跳过。实测两种形态上该符号
+**都解析不到**（KP 内部符号不在内核 kallsyms 表里），所以 `status` 会显示 `sig=0`：
+「由 KP 签名校验确认管理器」这条判定不可用，管理器识别改由 `packages.list` 的包名匹配承担
+（`sweep` 后 `mgr`、`refok=1` 都正常）。这是记录在案的能力降级。
+
+同一轮还修掉一个只在小内核 + LKM 形态暴露的缺陷：`_copy_to_user` 是本地符号，
+经 `kallsyms_lookup_name` 命中后按 `copy_to_user` 约定调用只搬 8 字节，
+表现是 `ctl0` 的输出被截成 `APKey_Hi`。现在首选 KP 导出的 `compat_copy_to_user`，
+三级 kallsyms 链降为兜底。
+
 ## 构建
 
 ```bash
@@ -58,6 +76,10 @@ release 变体零 printk。
 
 ## 更新记录
 
+- **3.6.4（本仓补丁）**：两种装载形态同一份产物。
+  1. 去掉 `is_trusted_manager_uid_android` 的 extern 依赖（LKM 兼容表无此符号），改为运行时解析；
+     代价是两形态上 `sig=0`，管理器识别退回包名匹配。
+  2. `compat_copy_to_user` 提为首选，修掉 LKM + 5.10 上 `ctl0` 输出只有 8 字节的问题。
 - **3.6.3（本仓补丁）**：两处只在部分内核上暴露的问题。
   1. `copy_to_user` / `_copy_to_user` / `__arch_copy_to_user` 在 6.1 GKI 上**都不是 kallsyms 符号**
      （实测 `/proc/kallsyms` 只有 `copy_to_user_page`、`copy_to_user_nofault`、`__copy_from_user_*` 之类），

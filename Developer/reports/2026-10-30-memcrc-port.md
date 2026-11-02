@@ -282,6 +282,15 @@ SELinux 的 `setattr` 检查挡成 `EACCES`（与模块无关，读和 `>>` 都�
 - `tools/load_forms.py`：`und=27`，两形态 0 缺失。
 - 版本串：`version=0.2.5` / `version=0.2.5_d`（clean 重建后确认）。
 
+### 真机（Pixel 6 / sha256:433ab88276ec / 6.1.99-android14 / kernel 形态 / 管理器 uid 10273）
+
+| 步骤 | 观测 |
+| --- | --- |
+| `kpmctl 10273 load memcrc_0.2.5.kpm` | `load rc=0`，dmesg `[yuuki] ... installed successfully` 五条，`load_module_ex: [memcrc] succeed with [(null)]` |
+| `mc_range_test.sh`（起 uid 2000 的 sleep，取 `[stack]` 区间加 `RANGE:2000`） | `before total=139 stack=1` → `after total=138 stack=0`，`ctl rc=0` |
+| `PTRACE:2000` | 同进程 `State: S (sleeping)` → `State: R (running)` |
+| 与 `mount_hidder` 1.0.3 共存 | `add:/apex` 后 `grep -c ' /apex' /proc/mounts` 83 → 0，`clear` 后回 83 |
+
 ### 未覆盖
 
 1. 5.10 / LKM 侧真机验证待重启设备后进行（本次只做了离线构建与符号面自检）。

@@ -119,7 +119,8 @@ note: kpmctl[25198] exited with preempt_count 1
 - `control/control.c`：新增 `static int getcwd_hooked`，`syscall_init()` 成功后置 1；`syscall_exit()` 只在置位时 `mc_unhook_syscall()`。
 - 产物：`memcrc_0.2.5.kpm` 96320 B `sha256=0ffdf5f79307a5cdbe2ca26997c41f5dd48b715c72be77f9b34c18d16804b84d`；`memcrc_0.2.5_debug.kpm` 96320 B `sha256=60750fc6e5cab6b463667b8d9d3f533be483f2832de8eea15459ee1ab415724e`。
 - 符号面：`tools/load_forms.py --artifact modules/KPM/memcrc/memcrc_0.2.5.kpm --kallsyms local/mi13_kallsyms.txt` → `und=27 形态=kernel,lkm kernel缺=0 lkm缺=0`，与 0.2.4 一致。
-- 真机：**待重启后的 5.10 设备验证**；6.1 侧回归项记在开发报告的 0.2.5 节。
+- 真机（6.1 / Pixel 6 / kernel 形态）：`load rc=0`；`RANGE:2000` 让目标进程 `maps` 139→138、`[stack]` 1→0；`PTRACE:2000` 让 `State: S`→`R`；与 `mount_hidder` 1.0.3 共存时 `add:/apex` 仍 83→0。
+- 真机（5.10 / 小米 13 / LKM）：**待重启后验证**，重点看「失败路径不再打 BUG、下一次 `misc_register` 不再阻塞」。
 
 ## 8. 一条构建教训
 

@@ -125,3 +125,41 @@ wxs_probe: dual switch storm, disabling
   段错误，而 `su`/`dmesg` 正常，很容易误判成「设备坏了」。
 - **TLB 必须全 ASID 刷**：`tlbi vaae1is` 只刷当前 ASID；目标进程在另一个 ASID 上，旧的可执行项
   不会失效，改过的 UXN 它根本看不见。改成 `tlbi vmalle1is` 只在安装/复原时付一次代价。
+
+## P3 收口（2026-11-03）：双视图已由 stealth_hook 的硬件断点给出实测证据
+
+结论先行：**同一个 VA 上「读到的还是原字节、执行的是补丁」已经成立**，但成立的机制不是页表，
+是硬件执行断点。
+
+实测环境：Pixel 6 / 6.1.99-android14；`wxs_oracle` 静态非 PIE，`oracle_target` 在 `0x221c98`
+（`add w0,w0,#1; add w0,w0,w0; ret`，入参 20 返回 42），`ret` 在 `0x221ca0`。
+
+| 步骤 | 命令 | 结果 |
+| --- | --- | --- |
+| 起点 | 无钩子 | `t=2..4 state=CLEAN ret=42` |
+| 在 `ret` 上下断点 | `stealth_cli hook 0x221ca0 --tid <pid> --listen-ret` | `rc=0 addr=0x221ca0 flags=0x9` |
+| 改返回值 | `stealth_cli override 0x221ca0 --set 0=7` | `rc=0 mask=0x1` |
+| 结果 | — | `t=18..20 state=CLEAN ret=7` |
+
+两条同时成立：
+
+- `state=CLEAN`：oracle 每轮读 `0x221c98` 起 12 字节与启动时的原始快照比对，**全部相等**；
+- `ret=7`：调用方拿到的返回值是补丁值（原值 42）。
+
+独立复核页内容：`dd if=/proc/<pid>/mem bs=1 skip=$((0x221ca0)) count=4 | xxd` → `c003 5fd6`
+（即 `0xd65f03c0`，`ret` 原指令），**一个字节都没改**。
+
+命中记录（`stealth_cli query 0x221ca0 --tid <pid>`）：
+`hits=14 enter=14 unmatched=0` / `last_pc=0x221d4c last_x0=0x7` / `entry lr=0x221d4c ret_x0=0x7`。
+
+因此三条出路的取舍变了：
+
+1. 原地打补丁 + 拦读路径 —— 只在「读方走 syscall / 重新映射」时成立（`runtime-sense` 的
+   O_DIRECT 直读正是打这个边界）。
+2. **硬件断点 —— 已实测成立**（本节）。代价是每线程只有 4~6 个硬件槽位，且要按线程挂。
+3. 同 VA 换地址空间 —— KPM 内不可达。
+
+剩下的真空档只有一个：需要「进程级、无数量上限、且要连数据读一起改」的补丁时，硬件断点不够，
+那时才需要 wxshadow 那种「影子页 + BRK + 单步」的页级方案；而它必须按 wxshadow 的形态做
+（同 VA 双 PFN、只在钩子点陷入、页内其余指令零开销），不能用本探针试过的「整页权限乒乓」——
+实测 0.16 秒切 20 万次、循环慢三个数量级，那是页粒度方案的固有成本，不是实现 bug。

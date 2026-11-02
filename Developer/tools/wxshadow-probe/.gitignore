@@ -1,3 +1,6 @@
 *.kpm
 *.o
+*.tmp
 wxs_client
+wxs_exec_client
+wxs_oracle

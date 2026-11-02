@@ -46,12 +46,14 @@ wxs_probe_$(MYKPM_VERSION).kpm: ${objs}
 
 # 客户端用静态链接，直接跑在设备上
 CLIENT_CC = $(NDK_PATH)/aarch64-linux-android31-clang
-client: wxs_client wxs_exec_client
+client: wxs_client wxs_exec_client wxs_oracle
 wxs_client: wxs_client.c
 	$(CLIENT_CC) -O2 -static -o $@ $<
 wxs_exec_client: wxs_exec_client.c
 	$(CLIENT_CC) -O2 -static -o $@ $<
+wxs_oracle: wxs_oracle.c
+	$(CLIENT_CC) -O2 -static -o $@ $<
 
 .PHONY: clean
 clean:
-	rm -rf *.kpm *.o wxs_client wxs_exec_client
+	rm -rf *.kpm *.o wxs_client wxs_exec_client wxs_oracle

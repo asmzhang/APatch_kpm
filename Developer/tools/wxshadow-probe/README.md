@@ -13,8 +13,10 @@ wxshadow 立项前的探针。P0 只读、不改页表；P1 会把目标进程�
 
 | 文件 | 作用 |
 | --- | --- |
-| `wxs_probe.c` | KPM，`ctl0` 命令：`self`、`probe <pid> <hexva>`、`attach <pid> <hexva>`、`install <hexbytes>`、`release`、`state` |
+| `wxs_probe.c` | KPM，`ctl0` 命令见下表 |
 | `wxs_client.c` | 对照进程：`mmap` 一页 rw，写固定字符串，把 pid/va 写文件，然后每 500 ms 读一次前 16 字节并追加到日志 |
+| `wxs_exec_client.c` | 执行视图对照进程：一页 rwx 匿名内存里放 `mov w0,#1; ret`，每 500 ms 调一次并记录返回值 |
+| `wxs_oracle.c` | 自检 oracle：目标函数用全局 asm 定义，期望字节**编译进代码**（`oracle_ref[]`），每 2 秒 `memcmp` 一次并打印 `CLEAN`/`PATCHED` + 返回值。不读磁盘，所以内核改物理页也瞒不过它 |
 | `Makefile` | `make all` 出 `.kpm`，`make client` 出静态链接客户端 |
 
 ## 地址换算方式（不猜版本、不用 KP 私有全局）

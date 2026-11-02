@@ -441,6 +441,119 @@ static int wxs_attach(pid_t pid, uint64_t va, char *out, int outlen)
                     (unsigned long long)pte);
 }
 
+/* 直接写目标进程的原页（模拟普通 inline hook，用来做 A 组对照）。 */
+/* 在目标进程的一段可执行映射里找「紧跟在 ret 后面的 nop」——函数尾部填充，改它最安全。 */
+/* 在目标进程的可执行映射里按 4 字节模式搜索（用于把误改的字节找回来）。 */
+static int wxs_findpat(pid_t pid, uint64_t va, uint64_t npages, uint32_t want, char *out, int outlen)
+{
+    struct task_struct *task;
+    struct mm_struct *mm;
+    int found = 0;
+    uint64_t pg;
+
+    task = kf_find_task_by_vpid(pid);
+    if (!task)
+        return snprintf(out, outlen, "findpat: no such pid\n");
+    mm = kf_get_task_mm(task);
+    if (!mm)
+        return snprintf(out, outlen, "findpat: no mm\n");
+    for (pg = 0; pg < npages && !found; pg++) {
+        uint64_t ptep, pte, pa, kva;
+        const char *err = 0;
+        uint64_t base = (va & ~0xfffULL) + (pg << 12);
+        int i;
+        if (wxs_leaf_pte(mm, base, &ptep, &pte, &err) < 0)
+            continue;
+        pa = pte & WXS_PTE_ADDR_MASK;
+        kva = pa + wxs_linear_voffset;
+        for (i = 0; i + 4 <= 4096; i += 4) {
+            if (*(volatile uint32_t *)(kva + i) == want) {
+                found = 1;
+                snprintf(out, outlen, "findpat ok va=0x%llx page=%llu off=0x%x\n",
+                         (unsigned long long)(base + i), (unsigned long long)pg, i);
+                break;
+            }
+        }
+    }
+    kf_mmput(mm);
+    if (!found)
+        return snprintf(out, outlen, "findpat: none\n");
+    return (int)strlen(out);
+}
+
+static int wxs_findnop(pid_t pid, uint64_t va, uint64_t npages, char *out, int outlen)
+{
+    struct task_struct *task;
+    struct mm_struct *mm;
+    uint64_t pgd;
+    uint64_t pg;
+    int found = 0;
+
+    task = kf_find_task_by_vpid(pid);
+    if (!task)
+        return snprintf(out, outlen, "findnop: no such pid\n");
+    mm = kf_get_task_mm(task);
+    if (!mm)
+        return snprintf(out, outlen, "findnop: no mm\n");
+    pgd = *(uint64_t *)((char *)mm + mm_struct_offset.pgd_offset);
+    for (pg = 0; pg < npages && !found; pg++) {
+        uint64_t ptep, pte, pa, kva;
+        const char *err = 0;
+        uint64_t base = (va & ~0xfffULL) + (pg << 12);
+        int i;
+        if (wxs_leaf_pte(mm, base, &ptep, &pte, &err) < 0)
+            continue;
+        pa = pte & WXS_PTE_ADDR_MASK;
+        kva = pa + wxs_linear_voffset;
+        for (i = 4; i + 4 <= 4096; i += 4) {
+            uint32_t cur = *(volatile uint32_t *)(kva + i);
+            uint32_t prev = *(volatile uint32_t *)(kva + i - 4);
+            if (cur == 0xd503201fU && prev == 0xd65f03c0U) {
+                found = 1;
+                snprintf(out, outlen, "findnop ok va=0x%llx page=%llu off=0x%x\n",
+                         (unsigned long long)(base + i), (unsigned long long)pg, i);
+                break;
+            }
+        }
+    }
+    kf_mmput(mm);
+    if (!found)
+        return snprintf(out, outlen, "findnop: none in %llu pages\n",
+                        (unsigned long long)npages);
+    return (int)strlen(out);
+}
+
+static int wxs_poke(const char *hexpat, char *out, int outlen)
+{
+    uint64_t src_pa;
+    uint64_t kva;
+    unsigned char pat[16];
+    int patlen = 0;
+    int i;
+
+    if (wxs_state < 1)
+        return snprintf(out, outlen, "poke: not attached\n");
+    for (i = 0; hexpat[i] && patlen < 16; i += 2) {
+        int hi = wxs_hexval(hexpat[i]);
+        int lo = hexpat[i + 1] ? wxs_hexval(hexpat[i + 1]) : -1;
+        if (hi < 0 || lo < 0)
+            return snprintf(out, outlen, "poke: bad hex\n");
+        pat[patlen++] = (unsigned char)((hi << 4) | lo);
+    }
+    if (!patlen)
+        return snprintf(out, outlen, "poke: empty pattern\n");
+
+    src_pa = wxs_pte_orig & WXS_PTE_ADDR_MASK;
+    kva = src_pa + wxs_linear_voffset + wxs_toff;
+    memcpy((void *)kva, pat, (size_t)patlen);
+    wxs_dcache_clean((void *)(kva & ~0x3fULL), 128);
+    asm volatile("ic ialluis" ::: "memory");
+    asm volatile("dsb ish" ::: "memory");
+    asm volatile("isb" ::: "memory");
+    return snprintf(out, outlen, "poke ok pid=%d kva=0x%llx len=%d\n",
+                    wxs_tpid, (unsigned long long)kva, patlen);
+}
+
 static int wxs_install(const char *hexpat, char *out, int outlen, int dual)
 {
     uint64_t src_pa;
@@ -586,6 +699,14 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
                  (unsigned long long)wxs_page_offset, (int)mm_struct_offset.pgd_offset);
         goto out;
     }
+    if (!strncmp(p, "detach", 6)) {
+        /* 必须能单独放掉 mm 引用，否则目标进程被杀时会被我们卡住（refused to die）。 */
+        int was = wxs_state;
+        wxs_detach();
+        snprintf(buf, sizeof(buf), "detach ok was_state=%d\n", was);
+        goto out;
+    }
+
     if (!strncmp(p, "arm", 3)) {
         if (wxs_state < 1) {
             snprintf(buf, sizeof(buf), "arm: attach first\n");
@@ -680,6 +801,40 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
         wxs_uxn_on = 1;
         snprintf(buf, sizeof(buf), "uxn ok old=0x%llx new=0x%llx\n",
                  (unsigned long long)cur, (unsigned long long)wxs_pte_uxn);
+        goto out;
+    }
+    if (!strncmp(p, "findpat", 7)) {
+        uint64_t pid64 = 0, va64 = 0, np = 0, pat64 = 0;
+        int adv;
+        p += 7; while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &pid64); if (!adv) { snprintf(buf, sizeof(buf), "bad pid\n"); goto out; }
+        p += adv; while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &va64); if (!adv) { snprintf(buf, sizeof(buf), "bad va\n"); goto out; }
+        p += adv; while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &np); if (!adv) np = 16;
+        p += adv; while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &pat64); if (!adv) { snprintf(buf, sizeof(buf), "bad pat\n"); goto out; }
+        wxs_findpat((pid_t)pid64, va64, np, (uint32_t)pat64, buf, (int)sizeof(buf));
+        goto out;
+    }
+    if (!strncmp(p, "findnop", 7)) {
+        uint64_t pid64 = 0, va64 = 0, np = 0;
+        int adv;
+        p += 7;
+        while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &pid64); if (!adv) { snprintf(buf, sizeof(buf), "bad pid\n"); goto out; }
+        p += adv; while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &va64); if (!adv) { snprintf(buf, sizeof(buf), "bad va\n"); goto out; }
+        p += adv; while (*p == ' ') p++;
+        adv = wxs_parse_u64(p, &np); if (!adv) np = 16;
+        wxs_findnop((pid_t)pid64, va64, np ? np : 16, buf, (int)sizeof(buf));
+        goto out;
+    }
+    if (!strncmp(p, "poke", 4)) {
+        p += 4;
+        while (*p == ' ')
+            p++;
+        wxs_poke(p, buf, (int)sizeof(buf));
         goto out;
     }
     if (!strncmp(p, "stats", 5)) {

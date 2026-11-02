@@ -1,9 +1,9 @@
 {
   "module": "apkey_hide",
   "status": "candidate",
-  "version_declared": "3.6.3",
+  "version_declared": "3.6.4",
   "version_sources": {
-    "makefile": "3.6.3"
+    "makefile": "3.6.4"
   },
   "builds": [
     {
@@ -329,6 +329,176 @@
       "imported_by": "维护者",
       "imported_at": "2026-11-02T02:42:35Z",
       "handoff_manifest": "Developer/reports/handoffs/2026-11-02-apkey_hide.json"
+    },
+    {
+      "module": "apkey_hide",
+      "version": "3.6.4",
+      "kind": "candidate",
+      "build_id": "apkey_hide-3.6.4+gf70b85de3409.r299d55c4.kpb51197a.ndk26.1.10909125",
+      "variant": "base",
+      "recorded_at": "2026-11-02T03:44:57Z",
+      "source_commit": "a88c30f28f74753c2776d19c24e1043145803d54",
+      "source_dirty": false,
+      "source_tree_sha256": "f70b85de34097cec81d69535abba10b82cd0b07f025df943df1b927db9fd81ef",
+      "source_tree_blob_sha256": "4f8c2b2b9dba18737a3af9bda15150380b94de1e194ebd7c8a3722935581a2b2",
+      "source_blob_missing": [],
+      "sources": [
+        {
+          "path": "kpm_utils.h",
+          "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+          "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+        },
+        {
+          "path": "modules/KPM/apkey_hide/APKey_Hide.c",
+          "sha256": "d5174e50035d943e15bc41b15278beba90d81c7d45522ef12ca94d46b89c09a3",
+          "blob_sha256": "d5174e50035d943e15bc41b15278beba90d81c7d45522ef12ca94d46b89c09a3"
+        },
+        {
+          "path": "modules/KPM/apkey_hide/Makefile",
+          "sha256": "76449d38f20263d9d80975db5a36fb40892ab8571b5c711df8cdf19054ced5a8",
+          "blob_sha256": "76449d38f20263d9d80975db5a36fb40892ab8571b5c711df8cdf19054ced5a8"
+        },
+        {
+          "path": "tools/build_candidate.py",
+          "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+          "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+        },
+        {
+          "path": "tools/identity.py",
+          "sha256": "ce295047e66211c0aa25ee9538254debed02974a36353deb070c40cb2b49928d",
+          "blob_sha256": "7f803819dee9479340e2a71384657e19e84f53de9a96f7d79935976873abd189"
+        }
+      ],
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "299d55c48246a51eb6aec48845b8fc10d4f63142e1ef9f77b11bc371ec6c9eab",
+      "recipe": {
+        "captured": true,
+        "command": "make -C '<repo>\\modules\\KPM\\apkey_hide' all debug",
+        "dry_run_args": "-n -B（强制重算配方）",
+        "returncode": 0,
+        "dry_run_sha256": "1a8ba83990be799220f6aa7c1ea741dc7cf78593ea582e28e88be000c45f94c6",
+        "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+        "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+        "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/apkey_hide'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"3.6.4\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o APKey_Hide.o APKey_Hide.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o apkey_hide_3.6.4.kpm APKey_Hide.o\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"3.6.4_d\\\" -DCONFIG_DEBUG -DAPK_DEBUG_LOG -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o debug/APKey_Hide.o APKey_Hide.c"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "a88c30f28f74753c2776d19c24e1043145803d54",
+        "source_tree_sha256": "f70b85de34097cec81d69535abba10b82cd0b07f025df943df1b927db9fd81ef",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "1a8ba83990be799220f6aa7c1ea741dc7cf78593ea582e28e88be000c45f94c6",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "apkey_hide_3.6.4.kpm",
+          "sha256": "9a39ec5294ca25fdb3173dc4ff42b390f3a4aadcfeb27b9cac9e4fbc37840b9e",
+          "size": 22752,
+          "embedded": {
+            "name": "apkey_hide",
+            "version": "3.6.4",
+            "license": "MIT",
+            "author": "Lun.",
+            "description": "不建议嵌入，嵌入记得设置管理器正确包名；Embedding is not recommended, and if you do embed, remember to set the manager with the correct package name;https://github.com/Lun-OS/APKey_Hide_KPM"
+          },
+          "path": "artifacts/apkey_hide-3.6.4+gf70b85de3409.r299d55c4.kpb51197a.ndk26.1.10909125/apkey_hide_3.6.4.kpm"
+        }
+      ],
+      "instance_id": "apkey_hide-3.6.4+gf70b85de3409.r299d55c4.kpb51197a.ndk26.1.10909125#1",
+      "imported_by": "维护者",
+      "imported_at": "2026-11-02T03:45:13Z",
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-02-apkey_hide-3.6.4.json",
+      "load_forms": [
+        "kernel",
+        "lkm"
+      ]
+    },
+    {
+      "module": "apkey_hide",
+      "version": "3.6.4",
+      "kind": "candidate",
+      "build_id": "apkey_hide-3.6.4_debug+gf70b85de3409.re8fc6e71.kpb51197a.ndk26.1.10909125",
+      "variant": "debug",
+      "recorded_at": "2026-11-02T03:44:57Z",
+      "source_commit": "a88c30f28f74753c2776d19c24e1043145803d54",
+      "source_dirty": false,
+      "source_tree_sha256": "f70b85de34097cec81d69535abba10b82cd0b07f025df943df1b927db9fd81ef",
+      "source_tree_blob_sha256": "4f8c2b2b9dba18737a3af9bda15150380b94de1e194ebd7c8a3722935581a2b2",
+      "source_blob_missing": [],
+      "sources": [
+        {
+          "path": "kpm_utils.h",
+          "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+          "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+        },
+        {
+          "path": "modules/KPM/apkey_hide/APKey_Hide.c",
+          "sha256": "d5174e50035d943e15bc41b15278beba90d81c7d45522ef12ca94d46b89c09a3",
+          "blob_sha256": "d5174e50035d943e15bc41b15278beba90d81c7d45522ef12ca94d46b89c09a3"
+        },
+        {
+          "path": "modules/KPM/apkey_hide/Makefile",
+          "sha256": "76449d38f20263d9d80975db5a36fb40892ab8571b5c711df8cdf19054ced5a8",
+          "blob_sha256": "76449d38f20263d9d80975db5a36fb40892ab8571b5c711df8cdf19054ced5a8"
+        },
+        {
+          "path": "tools/build_candidate.py",
+          "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+          "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+        },
+        {
+          "path": "tools/identity.py",
+          "sha256": "ce295047e66211c0aa25ee9538254debed02974a36353deb070c40cb2b49928d",
+          "blob_sha256": "7f803819dee9479340e2a71384657e19e84f53de9a96f7d79935976873abd189"
+        }
+      ],
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "e8fc6e71bb8edd5c9278ab48232ac4a01b6cb542ed5219a3761b8d210f707ec0",
+      "recipe": {
+        "captured": true,
+        "command": "make -C '<repo>\\modules\\KPM\\apkey_hide' all debug",
+        "dry_run_args": "-n -B（强制重算配方）",
+        "returncode": 0,
+        "dry_run_sha256": "1a8ba83990be799220f6aa7c1ea741dc7cf78593ea582e28e88be000c45f94c6",
+        "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+        "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+        "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/apkey_hide'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"3.6.4\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o APKey_Hide.o APKey_Hide.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o apkey_hide_3.6.4.kpm APKey_Hide.o\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"3.6.4_d\\\" -DCONFIG_DEBUG -DAPK_DEBUG_LOG -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o debug/APKey_Hide.o APKey_Hide.c"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "a88c30f28f74753c2776d19c24e1043145803d54",
+        "source_tree_sha256": "f70b85de34097cec81d69535abba10b82cd0b07f025df943df1b927db9fd81ef",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "1a8ba83990be799220f6aa7c1ea741dc7cf78593ea582e28e88be000c45f94c6",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "apkey_hide_3.6.4_debug.kpm",
+          "sha256": "90dbed499e6ef8e6255bd7f8a65e4472e49b0dd27f4421b7639d17737c23f82e",
+          "size": 28592,
+          "embedded": {
+            "name": "apkey_hide",
+            "version": "3.6.4_d",
+            "license": "MIT",
+            "author": "Lun.",
+            "description": "不建议嵌入，嵌入记得设置管理器正确包名；Embedding is not recommended, and if you do embed, remember to set the manager with the correct package name;https://github.com/Lun-OS/APKey_Hide_KPM"
+          },
+          "path": "artifacts/apkey_hide-3.6.4_debug+gf70b85de3409.re8fc6e71.kpb51197a.ndk26.1.10909125/apkey_hide_3.6.4_debug.kpm"
+        }
+      ],
+      "instance_id": "apkey_hide-3.6.4_debug+gf70b85de3409.re8fc6e71.kpb51197a.ndk26.1.10909125#1",
+      "imported_by": "维护者",
+      "imported_at": "2026-11-02T03:45:13Z",
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-02-apkey_hide-3.6.4.json",
+      "load_forms": [
+        "kernel",
+        "lkm"
+      ]
     }
   ],
   "audits": [],
@@ -349,6 +519,6 @@
     }
   ],
   "deliveries": [],
-  "updated_at": "2026-11-02T02:42:35Z",
+  "updated_at": "2026-11-02T03:45:13Z",
   "updated_by": "维护者"
 }

@@ -1,0 +1,17 @@
+{
+  "module": "wxshadow",
+  "status": "candidate",
+  "version_declared": "1.2.0",
+  "version_sources": {
+    "makefile": "1.2.0",
+    "upstream": "1.2.0-k66"
+  },
+  "builds": [],
+  "audits": [],
+  "device_tests": [],
+  "issues": [],
+  "acceptances": [],
+  "deliveries": [],
+  "updated_at": "2026-11-03T00:35:00Z",
+  "updated_by": "Developer"
+}

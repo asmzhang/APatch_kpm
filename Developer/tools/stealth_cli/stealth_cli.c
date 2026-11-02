@@ -274,7 +274,11 @@ static int cmd_hook(int argc, char **argv)
         char path[64];
         DIR *d;
         struct dirent *e;
+        uint32_t tids[512];
+        int ntids = 0;
         int ok = 0, fail = 0;
+        int leader_hooked = 0, leader_doubtful = 0;
+        int i2;
 
         snprintf(path, sizeof(path), "/proc/%u/task", pid);
         d = opendir(path);
@@ -288,19 +292,39 @@ static int cmd_hook(int argc, char **argv)
                 continue;
             }
             t = (uint32_t)strtoul(e->d_name, NULL, 10);
-            if (!t) {
+            if (!t || ntids >= (int)(sizeof(tids) / sizeof(tids[0]))) {
                 continue;
             }
+            tids[ntids++] = t;
+        }
+        closedir(d);
+
+        /*
+         * 组长线程在「挂的那一刻组里已经有多条线程」时挂不上（hook 返回 0、
+         * list 里也在，但断点从不触发）。这里在挂之前先数线程数，用来在
+         * 结果里如实标注，别让 ok=3 看起来像全都生效了。
+         */
+        leader_doubtful = (ntids > 1);
+
+        for (i2 = 0; i2 < ntids; i2++) {
+            uint32_t t = tids[i2];
             if (hook_one(addr, t, flags, tramp, dump, &rc) == 0) {
                 ok++;
+                if (t == pid) {
+                    leader_hooked = 1;
+                }
             } else {
                 fail++;
                 fprintf(stderr, "hook: tid %u rc=%ld\n", t, rc);
             }
         }
-        closedir(d);
         printf("hook: pid=%u addr=0x%llx flags=0x%x threads ok=%d fail=%d\n",
                pid, (unsigned long long)addr, flags, ok, fail);
+        if (leader_hooked && leader_doubtful) {
+            printf("hook: note: 组长 tid=%u 挂上了，但挂的时候进程已有 %d 条线程，"
+                   "按实测它大概率不会触发；需要覆盖组长请换线程或改用页级方案\n",
+                   pid, ntids);
+        }
         return fail ? 1 : 0;
     }
 

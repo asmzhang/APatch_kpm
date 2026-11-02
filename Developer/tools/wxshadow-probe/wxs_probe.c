@@ -41,7 +41,8 @@
 #include <linux/kernel.h>
 #include <linux/mm_types.h>
 #include <pgtable.h>
-#include <asm/ptrace.h>
+#include <asm/ptrace.h>
+#include <asm/current.h>
 
 KPM_NAME("wxs_probe");
 KPM_VERSION("0.0.2");
@@ -281,6 +282,11 @@ static void *wxs_do_mem_abort;
 static int wxs_hook_on;
 static unsigned long wxs_fault_count;
 static unsigned int wxs_fault_logged;
+static uint64_t wxs_sva;
+static int wxs_redirect;
+static unsigned long wxs_redir_count;
+static uint64_t *wxs_sptep;
+static uint64_t wxs_pgd;
 
 static void wxs_write_pte(uint64_t pte);
 
@@ -297,6 +303,21 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
         return;
     if (far < wxs_tva || far >= wxs_tva + 4096)
         return;
+    /*
+     * 同一个 VA 在别的进程里可能是完全不同的映射（静态链接程序都落在
+     * 0x200000 起，text 常在 0x221000 一带），不校验 mm 就会把无关进程的
+     * 取指重定向到它自己没有映射的影子 VA 上，直接 SIGSEGV。
+     */
+    if (wxs_pgd) {
+        struct mm_struct *cm = kf_get_task_mm(current);
+        int same;
+        if (!cm)
+            return;
+        same = (*(uint64_t *)((char *)cm + mm_struct_offset.pgd_offset) == wxs_pgd);
+        kf_mmput(cm);
+        if (!same)
+            return;
+    }
     wxs_fault_count++;
     ec = (esr >> 26) & 0x3f;
     if (ec == 0x20 || ec == 0x21)
@@ -306,6 +327,17 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
     else
         wxs_n_other++;
     fsc = esr & 0x3f;
+    if (wxs_redirect && ec == 0x20 && far >= wxs_tva && far < wxs_tva + 4096) {
+        wxs_redir_count++;
+        if (regs)
+            regs->pc = wxs_sva + (far - wxs_tva);
+        args->skip_origin = 1;
+        if (wxs_redir_count <= 4)
+            logki("wxs_probe: redirect far=0x%llx -> pc=0x%llx n=%lu\n",
+                  (unsigned long long)far, (unsigned long long)(wxs_sva + (far - wxs_tva)),
+                  wxs_redir_count);
+        return;
+    }
 
     /*
      * 单向切换：取指异常（EC=0x20 来自 EL0 的 IABT）+ 当前是 hold 状态
@@ -383,6 +415,18 @@ static void wxs_detach(void)
                   (unsigned long long)*wxs_ptep);
         }
     }
+    if (wxs_redirect) {
+        if (wxs_sptep) {
+            *wxs_sptep = 0;
+            dsb(ishst);
+            asm volatile("tlbi vaae1is, %0" : : "r"((wxs_sva >> 12) & 0xffffffffffUL));
+            dsb(ish);
+            isb();
+        }
+        wxs_redirect = 0;
+        wxs_sptep = 0;
+        wxs_sva = 0;
+    }
     if (wxs_shadow) {
         kf_kfree(wxs_shadow);
         wxs_shadow = 0;
@@ -401,13 +445,22 @@ static void wxs_detach(void)
     wxs_state = 0;
 }
 
+static int wxs_full_tlbi;
+
 static void wxs_write_pte(uint64_t pte)
 {
     *(volatile uint64_t *)wxs_ptep = pte;
     dsb(ishst);
-    asm volatile("tlbi vaae1is, %0" : : "r"((wxs_tva >> 12) & 0xffffffffffUL));
-    dsb(ish);
-    isb();
+    /*
+     * 只按 VA 刷（vaae1is）刷的是「当前 ASID」的项，而目标进程跑在它自己的
+     * ASID 上 —— 目标 TLB 里的旧项不会失效，改过的 UXN 它根本看不见（实测：
+     * 页表里 UXN 已置、probe 读出来也是 0x6000...，但目标继续从原页取指不报
+     * 异常）。这里一律做全 ASID 刷，代价只在安装/复原时付一次。
+     */
+    asm volatile("dsb ish" ::: "memory");
+    asm volatile("tlbi vmalle1is" ::: "memory");
+    asm volatile("dsb ish" ::: "memory");
+    asm volatile("isb" ::: "memory");
 }
 
 static int wxs_attach(pid_t pid, uint64_t va, char *out, int outlen)
@@ -429,6 +482,7 @@ static int wxs_attach(pid_t pid, uint64_t va, char *out, int outlen)
         kf_mmput(mm);
         return snprintf(out, outlen, "attach: %s\n", err);
     }
+    wxs_pgd = *(uint64_t *)((char *)mm + mm_struct_offset.pgd_offset);
     wxs_tpid = pid;
     wxs_tmm = mm;
     wxs_tva = va & ~0xfffULL;
@@ -552,6 +606,140 @@ static int wxs_poke(const char *hexpat, char *out, int outlen)
     asm volatile("isb" ::: "memory");
     return snprintf(out, outlen, "poke ok pid=%d kva=0x%llx len=%d\n",
                     wxs_tpid, (unsigned long long)kva, patlen);
+}
+
+/*
+ * P3：把「执行视图」放到**另一个 VA**（影子 VA），原页只置 UXN、字节不动。
+ * 这样读原页的人永远读到原字节（不需要来回切 PTE），取指一进原页就缺页，
+ * 由处理器把 PC 改到影子 VA 的同偏移处。
+ * 影子 VA 取同一个 2MB PMD 内一个**页表项为空**的槽位：页表页已经存在，
+ * 不需要分配（KPM 里没有 pmd_alloc/pte_alloc）。
+ */
+/*
+ * 自己走一遍页表拿到 L3 槽位地址（pgtable_entry 对空表项返回 0，拿不到空槽）。
+ * 只支持 4K 页 + 3 级（VA_BITS=39）；遇到 2M block 返回 0，交给调用方跳过。
+ */
+static uint64_t *wxs_pte_slot(uint64_t pgd_va, uint64_t va)
+{
+    uint64_t *l1 = (uint64_t *)pgd_va;
+    uint64_t d1;
+    uint64_t *l2;
+    uint64_t d2;
+    uint64_t *l3;
+
+    d1 = l1[(va >> 30) & 0x1ffULL];
+    if ((d1 & 0x3ULL) != 0x3ULL)
+        return 0;
+    l2 = (uint64_t *)((d1 & WXS_PTE_ADDR_MASK) + wxs_linear_voffset);
+    d2 = l2[(va >> 21) & 0x1ffULL];
+    if ((d2 & 0x3ULL) != 0x3ULL)
+        return 0;
+    l3 = (uint64_t *)((d2 & WXS_PTE_ADDR_MASK) + wxs_linear_voffset);
+    return &l3[(va >> 12) & 0x1ffULL];
+}
+
+static int wxs_redirect_install(const char *hexpat, char *out, int outlen)
+{
+    uint64_t src_pa;
+    uint64_t off;
+    uint64_t shadow_pa;
+    uint64_t spte;
+    uint64_t pmd_base;
+    uint64_t cand;
+    uint64_t *sptep = 0;
+    unsigned char pat[16];
+    int patlen = 0;
+    int i;
+
+    if (wxs_state < 1)
+        return snprintf(out, outlen, "redirect: not attached\n");
+    if (wxs_redirect)
+        return snprintf(out, outlen, "redirect: already installed\n");
+    for (i = 0; hexpat[i] && patlen < 16; i += 2) {
+        int hi = wxs_hexval(hexpat[i]);
+        int lo = hexpat[i + 1] ? wxs_hexval(hexpat[i + 1]) : -1;
+        if (hi < 0 || lo < 0)
+            return snprintf(out, outlen, "redirect: bad hex\n");
+        pat[patlen++] = (unsigned char)((hi << 4) | lo);
+    }
+    if (!patlen)
+        return snprintf(out, outlen, "redirect: empty pattern\n");
+
+    wxs_shadow = kf___kmalloc(4096, WXS_GFP_KERNEL);
+    if (!wxs_shadow)
+        return snprintf(out, outlen, "redirect: kmalloc failed\n");
+    if ((uint64_t)wxs_shadow & 0xfffULL) {
+        kf_kfree(wxs_shadow);
+        wxs_shadow = 0;
+        return snprintf(out, outlen, "redirect: shadow page not aligned\n");
+    }
+    src_pa = wxs_pte_orig & WXS_PTE_ADDR_MASK;
+    memcpy(wxs_shadow, (void *)(src_pa + wxs_linear_voffset), 4096);
+    off = wxs_toff;
+    memcpy((char *)wxs_shadow + off, pat, (size_t)patlen);
+    wxs_dcache_clean(wxs_shadow, 4096);
+    asm volatile("ic ialluis" ::: "memory");
+    asm volatile("dsb ish" ::: "memory");
+    asm volatile("isb" ::: "memory");
+    shadow_pa = wxs_at_s1e1w((uint64_t)wxs_shadow);
+    if (!shadow_pa) {
+        kf_kfree(wxs_shadow);
+        wxs_shadow = 0;
+        return snprintf(out, outlen, "redirect: at s1e1w failed\n");
+    }
+
+    /* 在同一个 2MB PMD 里从尾部往前找一个页表项为空的槽位 */
+    pmd_base = wxs_tva & ~0x1fffffULL;
+    {
+        int n_null = 0, n_used = 0, n_free = 0;
+        for (cand = pmd_base + 0x1ff000ULL; cand > pmd_base; cand -= 0x1000ULL) {
+            uint64_t *e;
+            if (cand == (wxs_tva & ~0xfffULL))
+                continue;
+            e = wxs_pte_slot(wxs_pgd, cand);
+            if (!e) {
+                n_null++;
+                continue;
+            }
+            if (*e) {
+                n_used++;
+                continue;
+            }
+            n_free++;
+            if (!sptep) {
+                sptep = e;
+                wxs_sva = cand;
+            }
+        }
+        if (!sptep) {
+            kf_kfree(wxs_shadow);
+            wxs_shadow = 0;
+            return snprintf(out, outlen,
+                            "redirect: no free slot pmd=0x%llx null=%d used=%d free=%d\n",
+                            (unsigned long long)pmd_base, n_null, n_used, n_free);
+        }
+    }
+    wxs_sptep = sptep;
+
+    /* 影子 VA：可执行、只读、EL0 可访问；属性沿用原页（同一类 Normal 内存） */
+    spte = (wxs_pte_orig & ~WXS_PTE_ADDR_MASK & ~PTE_UXN) | (shadow_pa & WXS_PTE_ADDR_MASK);
+    *sptep = spte;
+    dsb(ishst);
+    asm volatile("tlbi vaae1is, %0" : : "r"((wxs_sva >> 12) & 0xffffffffffUL));
+    dsb(ish);
+    isb();
+
+    /* 原页：只置 UXN，字节与物理页完全不动 */
+    wxs_write_pte(wxs_pte_orig | PTE_UXN);
+    wxs_redirect = 1;
+    wxs_redir_count = 0;
+
+    return snprintf(out, outlen,
+                    "redirect ok pid=%d va=0x%llx off=0x%llx sva=0x%llx shadow_pa=0x%llx "
+                    "spte=0x%llx orig=0x%llx\n",
+                    wxs_tpid, (unsigned long long)wxs_tva, (unsigned long long)wxs_toff,
+                    (unsigned long long)wxs_sva, (unsigned long long)shadow_pa,
+                    (unsigned long long)spte, (unsigned long long)(wxs_pte_orig | PTE_UXN));
 }
 
 static int wxs_install(const char *hexpat, char *out, int outlen, int dual)
@@ -846,6 +1034,21 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
         snprintf(buf, sizeof(buf), "faults=%lu logged=%u hook=%d sw=%lu hold=%d va=0x%llx\n",
                  wxs_fault_count, wxs_fault_logged, wxs_hook_on, wxs_switch_count, wxs_hold,
                  (unsigned long long)wxs_tva);
+        goto out;
+    }
+    if (!strncmp(p, "fulltlbi", 8)) {
+        p += 8;
+        while (*p == ' ')
+            p++;
+        wxs_full_tlbi = (*p == '1' || *p == 'o');
+        snprintf(buf, sizeof(buf), "fulltlbi=%d\n", wxs_full_tlbi);
+        goto out;
+    }
+    if (!strncmp(p, "redirect", 8)) {
+        p += 8;
+        while (*p == ' ')
+            p++;
+        wxs_redirect_install(p, buf, (int)sizeof(buf));
         goto out;
     }
     if (!strncmp(p, "state", 5)) {

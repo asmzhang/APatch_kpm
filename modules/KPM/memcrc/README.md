@@ -81,6 +81,12 @@ printf 'CMD:CLEAR\n' > /tmp/r.txt && dd if=/tmp/r.txt of=/dev/yuuki_misc conv=no
 改成 `hook_wrap(func, 2, before, after)` 后按 KP 的 `hook_chain` 追加，多个模块可共存。
 旧 `count` 存在 `fargs->local.data7`（见 09 文档的槽位表）。
 
+**两形态实测（0.2.5）。** 同一份 96320 B 的产物在两种装载器上都跑过：Pixel 6（6.1.99 / kernel 形态）
+与小米 13（5.10.149 / lkm 形态）各自 `load rc=0`、五个子系统 installed、`init returned 0`；
+`PTRACE:2000` 让目标进程 `State:` 由 `S` 变 `R`，`RANGE:2000:` 让 `maps` 与 `[stack]` 各减一条；
+与 `mount_hidder` 1.0.3 同挂 `show_*` 时两边都仍生效；`unload rc=0` 之后还能再次 `load rc=0`
+（`misc_register()` 不再被上一次失败留下的 `misc_mtx` 卡住）。
+
 自检：
 
 ```bash
@@ -98,6 +104,7 @@ python3 tools/load_forms.py --module memcrc --strict
 
 - 卸载幂等：`ioctl_exit()` 只在 `misc_register()` 真的成功过之后才 `misc_deregister()`；`syscall_exit()` 同理只卸真挂上的 getcwd 钩子。
 - 背景：`mod_init()` 失败路径已清过一次，装载器随后还会调 `mod_exit()`，重复 `misc_deregister()` 会在 `__list_del_entry_valid()` 里 `BUG()`，并带着 `misc_mtx` 死掉，使下一次 `misc_register()` 永久阻塞（小米 13 / 5.10 / LKM 实测，见 `docs/records/2026-11-02-mi13-memcrc-hang.md`）。
+- 真机（重启后）：小米 13（lkm 形态）`load rc=0`、功能生效、`unload`→`load` 循环干净；Pixel 6（kernel 形态）同。
 
 ### 0.2.4
 

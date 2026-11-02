@@ -114,7 +114,7 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
 | --- | --- | --- | --- |
 | A | 模块侧去掉对形态专属符号的依赖 | 改模块源码，一次改动长期有效 | **已选**，mount_hidder 1.0.3 走完 |
 | B | 扩 `kernelpatch.ko` 兼容层（补齐 `kf_strnstr` 等） | 要按目标内核源码重编 `.ko` 并重装 | 不做，成本与风险都不划算 |
-| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | 目前没有模块走这条（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4、stealth_hook 0.3.4、memcrc 0.2.4 都已改走 A） |
+| C | 记录并接受「只有 kernel 形态可用」 | 零改动，但 LKM 模式设备用不上 | 目前没有模块走这条（mount_hidder 1.0.3、panda_hide 2.0.1、apkey_hide 3.6.4、stealth_hook 0.3.4、memcrc 0.2.5 都已改走 A） |
 
 ## 为什么不再按形态放源码
 
@@ -151,10 +151,13 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
   - `sh_current_uid()` 改用 KP 导出的 `current_uid()`；syscall 桥改
     `syscalln_addr()` + `hook_wrap()`，与 KP 的 `inline_wrap_syscalln` 同构；
   - 小米 13 与 Pixel 6 都 `load rc=0`，`ctl0 status` 与 `stealth_cli selftest` 全通过。
-- `memcrc` 0.2.4（去掉 9 个形态专属符号 + procfs 钩子改链式）：
+- `memcrc` 0.2.4 / 0.2.5（去掉 9 个形态专属符号 + procfs 钩子改链式 + 卸载幂等）：
   - Pixel 6：`load rc=0`，`PTRACE:2000` 让 uid 2000 进程的 `State:` 变 `R (running)`，
     `RANGE:2000:…` 让目标进程 `maps` 141 → 140、`[stack]` 1 → 0；
   - 同一台机器上再加载 `mount_hidder` 1.0.3 + `add:/apex`，`/proc/mounts` 83 → 0，
     且 memcrc 的规则仍然生效 —— 两个模块挂在同一批 `show_*` 上互不影响；
-  - 小米 13 待重测（0.2.3 的第二次加载把 `kpmctl` 卡在 `misc_register()`，见
-    [2026-11-02-mi13-memcrc-hang.md](../records/2026-11-02-mi13-memcrc-hang.md)）。
+  - 小米 13（0.2.5，设备重启后）：`load rc=0`、五个子系统 installed、`PTRACE:` / `RANGE:` 生效、
+    与 `mount_hidder` 1.0.3 共存、`unload` 后再 `load` 仍 `rc=0`。0.2.3 时期那次
+    `misc_register()` 卡死是 memcrc 自身卸载不幂等导致的（`misc_deregister()` 二次调用在
+    `__list_del_entry_valid()` 里 BUG，带着 `misc_mtx` 死掉），0.2.5 已修，见
+    [2026-11-02-mi13-memcrc-hang.md](../records/2026-11-02-mi13-memcrc-hang.md)。

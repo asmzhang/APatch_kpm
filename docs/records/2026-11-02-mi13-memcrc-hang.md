@@ -120,8 +120,25 @@ note: kpmctl[25198] exited with preempt_count 1
 - 产物：`memcrc_0.2.5.kpm` 96320 B `sha256=0ffdf5f79307a5cdbe2ca26997c41f5dd48b715c72be77f9b34c18d16804b84d`；`memcrc_0.2.5_debug.kpm` 96320 B `sha256=60750fc6e5cab6b463667b8d9d3f533be483f2832de8eea15459ee1ab415724e`。
 - 符号面：`tools/load_forms.py --artifact modules/KPM/memcrc/memcrc_0.2.5.kpm --kallsyms local/mi13_kallsyms.txt` → `und=27 形态=kernel,lkm kernel缺=0 lkm缺=0`，与 0.2.4 一致。
 - 真机（6.1 / Pixel 6 / kernel 形态）：`load rc=0`；`RANGE:2000` 让目标进程 `maps` 139→138、`[stack]` 1→0；`PTRACE:2000` 让 `State: S`→`R`；与 `mount_hidder` 1.0.3 共存时 `add:/apex` 仍 83→0。
-- 真机（5.10 / 小米 13 / LKM）：**待重启后验证**，重点看「失败路径不再打 BUG、下一次 `misc_register` 不再阻塞」。
+- 真机（5.10 / 小米 13 / LKM）：重启后已验证，见 §9。
 
 ## 8. 一条构建教训
 
 升版本号后必须 `make clean` 再构建：版本串由 `KPM_VERSION(MYKPM_VERSION)` 编进 `mod_main.o`，若只改了别的文件，make 不会重编 `mod_main.o`，产出的文件名是 0.2.5、里面却还写着 `version=0.2.4`。这次就是这样发现的（`strings memcrc_0.2.5.kpm` 显示 `version=0.2.4`），clean 重建后两个变体分别是 `version=0.2.5` / `version=0.2.5_d`。
+
+## 9. 验证结果（设备重启后，小米 13）
+
+设备重启清掉了 D 状态的 `kpmctl` 与被持有的 `misc_mtx`，随后在同一天验证：
+
+| 步骤 | 观测 |
+| --- | --- |
+| `kpmctl 10270 load memcrc_0.2.5.kpm` | `load rc=0`，五个子系统 installed，`init returned 0`，`succeed with []` |
+| `PTRACE:2000` | uid 2000 的 `sleep`：`State: S` → `R`，`TracerPid: 0` |
+| `RANGE:2000:<[stack]>` | `maps` 131 → 130，`[stack]` 1 → 0 |
+| 与 `mount_hidder` 1.0.3 共存 | 两边同时生效：`/apex` 56 → 0，`RANGE` 仍 132 → 131 |
+| 两个模块 `unload` | 均 `rc=0`，dmesg 五条 `uninstalled successfully`，**无 `__list_del_entry_valid`、无 Oops、无 `preempt_count`** |
+| 再次 `load memcrc_0.2.5.kpm` | `load rc=0` —— `misc_register()` 不再被死锁卡住 |
+| 重复 load 同一产物 | `load rc=-1`，装载器层拒绝，未进 `init`（因此失败路径的幂等性仍只有代码审查支撑） |
+
+结论：0.2.5 的 `komm_registered` / `getcwd_hooked` 守卫让卸载路径幂等，重启后的设备上不再复现
+`misc_deregister()` 的 BUG；`misc_mtx` 死锁是那次 BUG 的后果，不是独立问题。

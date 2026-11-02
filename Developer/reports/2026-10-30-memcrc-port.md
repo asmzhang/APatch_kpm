@@ -291,7 +291,19 @@ SELinux 的 `setattr` 检查挡成 `EACCES`（与模块无关，读和 `>>` 都�
 | `PTRACE:2000` | 同进程 `State: S (sleeping)` → `State: R (running)` |
 | 与 `mount_hidder` 1.0.3 共存 | `add:/apex` 后 `grep -c ' /apex' /proc/mounts` 83 → 0，`clear` 后回 83 |
 
+### 真机（小米 13 / sha256:cdc3e9167b02 / 5.10.149-android12-9 / lkm 形态 / 管理器 uid 10270，设备重启后）
+
+| 步骤 | 观测 |
+| --- | --- |
+| `kpmctl 10270 load memcrc_0.2.5.kpm` | `load rc=0`；dmesg `[yuuki] Initializing...` → `komm loaded successfully` → `feature hook installed successfully` → `redirect hook installed successfully` → `Successfully hooked getcwd syscall` → `PTRACE_REGS ready` → `ptrace_hide hook installed successfully` → `init returned 0` → `succeed with []`，**无 Oops、无 `preempt_count`** |
+| `PTRACE:2000`（uid 2000 的 `sleep`） | `State:\tS (sleeping)` → `State:\tR (running)`，`TracerPid:\t0` |
+| `RANGE:2000:<[stack] 区间>` | `before total=131 stack=1` → `after total=130 stack=0` |
+| 与 `mount_hidder` 1.0.3 共存 | `load rc=0`；`add:/apex` 后 `grep -c ' /apex' /proc/mounts` 56 → 0；同时 `RANGE` 仍 132 → 131、`[stack]` 1 → 0 |
+| `unload mount_hidder` + `unload memcrc` | 两个 `unload rc=0`；dmesg 五条 `uninstalled successfully`，无 `__list_del_entry_valid`、无 BUG |
+| 再次 `load memcrc_0.2.5.kpm` | `load rc=0` —— 上一次失败留下的 `misc_mtx` 死锁不再影响新加载 |
+| 重复 load 同一产物 | `load rc=-1`（装载器层拒绝，dmesg 无新增行，未进 init） |
+
 ### 未覆盖
 
-1. 5.10 / LKM 侧真机验证待重启设备后进行（本次只做了离线构建与符号面自检）。
+1. `mod_init()` **主动失败**那条路径仍未在真机上构造出来：重复加载会在装载器层就以 `rc=-1` 拒掉、进不到 `init`，所以只验到了「正常 unload 之后再 load」；失败路径的幂等性目前靠代码审查（`komm_registered` / `getcwd_hooked` 两个守卫）与 0.2.5 之前的 Oops 取证支撑。
 2. 6.1 侧只跑了加载与 `PTRACE:` / `RANGE:` 的功能回归，未复现「init 失败 → mod_exit 二次清理」这条路径（该路径需要构造一次加载失败）。

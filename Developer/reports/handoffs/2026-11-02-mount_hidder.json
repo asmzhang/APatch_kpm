@@ -1,109 +1,109 @@
 {
   "module": "mount_hidder",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-11-02T02:24:19Z",
+  "handoff_at": "2026-11-02T02:50:33Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "mount_hidder",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "kind": "candidate",
-      "build_id": "mount_hidder-1.0.1+gb0d6dfb02f65.r03c62bae.kpb51197a.ndk26.1.10909125",
+      "build_id": "mount_hidder-1.0.2+gb7adce8021f5.r130db140.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-11-02T02:24:19Z",
-      "source_commit": "d9d853c93826148a0cca2a0d50f3920338ecd97f",
+      "recorded_at": "2026-11-02T02:50:33Z",
+      "source_commit": "05d376edc7b57c58d4b494b4fd51767985cfce5a",
       "source_dirty": false,
-      "source_tree_sha256": "b0d6dfb02f6537237a3e3693410ab7a39125ce44e04d239f964122f4f6bbd368",
-      "source_tree_blob_sha256": "e29af47d1b2be314611e890a4933ea61a3e95d2fe1f3051d5f4a3baf5f91f6e4",
+      "source_tree_sha256": "b7adce8021f5a82bc97263f3ba56d5ef5724a69db7997a0ea042634980baa68e",
+      "source_tree_blob_sha256": "356a1021b7dd2a943dce999d92b5af7e0e705747cdc375e16ddaac5c310fa179",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "0f8f2cf2c923b7946ba5b8cfea6512d66ba033f62d1bf11bec02be1f32b1cee0"
+        "data_ref": "7494d13f70b577d723f71123fe9bb9cddd1f868a82242fa0f194a3a92cc96b89"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "03c62bae5dc6cba28669f98f328b134b1be518b1643c00cdb3cd369bb3a53109",
+      "fingerprint_sha256": "130db14095b160b3947680d2ba7bd9807ca54552895ab30140a933aa82fde16a",
       "recipe": {
-        "data_ref": "ef5d8c287bcb529325c0c3fd9cd7bfca64984e9aa52860fe95800dc8d9a945ac"
+        "data_ref": "a6171d5968ecd6f69da5eab14b932d49aaea172290a2f14a389141cc4543fa60"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "d9d853c93826148a0cca2a0d50f3920338ecd97f",
-        "source_tree_sha256": "b0d6dfb02f6537237a3e3693410ab7a39125ce44e04d239f964122f4f6bbd368",
+        "source_commit": "05d376edc7b57c58d4b494b4fd51767985cfce5a",
+        "source_tree_sha256": "b7adce8021f5a82bc97263f3ba56d5ef5724a69db7997a0ea042634980baa68e",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "e929d2fc74e153f990a92e7edb7d3838de7098b9b550b9cb546004ac190853ce",
+        "recipe_sha256": "cdff60992d3327b158e4defbc622c90713aa46ad420afde53423de21225bb2cb",
         "input_unchanged": true,
         "returncode": 0
       },
       "artifacts": [
         {
-          "name": "mount_hidder_1.0.1.kpm",
-          "sha256": "58d55573ea08477ed98f848602a788a1c05a0a8c7fd0d68bde2a2739ab2adbd7",
-          "size": 10720,
+          "name": "mount_hidder_1.0.2.kpm",
+          "sha256": "32735f5ed1a2bd02c791e037fb35295b33df3047e72a75b354466e6c9ecc4d98",
+          "size": 10960,
           "embedded": {
             "name": "mount_hidder",
-            "version": "1.0.1",
+            "version": "1.0.2",
             "license": "GPL v2",
             "author": "bmax121",
             "description": "hide mount entries from procfs (hide_mount upstream port)"
           },
-          "path": "artifacts/mount_hidder-1.0.1+gb0d6dfb02f65.r03c62bae.kpb51197a.ndk26.1.10909125/mount_hidder_1.0.1.kpm"
+          "path": "artifacts/mount_hidder-1.0.2+gb7adce8021f5.r130db140.kpb51197a.ndk26.1.10909125/mount_hidder_1.0.2.kpm"
         }
       ],
-      "instance_id": "mount_hidder-1.0.1+gb0d6dfb02f65.r03c62bae.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "mount_hidder-1.0.2+gb7adce8021f5.r130db140.kpb51197a.ndk26.1.10909125#1"
     },
     {
       "module": "mount_hidder",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "kind": "candidate",
-      "build_id": "mount_hidder-1.0.1_debug+gb0d6dfb02f65.r8d5ba9a1.kpb51197a.ndk26.1.10909125",
+      "build_id": "mount_hidder-1.0.2_debug+gb7adce8021f5.r250b4a4d.kpb51197a.ndk26.1.10909125",
       "variant": "debug",
-      "recorded_at": "2026-11-02T02:24:19Z",
-      "source_commit": "d9d853c93826148a0cca2a0d50f3920338ecd97f",
+      "recorded_at": "2026-11-02T02:50:33Z",
+      "source_commit": "05d376edc7b57c58d4b494b4fd51767985cfce5a",
       "source_dirty": false,
-      "source_tree_sha256": "b0d6dfb02f6537237a3e3693410ab7a39125ce44e04d239f964122f4f6bbd368",
-      "source_tree_blob_sha256": "e29af47d1b2be314611e890a4933ea61a3e95d2fe1f3051d5f4a3baf5f91f6e4",
+      "source_tree_sha256": "b7adce8021f5a82bc97263f3ba56d5ef5724a69db7997a0ea042634980baa68e",
+      "source_tree_blob_sha256": "356a1021b7dd2a943dce999d92b5af7e0e705747cdc375e16ddaac5c310fa179",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "0f8f2cf2c923b7946ba5b8cfea6512d66ba033f62d1bf11bec02be1f32b1cee0"
+        "data_ref": "7494d13f70b577d723f71123fe9bb9cddd1f868a82242fa0f194a3a92cc96b89"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "8d5ba9a1ce1e60b5d368da7abd69b3ad4b61aa94b5343ce0403feb9179e990d7",
+      "fingerprint_sha256": "250b4a4dc511d35a4f48d20e227a29c71c1926fe3243de895310c0ce2b8ddc4d",
       "recipe": {
-        "data_ref": "ef5d8c287bcb529325c0c3fd9cd7bfca64984e9aa52860fe95800dc8d9a945ac"
+        "data_ref": "a6171d5968ecd6f69da5eab14b932d49aaea172290a2f14a389141cc4543fa60"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "d9d853c93826148a0cca2a0d50f3920338ecd97f",
-        "source_tree_sha256": "b0d6dfb02f6537237a3e3693410ab7a39125ce44e04d239f964122f4f6bbd368",
+        "source_commit": "05d376edc7b57c58d4b494b4fd51767985cfce5a",
+        "source_tree_sha256": "b7adce8021f5a82bc97263f3ba56d5ef5724a69db7997a0ea042634980baa68e",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "e929d2fc74e153f990a92e7edb7d3838de7098b9b550b9cb546004ac190853ce",
+        "recipe_sha256": "cdff60992d3327b158e4defbc622c90713aa46ad420afde53423de21225bb2cb",
         "input_unchanged": true,
         "returncode": 0
       },
       "artifacts": [
         {
-          "name": "mount_hidder_1.0.1_debug.kpm",
-          "sha256": "3cb1ef8e541b40519c56e665f0ac10e30a1a7c130e758b6606adec4cab289fdb",
-          "size": 10728,
+          "name": "mount_hidder_1.0.2_debug.kpm",
+          "sha256": "d0dfe6540b9942e100bb0481fe345b3683c955382113759a6def4d4890e7b0e9",
+          "size": 10968,
           "embedded": {
             "name": "mount_hidder",
-            "version": "1.0.1_d",
+            "version": "1.0.2_d",
             "license": "GPL v2",
             "author": "bmax121",
             "description": "hide mount entries from procfs (hide_mount upstream port)"
           },
-          "path": "artifacts/mount_hidder-1.0.1_debug+gb0d6dfb02f65.r8d5ba9a1.kpb51197a.ndk26.1.10909125/mount_hidder_1.0.1_debug.kpm"
+          "path": "artifacts/mount_hidder-1.0.2_debug+gb7adce8021f5.r250b4a4d.kpb51197a.ndk26.1.10909125/mount_hidder_1.0.2_debug.kpm"
         }
       ],
-      "instance_id": "mount_hidder-1.0.1_debug+gb0d6dfb02f65.r8d5ba9a1.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "mount_hidder-1.0.2_debug+gb7adce8021f5.r250b4a4d.kpb51197a.ndk26.1.10909125#1"
     }
   ],
   "handoff_schema": 2,
   "shared_data": {
-    "0f8f2cf2c923b7946ba5b8cfea6512d66ba033f62d1bf11bec02be1f32b1cee0": [
+    "7494d13f70b577d723f71123fe9bb9cddd1f868a82242fa0f194a3a92cc96b89": [
       {
         "path": "kpm_utils.h",
         "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
@@ -111,13 +111,13 @@
       },
       {
         "path": "modules/KPM/mount_hidder/Makefile",
-        "sha256": "4dda723ff0d3ca8e96b3f5e9d52893b9dec1ca583e556d9ec903643109aa8878",
-        "blob_sha256": "7b57cd1ea9e7f6c3ea22a8a45cd2fe9872382c971ef019cf3582598f8397df49"
+        "sha256": "31106670b4202919f127a8f43852dc18c5a45ea890d519a096b4c0943ec27216",
+        "blob_sha256": "31106670b4202919f127a8f43852dc18c5a45ea890d519a096b4c0943ec27216"
       },
       {
         "path": "modules/KPM/mount_hidder/hide_mount.c",
-        "sha256": "37b1151c101ffff5e7f6c6ecba95cfcfba16a6c65122675bec03ed198f7e1d2f",
-        "blob_sha256": "37b1151c101ffff5e7f6c6ecba95cfcfba16a6c65122675bec03ed198f7e1d2f"
+        "sha256": "4cda210e1595639b66dc7c104a069ea9ac7631355de7ad546d1b69ba01870ff3",
+        "blob_sha256": "4cda210e1595639b66dc7c104a069ea9ac7631355de7ad546d1b69ba01870ff3"
       },
       {
         "path": "modules/KPM/mount_hidder/hide_mount.h",
@@ -135,15 +135,15 @@
         "blob_sha256": "7f803819dee9479340e2a71384657e19e84f53de9a96f7d79935976873abd189"
       }
     ],
-    "ef5d8c287bcb529325c0c3fd9cd7bfca64984e9aa52860fe95800dc8d9a945ac": {
+    "a6171d5968ecd6f69da5eab14b932d49aaea172290a2f14a389141cc4543fa60": {
       "captured": true,
       "command": "make -C '<repo>\\modules\\KPM\\mount_hidder' all debug",
       "dry_run_args": "-n -B（强制重算配方）",
       "returncode": 0,
-      "dry_run_sha256": "e929d2fc74e153f990a92e7edb7d3838de7098b9b550b9cb546004ac190853ce",
-      "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+      "dry_run_sha256": "cdff60992d3327b158e4defbc622c90713aa46ad420afde53423de21225bb2cb",
+      "cc": "<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
       "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
-      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/mount_hidder'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o hide_mount.o hide_mount.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o mount_hidder_1.0.1.kpm hide_mount.o\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.1_d\\\" -DCONFIG_DEBUG -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o debug/hide_mount.o hide_mount.c"
+      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/mount_hidder'\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o hide_mount.o hide_mount.c\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -r -o mount_hidder_1.0.2.kpm hide_mount.o\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.0.2_d\\\" -DCONFIG_DEBUG -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -c -o debug/hide_mount.o hide_mount.c"
     }
   }
 }

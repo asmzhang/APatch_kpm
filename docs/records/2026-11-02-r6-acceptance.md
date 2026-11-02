@@ -83,7 +83,11 @@ Pixel 6（Android 15 / 6.1.99-android14 / APatch 11282）为唯一可加载 KPM 
 
 ## 8. 交付状态
 
-- 本记录只完成**验收**（`acceptances[]` 已按实例追加）。
-- **未做交付绑定**：本机无可用签名密钥（`git verify-commit` / `git verify-tag` 无法复验），
-  按 `docs/process/05-maintainer-acceptance.md`「信任配置不可用时保留记录并停止交付」停止在验收环节。
-  恢复条件：配置可复验的签名密钥后补签并 `bind-delivery`。
+- 本记录完成**验收**（`acceptances[]` 已按实例追加）。
+- **交付形态：自用，不做签名交付**。本轮产物只供维护者本人在自有设备上加载，不发布 Releases、不对外分发，
+  签名链没有第三方验证需求，因此不追加 `bind-delivery`。
+- 依据：`docs/process/05-maintainer-acceptance.md`「信任配置不可用时保留记录并停止交付」——本机无可复验的签名密钥。
+  自用场景下该条不构成阻塞，但记录保留（不删清单项、不改判据），只是把适用性写明。
+- **恢复触发条件**（任一成立即须补签并 `bind-delivery`）：① 产物对外分发（Releases、群共享、他人刷机）；
+  ② 仓库出现第二位维护者或外部贡献者可直接改 `metadata/`。触发后需配置可复验的签名密钥，
+  补签交付提交并重跑 `check_repository.py --strict` 与 `identity.py verify --profile delivery`。

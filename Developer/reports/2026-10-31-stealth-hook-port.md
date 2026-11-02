@@ -253,3 +253,35 @@ unhook: rc=1 ; call after unhook: 68
 ```
 
 版本 0.3.1 → 0.3.2。
+
+## R4l：0.3.3 修正 status 返回值与文案（P0 收尾）
+
+R5 真机矩阵做 ctl0 验证时发现两处可读性/正确性问题，均属「输出与身份」而非机制：
+
+1. **magic 被版本号污染**：`sh_dispatch` 的 STATUS 分支写的是 `return (long)SH_STATUS_MAGIC + SH_VERSION_CODE;`，
+   加法让 `0x53484F4B + 0x00030003 = 0x534B4F4E`，按字节读出来是 `"SKON"` 而不是 `"SHOK"`。
+   改成只回 magic（`0x53484F4B`），版本交给 `ctl0 status` 文本。
+2. **`ctl0 status` 文案**：`v%x` 把 `0x00030000` 打成 `v30000`；`sh_dump_allow()` 的 `"allowlist:"` 没有前导空格，
+   与 `nr=427` 黏成 `nr=427allowlist:`。改为 `v%d.%d.%d` + `" allowlist:"`，并把 `SH_VERSION_CODE` 统一成
+   `0x00MMmmpp`（`0.3.3` = `0x00000303`）。
+
+CLI 侧同步：`status` 只打印 magic 与四字符解码，不再把 magic 字节当版本号（原先打 `version 75.79.75`）。
+
+### 产物（当前源码）
+
+- `stealth_hook_0.3.3.kpm` 34448B `sha256=2c7e1ecbd1bf8638bd970ee8369b8f022788b22b48eaa4ea803afbe67dd3e313`
+- `stealth_hook_0.3.3_debug.kpm` 38016B `sha256=f838752dfb7902ae8a432240948d631527e433a9ee43683cd4d39a87ceb54671`
+
+### 真机自检（Pixel 6 / Android 15 / 6.1.99-android14 / APatch 11282）
+
+```
+$ kpmctl 10273 ctl stealth_hook status
+out: stealth_hook v0.3.3 nr=427 allowlist: 0 2000
+$ stealth_cli status
+status: 0x53484f4b  (magic "SHOK"; 模块版本用 ctl0 status 查看)
+$ stealth_cli selftest
+hook: rc=0 / rehook same: rc=0 / rehook diff flags: rc=-1 errno=17
+query: hits=2 enter=2 total=1 x0=0x11 x1=0x22 lr=0x224b80 ret_x0=0x44
+unhook: rc=1 / call after unhook: 68
+```
+

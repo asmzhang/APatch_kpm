@@ -451,3 +451,12 @@ R5 前独立复核发现 mount_hidder 1.0.1 有 1 个 medium（`hm_del_path` 越
 - 真机：四条 AUD 用例逐条验证通过（详见 `Developer/reports/2026-10-31-mount-hidder-port.md` 的 R4k 段）。
 - 身份：重新冻结构建并登记，旧 1.0.1 实例保留在记录里作为历史。
 
+## 十七、R4l 执行记录（2026-11-02）
+
+R5 真机矩阵里 ctl0 验证暴露的两处输出问题（非机制问题）已修，stealth_hook 0.3.2 → 0.3.3：
+
+- STATUS 返回值不再把版本号加进 magic（`0x53484F4B + code` 曾变成 `0x534B4F4E`）。
+- `ctl0 status` 文案 `v0.3.3 nr=427 allowlist: ...`；`SH_VERSION_CODE` 统一 `0x00MMmmpp`。
+- CLI `status` 不再把 magic 字节当版本号。
+- 真机复验：status 文本、magic、selftest 全通过（详见开发报告 R4l 段）。
+

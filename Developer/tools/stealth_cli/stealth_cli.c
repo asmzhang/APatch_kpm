@@ -187,9 +187,9 @@ static int cmd_status(void)
     if (rc < 0) {
         die("status", rc);
     }
-    printf("status: 0x%lx  (magic 0x%X, version %u.%u.%u)\n", rc,
-           (unsigned)((rc >> 16) & 0xFFFF), (unsigned)((rc >> 16) & 0xFF),
-           (unsigned)((rc >> 8) & 0xFF), (unsigned)(rc & 0xFF));
+    printf("status: 0x%lx  (magic \"%c%c%c%c\"; 模块版本用 ctl0 status 查看)\n", rc,
+           (int)((rc >> 24) & 0xFF), (int)((rc >> 16) & 0xFF),
+           (int)((rc >> 8) & 0xFF), (int)(rc & 0xFF));
     return 0;
 }
 

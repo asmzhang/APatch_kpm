@@ -147,3 +147,12 @@ make all debug
   不再恒返回 0。
 - `selftest` 增加两条回归：同参数重挂返回 0、异参数重挂返回 `-EEXIST`(17)；
   `skip` 那一行改为打印期望的影响节点数。
+
+### 0.3.3
+
+- `status` 返回值只回 magic（`0x53484F4B`，即 `"SHOK"`）。0.3.2 及以前是 `SH_STATUS_MAGIC + SH_VERSION_CODE`，
+  相加会污染 magic 字节（实测变成 `0x534B4F4E`，看起来像 `"SKON"`），任何按 `0x534b4f4b` 判「通道在」的探针要改成新值。
+- `ctl0 status` 文案改为 `stealth_hook v0.3.3 nr=427 allowlist: ...`（原先 `v%x` 打成 `v30000`，且 `nr=427` 与
+  `allowlist:` 之间没有分隔符）。
+- `SH_VERSION_CODE` 统一按 `0x00MMmmpp` 编码（`0.3.3` = `0x00000303`）。
+

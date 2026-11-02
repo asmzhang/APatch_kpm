@@ -97,7 +97,7 @@ static int sh_dump_allow(char *out, unsigned long out_size)
     int i;
     int n = 0;
 
-    n += kf_snprintf(out + n, out_size - n, "allowlist:");
+    n += kf_snprintf(out + n, out_size - n, " allowlist:");
     for (i = 0; i < sh_allow_count && n < (int)out_size; i++) {
         n += kf_snprintf(out + n, out_size - n, " %u", sh_allow_uids[i]);
     }
@@ -157,7 +157,9 @@ static long sh_dispatch_body(long cmd, long arg1, long arg2, long arg3, long arg
 
     switch (cmd) {
     case SH_CMD_STATUS:
-        return (long)SH_STATUS_MAGIC + SH_VERSION_CODE;
+        /* 只回 magic：magic 与 version 相加会污染 magic 字节（0.3.2 及以前 0x53484F4B+code
+         * 变成 0x534B4F4E，看上去像 "SKON"）。版本改由 ctl0 status 文本给出。 */
+        return (long)SH_STATUS_MAGIC;
 
     case SH_CMD_ECHO:
         return arg1;
@@ -431,8 +433,9 @@ static long stealth_hook_control(const char *args, char *__user out_msg, int out
         n += sh_dump_allow(buf + n, sizeof(buf) - n);
         handled = 1;
     } else if (sh_is_word(args, "status")) {
-        n = sh_app(buf, sizeof(buf), n, "stealth_hook v%x nr=%d",
-                   SH_VERSION_CODE, SH_SYSCALL_NR);
+        n = sh_app(buf, sizeof(buf), n, "stealth_hook v%d.%d.%d nr=%d",
+                   (int)((SH_VERSION_CODE >> 16) & 0xFF), (int)((SH_VERSION_CODE >> 8) & 0xFF),
+                   (int)(SH_VERSION_CODE & 0xFF), SH_SYSCALL_NR);
         n += sh_dump_allow(buf + n, sizeof(buf) - n);
         handled = 1;
     }

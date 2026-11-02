@@ -1,107 +1,117 @@
 {
   "module": "memcrc",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-11-02T01:47:50Z",
+  "handoff_at": "2026-11-02T02:06:42Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "memcrc",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "kind": "candidate",
-      "build_id": "memcrc-0.2.1+g83232edecb59.r9f205817.kpb51197a.ndk26.1.10909125",
+      "build_id": "memcrc-0.2.2+gd9b507b9c087.rc9cb12f1.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-11-02T01:47:50Z",
-      "source_commit": "2347287fae6270532872af55246be75100ba584c",
+      "recorded_at": "2026-11-02T02:06:42Z",
+      "source_commit": "1167b334bc5be64e21a7b35d53268a15961b5b8f",
       "source_dirty": false,
-      "source_tree_sha256": "83232edecb594ce5b371e937fad74a910f73ad80dc87632a23c4b34970b0f862",
-      "source_tree_blob_sha256": "c68d2a630a636a2ad7bd86985e522d2bfd32b861cd67309c43312cbf60968e86",
+      "source_tree_sha256": "d9b507b9c087abd3f48ccb7ef956e9b0d0d55af137a11bb2b6b93c88557bb647",
+      "source_tree_blob_sha256": "d6e46bb58490834e70ae084518b218f2e708ea8a29457797edbb944d830ce20f",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "40ea5c1df2389700bd8e50fcc81b0238256b5d40efdd61000274e5971f63c840"
+        "data_ref": "2416880998a7838ee67c0312f3f749b51b00268a79714a1f06f3eb9fcb43821e"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "9f205817fc03dafa1f067dec581df6b65b6f7c51de98ca45cbe52bae97c96a6d",
+      "fingerprint_sha256": "c9cb12f13748b8d7c1c1a4e48ca8dc6803b69cc31e0a78f8b2a498123bb824e7",
       "recipe": {
-        "data_ref": "5457e8821230468f87a40c7635fc9c40eef0ac3c6c40dea372b9b4b08ec298cc"
+        "data_ref": "19ac590a58b55615bb0e1b95663137811e9f5c607dbf194f58e027a255be312b"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "2347287fae6270532872af55246be75100ba584c",
-        "source_tree_sha256": "83232edecb594ce5b371e937fad74a910f73ad80dc87632a23c4b34970b0f862",
+        "source_commit": "1167b334bc5be64e21a7b35d53268a15961b5b8f",
+        "source_tree_sha256": "d9b507b9c087abd3f48ccb7ef956e9b0d0d55af137a11bb2b6b93c88557bb647",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "6293b8389b6584a869335dd2093e7944230a1337839af1bc638b7dbf08b83936",
+        "recipe_sha256": "065f62107494390f8a5200e0a404fda846fee0a3578e96f4801263322da22951",
         "input_unchanged": true,
         "returncode": 0
       },
       "artifacts": [
         {
-          "name": "memcrc_0.2.1.kpm",
-          "sha256": "707975329f9a73823f6b475cae7a2c4893c646b5a3c45e5a2cf511c29d5d662d",
-          "size": 95656,
+          "name": "memcrc_0.2.2.kpm",
+          "sha256": "1d64faf393109c9c0016041c5cf6d5341c8984f430db7fc067633781c7a41f0d",
+          "size": 95968,
           "embedded": {
             "name": "memcrc",
-            "version": "0.2.1",
+            "version": "0.2.2",
             "author": "yuuki",
             "description": "original intention is to bypass the memory crc check"
           },
-          "path": "artifacts/memcrc-0.2.1+g83232edecb59.r9f205817.kpb51197a.ndk26.1.10909125/memcrc_0.2.1.kpm"
+          "path": "artifacts/memcrc-0.2.2+gd9b507b9c087.rc9cb12f1.kpb51197a.ndk26.1.10909125/memcrc_0.2.2.kpm"
         }
       ],
-      "instance_id": "memcrc-0.2.1+g83232edecb59.r9f205817.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "memcrc-0.2.2+gd9b507b9c087.rc9cb12f1.kpb51197a.ndk26.1.10909125#1"
     },
     {
       "module": "memcrc",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "kind": "candidate",
-      "build_id": "memcrc-0.2.1_debug+g83232edecb59.rb6e53e70.kpb51197a.ndk26.1.10909125",
+      "build_id": "memcrc-0.2.2_debug+gd9b507b9c087.r03c3d371.kpb51197a.ndk26.1.10909125",
       "variant": "debug",
-      "recorded_at": "2026-11-02T01:47:50Z",
-      "source_commit": "2347287fae6270532872af55246be75100ba584c",
+      "recorded_at": "2026-11-02T02:06:42Z",
+      "source_commit": "1167b334bc5be64e21a7b35d53268a15961b5b8f",
       "source_dirty": false,
-      "source_tree_sha256": "83232edecb594ce5b371e937fad74a910f73ad80dc87632a23c4b34970b0f862",
-      "source_tree_blob_sha256": "c68d2a630a636a2ad7bd86985e522d2bfd32b861cd67309c43312cbf60968e86",
+      "source_tree_sha256": "d9b507b9c087abd3f48ccb7ef956e9b0d0d55af137a11bb2b6b93c88557bb647",
+      "source_tree_blob_sha256": "d6e46bb58490834e70ae084518b218f2e708ea8a29457797edbb944d830ce20f",
       "source_blob_missing": [],
       "sources": {
-        "data_ref": "40ea5c1df2389700bd8e50fcc81b0238256b5d40efdd61000274e5971f63c840"
+        "data_ref": "2416880998a7838ee67c0312f3f749b51b00268a79714a1f06f3eb9fcb43821e"
       },
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "b6e53e708afeb3aa323c127f65a791f82354296bee57dc0198220409e44040c1",
+      "fingerprint_sha256": "03c3d371e1d0db99d3c1652e134e42c102aa36601e5079cf5e1f1ce47de4e41f",
       "recipe": {
-        "data_ref": "5457e8821230468f87a40c7635fc9c40eef0ac3c6c40dea372b9b4b08ec298cc"
+        "data_ref": "19ac590a58b55615bb0e1b95663137811e9f5c607dbf194f58e027a255be312b"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "2347287fae6270532872af55246be75100ba584c",
-        "source_tree_sha256": "83232edecb594ce5b371e937fad74a910f73ad80dc87632a23c4b34970b0f862",
+        "source_commit": "1167b334bc5be64e21a7b35d53268a15961b5b8f",
+        "source_tree_sha256": "d9b507b9c087abd3f48ccb7ef956e9b0d0d55af137a11bb2b6b93c88557bb647",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "6293b8389b6584a869335dd2093e7944230a1337839af1bc638b7dbf08b83936",
+        "recipe_sha256": "065f62107494390f8a5200e0a404fda846fee0a3578e96f4801263322da22951",
         "input_unchanged": true,
         "returncode": 0
       },
       "artifacts": [
         {
-          "name": "memcrc_0.2.1_debug.kpm",
-          "sha256": "ec5d262b86b4b5445ed188f925927c6da07329d46731b1b6dc5fdbfd30d3d7ef",
-          "size": 95656,
+          "name": "memcrc_0.2.2_debug.kpm",
+          "sha256": "ddab9b33f3fba0b1b6a508cf8220a67a79e5b2dde2926740b9c17770e5291f0f",
+          "size": 95976,
           "embedded": {
             "name": "memcrc",
-            "version": "0.2.1_d",
+            "version": "0.2.2_d",
             "author": "yuuki",
             "description": "original intention is to bypass the memory crc check"
           },
-          "path": "artifacts/memcrc-0.2.1_debug+g83232edecb59.rb6e53e70.kpb51197a.ndk26.1.10909125/memcrc_0.2.1_debug.kpm"
+          "path": "artifacts/memcrc-0.2.2_debug+gd9b507b9c087.r03c3d371.kpb51197a.ndk26.1.10909125/memcrc_0.2.2_debug.kpm"
         }
       ],
-      "instance_id": "memcrc-0.2.1_debug+g83232edecb59.rb6e53e70.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "memcrc-0.2.2_debug+gd9b507b9c087.r03c3d371.kpb51197a.ndk26.1.10909125#1"
     }
   ],
   "handoff_schema": 2,
   "shared_data": {
-    "40ea5c1df2389700bd8e50fcc81b0238256b5d40efdd61000274e5971f63c840": [
+    "19ac590a58b55615bb0e1b95663137811e9f5c607dbf194f58e027a255be312b": {
+      "captured": true,
+      "command": "make -C '<repo>\\modules\\KPM\\memcrc' all debug",
+      "dry_run_args": "-n -B（强制重算配方）",
+      "returncode": 0,
+      "dry_run_sha256": "065f62107494390f8a5200e0a404fda846fee0a3578e96f4801263322da22951",
+      "cc": "<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
+      "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/memcrc'\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o mod_main.o mod_main.c\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o control/control.o control/control.c\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o komm/komm.o komm/komm.c"
+    },
+    "2416880998a7838ee67c0312f3f749b51b00268a79714a1f06f3eb9fcb43821e": [
       {
         "path": "kpm_utils.h",
         "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
@@ -109,8 +119,8 @@
       },
       {
         "path": "modules/KPM/memcrc/Makefile",
-        "sha256": "0eb12eb2c894fcb7358f498e83dabee0377c599a7d1f60b20839396246504997",
-        "blob_sha256": "0eb12eb2c894fcb7358f498e83dabee0377c599a7d1f60b20839396246504997"
+        "sha256": "a1881395bd950739d2be25ca89d58a77a09cebc285872a0bb97cc91068cfe225",
+        "blob_sha256": "a1881395bd950739d2be25ca89d58a77a09cebc285872a0bb97cc91068cfe225"
       },
       {
         "path": "modules/KPM/memcrc/compat.h",
@@ -119,8 +129,8 @@
       },
       {
         "path": "modules/KPM/memcrc/control/control.c",
-        "sha256": "f304eb55177ef7f0397a823ea7046e416fa2960646279b7d0238ba3109ee9194",
-        "blob_sha256": "f304eb55177ef7f0397a823ea7046e416fa2960646279b7d0238ba3109ee9194"
+        "sha256": "1e070558860a6c8b0972d217d68b253f386a1a41d0e20ee9b7a6bd922246633e",
+        "blob_sha256": "1e070558860a6c8b0972d217d68b253f386a1a41d0e20ee9b7a6bd922246633e"
       },
       {
         "path": "modules/KPM/memcrc/control/control.h",
@@ -169,8 +179,8 @@
       },
       {
         "path": "modules/KPM/memcrc/komm/komm.c",
-        "sha256": "65ebe0af110108ed435aa62ad413122412bc9174457e4d09c9d54f111424ee96",
-        "blob_sha256": "65ebe0af110108ed435aa62ad413122412bc9174457e4d09c9d54f111424ee96"
+        "sha256": "c4be02ae411a08b41af40f6ff3ec8d90361bbf4f91e20ec5472abbc2df7b26c8",
+        "blob_sha256": "c4be02ae411a08b41af40f6ff3ec8d90361bbf4f91e20ec5472abbc2df7b26c8"
       },
       {
         "path": "modules/KPM/memcrc/komm/komm.h",
@@ -217,16 +227,6 @@
         "sha256": "ce295047e66211c0aa25ee9538254debed02974a36353deb070c40cb2b49928d",
         "blob_sha256": "7f803819dee9479340e2a71384657e19e84f53de9a96f7d79935976873abd189"
       }
-    ],
-    "5457e8821230468f87a40c7635fc9c40eef0ac3c6c40dea372b9b4b08ec298cc": {
-      "captured": true,
-      "command": "make -C '<repo>\\modules\\KPM\\memcrc' all debug",
-      "dry_run_args": "-n -B（强制重算配方）",
-      "returncode": 0,
-      "dry_run_sha256": "6293b8389b6584a869335dd2093e7944230a1337839af1bc638b7dbf08b83936",
-      "cc": "D:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
-      "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
-      "excerpt": "make: Entering directory 'D:/work/1/kpm/APatch_kpm/modules/KPM/memcrc'\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o mod_main.o mod_main.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o control/control.o control/control.c\nD:/platform/Android/Sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"0.2.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -Icontrol -Ikomm -Iredirect -Ifeature -Idata -Iptrace -c -o komm/komm.o komm/komm.c"
-    }
+    ]
   }
 }

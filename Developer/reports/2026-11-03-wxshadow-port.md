@@ -110,3 +110,19 @@ has_syscall_wrapper ? 1 : 5, prctl_before, NULL, NULL)`，两处 `unhook_syscall
 - 页级 patch（`--patch` 写自定义字节）只验了「写进影子页」，没验「执行侧生效」的独立用例。
 - 小米 13 上只验了加载，没验页级切换。
 - 多线程同页、fork/exit、`mprotect` 接管等上游声明的路径均未验证。
+
+## 卸载稳定性观察（2026-11-03）
+
+`wxshadow` 的 `mod_exit` 分七个阶段摘钩子（prctl → 页面 → dup_mmap/uprobe_dup_mmap → brk/step → do_page_fault → follow_page_pte → exit_mmap），
+每阶段后调 `wait_for_handlers_drain()` 等 `wx_in_flight` 归零。开发过程中观察到两次卸载后设备重启，之后做了针对性复现：
+
+| 场景 | 次数 | 结果 |
+| --- | --- | --- |
+| 空闲状态反复 load/unload | 5 | 全部 `rc=0`，`uptime` 连续，无异常 |
+| 挂断点 → 靶子退出（`cleaned 1 pages`）→ 卸载 | 1 | `rc=0`，设备存活 |
+| 挂断点 → 靶子仍在运行 → 卸载 | 1 | `rc=0`，设备存活 |
+
+两次重启都发生在早期「刚跑完页级乒乓/重定向实验」的会话里，`/sys/fs/pstore/` 只留下 2025-03-25 的旧 `console-ramoops-0`，
+没有抓到这次的 Oops。**当前无法复现，也不宣称已修**；`wxshadow_exit()` 与上游逐字节一致，未做任何改动。
+
+使用建议：需要清状态时优先重启；必须在运行中卸载时，先 `release` 掉所有断点、让被挂进程退出或保持空闲，再执行卸载。

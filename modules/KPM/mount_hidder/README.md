@@ -9,9 +9,22 @@
 ## 它做什么
 
 - 三个钩子分别对应 `/proc/self/mountinfo`、`/proc/mounts`、`/proc/self/mountstats`。
-- 命中判据是**子串**匹配（`strnstr`），所以给 `/debug_ramdisk` 就能连 `/debug_ramdisk/xxx` 一起藏。
+- 命中判据见下面「匹配语义」：只在挂载点字段上按路径段边界比对。
 - 默认路径表（上游原样保留，多数设备上并不存在，属无害配置）：
   `/debug_ramdisk`、`/apex/com.android.art/bin/dex2oat64`、`/apex/com.android.art/bin/dex2oat32`
+
+## 匹配语义（1.0.1 起）
+
+只在 mountinfo 的**挂载点字段**（第 5 个空格分隔字段）上比对，规则必须是绝对路径，命中以下任一即隐藏：
+
+| 关系 | 例子 |
+| --- | --- |
+| 挂载点等于规则 | 规则 `/apex` 命中挂载点 `/apex` |
+| 规则是挂载点的前缀，且下一字符是 `/` | 规则 `/apex` 命中 `/apex/com.android.art`；规则 `/data` **不**命中 `/data_mirror` |
+| 规则是挂载点的后缀（规则自带前导 `/`，天然落在路径段边界） | 规则 `/persist` 命中 `/mnt/vendor/persist` |
+
+1.0.0 用任意子串匹配（上游语义），`/data` 会误伤 `/data_mirror`，还可能在 root/source 字段里误命中；
+1.0.1 收紧为「只查挂载点字段 + 路径段边界」，同时保留「藏一棵子树」和「按尾部名字藏」两种用法。
 
 ## 命令（ctl0）
 
@@ -29,7 +42,8 @@
 | 项 | 上游 | 本移植 | 原因 |
 | --- | --- | --- | --- |
 | 起始计数 | `data0 = m->count` | `data0 = m->count + 1` | 上游在 `count == 0` 时算出的增量会漏掉第一条挂载项 |
-| 增量比较 | `char lstr[llen]`（VLA）再 `strstr` | 直接在 `m->buf + base` 上 `strnstr` | VLA 在栈上按用户可控长度分配，不必要 |
+| 增量比较 | `char lstr[llen]`（VLA）再 `strstr` | 直接在 `m->buf + base` 上比对 | VLA 在栈上按用户可控长度分配，不必要 |
+| 匹配语义 | 整行任意子串 | 只查挂载点字段 + 路径段边界（1.0.1） | 任意子串会让 `/data` 误伤 `/data_mirror`，也会在 source 字段误命中 |
 | 卸载 | `unhook()` | `hook_unwrap_remove(addr, before, after, 1)` | `hook_chain_t` 首成员是 `hook_t`，用 `unhook` 卸 wrap 链不走 `hook_chain_remove` 清理路径 |
 | 退出 | 无 `return` | `return 0` | 未定义行为 |
 | 取 mm | 每次 `get_task_mm(current)` 且不 `mmput` | 去掉 | 每读一次 mountinfo 漏一个 mm 引用 |
@@ -44,17 +58,19 @@ Pixel 6（Android 15，6.1.99-android14）：加载后 dmesg 显示三个符号�
 [+] KP I load_module_ex: [mount_hidder] succeed with [(null)]
 ```
 
-默认三条路径在本机不存在，所以加载后行数不变（144 行，无假阳性）。差分验证用 bind mount 造了一个
-真实命中 `/debug_ramdisk` 的挂载：
+默认三条路径在本机不存在，所以加载后行数不变（无假阳性）。1.0.1 用 ctl0 通道（`kpmctl`，管理器 uid）
+做了逐项差分：
 
-| 状态 | `/proc/self/mountinfo` 行数 | `grep -c debug_ramdisk` |
+| 规则 | 观察 | 结果 |
 | --- | --- | --- |
-| 模块已加载 | 144 | 0 |
-| 模块已卸载 | **145** | **1** |
-| 重新加载 | 144 | 0 |
+| `add:/apex` | 挂载点以 `/apex` 开头的记录 | 83 → **0**，总行数 146 → 63 |
+| `add:/data` | `/data` 与 `/data_mirror` | 真实 `/data*` 4 条隐藏，`/data_mirror` 9 条**不受影响** |
+| `add:/data_mirror` | 以 `/data_mirror` 开头 | 9 → **0** |
+| `add:/persist` | 后缀匹配 `/mnt/vendor/persist` | 1 → **0** |
+| `clear` | 全部规则 | 每次都能恢复到基线 |
 
-`ctl0` 的 `add:` / `del:` / `clear` 未在真机验证（管理器参数对话框的输入被输入法改写，
-两条下发通道都受 SELinux 限制），留给 Tester 用软键盘手输。
+`add` / `del` / `clear` / `status` 四条命令均已真机验证（1.0.0 时代这两条通道被输入法与 SELinux 堵住，
+改用管理器 uid 直接发 supercall 后打通）。
 
 ## 构建
 
@@ -62,3 +78,16 @@ Pixel 6（Android 15，6.1.99-android14）：加载后 dmesg 显示三个符号�
 export ANDROID_NDK_LATEST_HOME=/path/to/ndk
 make all debug
 ```
+
+## 更新记录
+
+### 1.0.1
+
+- 匹配语义改为「只查挂载点字段 + 路径段边界」（等于 / 前缀 / 后缀三种），修掉 `/data` 误伤 `/data_mirror`
+  以及 source/root 字段误命中的问题（AUD-b-8 收口）。
+- `ctl0` 的 `status` / `add:` / `del:` / `clear` 真机验证通过。
+
+### 1.0.0
+
+- 从上游 `hide_mount.c` 移植：三个 seq_file 钩子、起始计数 +1、去掉每次取 mm、`hook_unwrap_remove` 卸载、
+  路径表可由加载参数维护。

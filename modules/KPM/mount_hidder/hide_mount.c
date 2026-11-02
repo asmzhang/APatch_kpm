@@ -158,10 +158,65 @@ static void hm_before(hook_fargs2_t *args, void *udata)
     args->local.data0 = (uint64_t)m->count + 1;
 }
 
+/* mountinfo 每行是空格分隔字段，挂载点是第 5 个字段。
+ * 只在挂载点字段上匹配，避免在 root/source/superopts 里误命中（AUD-b-8 / R4j）。 */
+static int hm_mountpoint(const char *buf, size_t len, int want, size_t *off, size_t *flen)
+{
+    size_t i, start = 0;
+    int f = 1;
+
+    /* want == 0：/proc/self/mountstats 的格式是 "device X mounted on <挂载点> with fstype Y"，
+     * 挂载点不在固定字段号上，只能按 " mounted on " 定位。 */
+    if (want == 0) {
+        const char *p = strnstr(buf, " mounted on ", len);
+        if (!p) return 0;
+        start = (size_t)(p - buf) + sizeof(" mounted on ") - 1;
+        if (start >= len) return 0;
+        for (i = start; i < len && buf[i] != ' '; i++) {
+        }
+        if (i <= start) return 0;
+        *off = start;
+        *flen = i - start;
+        return 1;
+    }
+
+    for (i = 0; i <= len; i++) {
+        if (i == len || buf[i] == ' ') {
+            if (f == want) {
+                *off = start;
+                *flen = i - start;
+                return 1;
+            }
+            f++;
+            start = i + 1;
+        }
+    }
+    return 0;
+}
+
+/* 规则与挂载点按「路径段边界」比较：
+ *   - 相等
+ *   - 规则是挂载点的前缀，且下一字符是 '/'（"/data" 命中 "/data/app"，不命中 "/data_mirror"）
+ *   - 规则是挂载点的后缀（规则自带前导 '/'，天然落在路径段边界上；
+ *     "/debug_ramdisk" 命中 "/data/local/tmp/debug_ramdisk"）
+ */
+static int hm_path_match(const char *mp, size_t mlen, const char *rule)
+{
+    size_t plen = kf_strlen(rule);
+
+    if (!plen || plen > mlen) return 0;
+    if (!kf_memcmp(mp, rule, plen)) {
+        if (plen == mlen) return 1;
+        if (mp[plen] == '/') return 1;
+    }
+    if (plen < mlen && !kf_memcmp(mp + mlen - plen, rule, plen)) return 1;
+    return 0;
+}
+
 static void hm_after(hook_fargs2_t *args, void *udata)
 {
     struct seq_file *m;
-    size_t base, len;
+    size_t base, len, moff, mlen;
     int i;
 
     if (!args->local.data0) return;
@@ -176,27 +231,24 @@ static void hm_after(hook_fargs2_t *args, void *udata)
 
     len = m->count - base;
 
+    /* mountinfo 的挂载点是第 5 个字段；/proc/mounts 与 mountstats 是第 2 个。 */
+    if (!hm_mountpoint(m->buf + base, len, (int)(uintptr_t)udata, &moff, &mlen)) return;
+
     for (i = 0; i < hm_path_count; i++) {
         if (!hm_paths[i][0]) continue;
-        const char *hit = strnstr(m->buf + base, hm_paths[i], len);
-        size_t plen = kf_strlen(hm_paths[i]);
-
-        /* AUD-b-8：mountinfo 里路径是空格分隔字段，要求前后都是字段边界，
-         * 否则 "/data" 会误伤 "/data_mirror"。 */
-        if (hit && (hit == m->buf + base || hit[-1] == ' ') &&
-            (hit[plen] == ' ' || hit[plen] == '\0')) {
+        if (hm_path_match(m->buf + base + moff, mlen, hm_paths[i])) {
             m->count = base; /* 整条回滚，seq_read 会重新取下一个 */
             break;
         }
     }
 }
 
-static void hm_hook_one(void *addr)
+static void hm_hook_one(void *addr, int mountpoint_field)
 {
     hook_err_t err;
 
     if (!addr) return;
-    err = hook_wrap2(addr, hm_before, hm_after, 0);
+    err = hook_wrap2(addr, hm_before, hm_after, (void *)(uintptr_t)mountpoint_field);
     if (err == HOOK_NO_ERR) {
         hm_hook_count++;
     } else {
@@ -232,9 +284,9 @@ static long hide_mount_init(const char *args, const char *event, void *__user re
     hm_show_mountinfo = (void *)(uintptr_t)kallsyms_lookup_name("show_mountinfo");
     hm_show_vfsstat = (void *)(uintptr_t)kallsyms_lookup_name("show_vfsstat");
 
-    hm_hook_one(hm_show_vfsmnt);
-    hm_hook_one(hm_show_mountinfo);
-    hm_hook_one(hm_show_vfsstat);
+    hm_hook_one(hm_show_vfsmnt, 2);
+    hm_hook_one(hm_show_mountinfo, 5);
+    hm_hook_one(hm_show_vfsstat, 0);
 
     logkd("hide_mount: init paths=%d hooks=%d (vfsmnt=%llx mountinfo=%llx vfsstat=%llx)\n", hm_path_count,
           hm_hook_count, (uint64_t)(uintptr_t)hm_show_vfsmnt, (uint64_t)(uintptr_t)hm_show_mountinfo,

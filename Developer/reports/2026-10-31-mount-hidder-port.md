@@ -134,3 +134,62 @@ $ ls /data/local/tmp/debug_ramdisk | wc -l      # 15 → 挂载确实生效（�
 2. `hook_wrap2` 装的是链式 hook，`before`/`after` 在同一 `fargs` 上串行执行；若另一个模块也 wrap 同一个函数并修改 `local.data0`，两者会互相覆盖。当前仓库没有别的模块用 `hook_wrap` 钩这三个函数（memcrc 用 `hook()` 整体替换）。
 3. `hide_mount_init` 在 `kallsyms_lookup_name` 返回 0 时把 `hm_show_*` 留空并跳过安装，但 `hm_hook_count` 仍可能为 0 → 返回 -1 让加载失败。若用户只想要其中一条通道，这个"全失败才报错"的判据可能过严。
 4. `ctl0` 的 `snprintf` 返回值累加在缓冲区写满时可能超过剩余长度，代码里已做 `left <= 1` 与 `n >= sizeof(buf)` 两处夹取，但 `n += snprintf(...)` 在截断时返回的是"本该写入的长度"，夹取逻辑依赖这两处保护，请复核边界。
+
+## R4j：匹配语义收紧与三个钩子的真机验证（1.0.1）
+
+### 背景
+
+`ctl0` 从 1.0.0 起就没在真机上验证过：管理器「参数」对话框的输入会被 Gboard 改成全角，
+`/dev/yuuki_misc` 这类通道又与 mount_hidder 无关。本轮改用**管理器 uid 直接发 supercall**
+（自建 `kpmctl`，见下）把这条通道打通，mount_hidder 的 `status` / `add:` / `del:` / `clear` 才第一次被真正跑到。
+
+### 打通 ctl0 的两条硬约束（实测）
+
+1. `supercall()` 里 `is_authed` 只有两个来源：镜像预置 superkey，或调用者 uid 等于管理器 uid
+   （`is_trusted_manager_uid`）。root（uid 0）在 `is_su_allow_uid` 白名单里只被置 `is_trusted_caller`，
+   **过不了** `KPM_CONTROL` 的 `if (!is_authed) return -EPERM`。
+2. 若镜像预置了 superkey，`before()` 会先读 x0 当用户态 key 指针；传非法指针会直接落到原生 truncate，
+   表现为 `EFAULT`。所以工具必须传一个**可读的占位串**，而不是 0。
+
+`kpmctl`（`<mgr_uid> load|unload|list|info|ctl ...`）以 root 启动后 `setuid` 到管理器 uid
+（`pm list packages -U me.bmax.apatch` → 10273），key 传占位串即可。
+
+### 修掉的两个真问题
+
+| # | 问题 | 影响 | 修法 |
+| --- | --- | --- | --- |
+| 1 | 匹配是**整行任意子串**（上游语义） | 规则 `/data` 会误伤 `/data_mirror`；还可能在 root/source 字段里命中 | 只查挂载点字段，并按「路径段边界」比对：等于 / 前缀（下一字符 `/`）/ 后缀 |
+| 2 | 三个钩子的挂载点位置不同 | `mountinfo` 是第 5 字段、`/proc/mounts` 是第 2 字段、`mountstats` 形如 `device X mounted on <mp> with fstype Y`。原实现只在 mountinfo 上碰巧正确，另外两个钩子实际从未命中 | `hook_wrap2` 的 `udata` 传字段序号（`2`/`5`/`0`，`0` 表示按 `" mounted on "` 定位） |
+
+顺带移除了 R4d 期间加进 `hm_after` 的临时调试计数（`hm_dbg`）。
+
+### 真机自检（Pixel 6 / Android 15 / 6.1.99-android14 / APatch 11282）
+
+| 用例 | 观察 | 结果 |
+| --- | --- | --- |
+| `add:/apex` | `mountinfo` 里挂载点以 `/apex` 开头 | 83 → **0**，总行数 146 → 63 |
+| 同上 | `/proc/mounts` | 1 → **0** |
+| 同上 | `/proc/self/mountstats` | 1 → **0** |
+| `add:/data` | `/data` 与 `/data_mirror` | 真实 `/data*` 4 条隐藏，`/data_mirror` 9 条**不受影响** |
+| `add:/data_mirror` | 以 `/data_mirror` 开头 | 9 → **0** |
+| `add:/persist` | 后缀匹配 `/mnt/vendor/persist` | 1 → **0** |
+| `add:/apex` + `add:/data_mirror` 同时 | 两条规则并存 | 各自命中，互不影响 |
+| `del:/apex` | 只删这一条 | `/apex` 回到 1，`/data_mirror` 仍 0 |
+| `clear` | 清空 | 全部回到基线 |
+
+`status` 每次都能正确回显 `paths=N hooks=3` 与当前路径表。
+
+### 产物
+
+| 变体 | 大小 | SHA-256 |
+| --- | --- | --- |
+| `mount_hidder_1.0.1.kpm` | 10720 | `58d55573ea08477ed98f848602a788a1c05a0a8c7fd0d68bde2a2739ab2adbd7` |
+| `mount_hidder_1.0.1_debug.kpm` | 10728 | `3cb1ef8e541b40519c56e665f0ac10e30a1a7c130e758b6606adec4cab289fdb` |
+
+两个变体都 clean 重建过，哈希可复现；`debug` 内嵌 `version=1.0.1_d`。
+
+### 未覆盖
+
+- `del:` 只测了「删存在的规则」，没测删不存在的规则（实现上返回 0 且不改表）。
+- 加载参数直接给路径（`load mount_hidder.kpm "/foo /bar"`）未在真机跑过。
+- 只测了 Pixel 6；小米 13（5.10）没有 APatch，无法加载 KPM。

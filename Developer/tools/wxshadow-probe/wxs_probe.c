@@ -301,6 +301,12 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
     (void)udata;
     if (wxs_state < 1)
         return;
+    if (wxs_redirect && far >= wxs_sva && far < wxs_sva + 4096) {
+        if (wxs_redir_count <= 16)
+            logki("wxs_probe: SHADOW-FAULT far=0x%llx ec=0x%x\n",
+                  (unsigned long long)far, (unsigned)((esr >> 26) & 0x3f));
+        return;
+    }
     if (far < wxs_tva || far >= wxs_tva + 4096)
         return;
     /*
@@ -320,6 +326,11 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
     }
     wxs_fault_count++;
     ec = (esr >> 26) & 0x3f;
+    if (wxs_fault_count <= 16)
+        logki("wxs_probe: F#%lu far=0x%llx ec=0x%x pte=0x%llx pc=0x%llx redir=%d\n",
+              wxs_fault_count, (unsigned long long)far, (unsigned)ec,
+              (unsigned long long)(wxs_ptep ? *wxs_ptep : 0),
+              (unsigned long long)(regs ? regs->pc : 0), wxs_redirect);
     if (ec == 0x20 || ec == 0x21)
         wxs_n_iabt++;
     else if (ec == 0x24 || ec == 0x25)

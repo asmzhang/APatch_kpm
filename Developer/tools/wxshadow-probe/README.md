@@ -63,3 +63,65 @@ adb shell "tail -2 /data/local/tmp/wxs_client.log"      # 应回到 4f52...
 
 只处理 4 KiB leaf；不取 `mmap_lock`（KP 没导出 `mmap_lock` 偏移）；只做数据视图，不做执行视图与 icache 同步；
 单实例状态机，没有 generation/token。这些都在 P2 处理，详见 [docs/records/2026-11-02-wxshadow-p1.md](../../../docs/records/2026-11-02-wxshadow-p1.md)。
+
+## P3 结论：同一个 VA 上的「双视图」做不到（2026-11-02 实测）
+
+P3 的目标是让同一个 VA 上「读看到原字节、执行看到补丁」。两条路都试过，都不成立。
+
+### 路一：PTE 乒乓（原页 ↔ 影子页）—— 不可能
+
+`dual` 之后让目标进程紧循环调用被补丁的函数，0.23 秒内 IABT/DABT 互切 **20 万次**触发 storm 保护：
+
+```
+wxs_probe: dual sw=5 ec=0x20 far=0x221d28
+wxs_probe: dual sw=6 ec=0x24 far=0x221c98
+wxs_probe: dual switch storm, disabling
+```
+
+原因是**一个 VA 同时只有一个 PTE 状态**：把影子页 PTE 的 `AP[1]` 清零确实能挡住 EL0 的数据读，
+但同一位也挡住 EL0 的取指（这与早先「清 AP[1] 后取指仍成功」的 P2c 观察相反，以实测为准）；
+`AP[1]=1` 又会让读看到补丁。读写在同一页的紧循环里必然抖。
+
+### 路二：原页只置 UXN + 把取指重定向到影子 VA —— 页表对、语义错
+
+原页 `| PTE_UXN` 后字节一个不动，`do_mem_abort` 里 `regs->pc = sva + (far - tva)` 改到影子 VA。
+页表层面全部验证通过：
+
+- 原页 `pte=0x6000093fdc7fc3`（UXN 已置），`probe` 读出来仍是原字节；
+- 影子 VA `0x3ffc98` → `pte=0x2000094de74fc3`，`data=e0008052`（补丁 `mov w0,#7`）+ 原 `add/ret` 字节。
+
+但目标进程在第一次重定向之后就死掉，`faults=1 iabt=1`，再没有第二次异常。读反汇编就能看出原因：
+
+```
+221d68: 11000694   add  w20, w20, #0x1
+221d6c: 7109629f   cmp  w20, #0x258
+221d70: 54fffdc1   b.ne 0x221d28
+221d5c: 94005492   bl   0x236fa4 <printf>
+```
+
+`b`/`bl`/`adrp` 全是 **PC 相对**的。同一段字节搬到 `0x3ff000` 执行时：
+
+- `b.ne 0x221d28` 变成跳到 `0x3ffd28`（还在影子页里，恰好能跑）；
+- 但 `bl printf` 从 `0x3ffd5c` 出发算出来的目标是 `0x414fa4` —— 那里没有任何映射，取指异常落在
+  影子范围之外、处理器不管，内核直接给目标进程 SIGSEGV。
+
+**结论**：把执行搬到另一个 VA，等于要求整段代码与它引用的所有常量、GOT、外部函数一起搬家；
+只要有一条 `bl` 指向页外就崩。这不是偏移没算对，是方案本身不成立。
+
+### 因此
+
+「同一个 VA 上读原字节、执行补丁」在 KPM 这一层只有三条出路，都不是 PTE 技巧：
+
+1. **原地打补丁 + 拦住读路径**：页里放补丁（执行天然正确），把完整性校验会走的读（`/proc/self/mem`、
+   二次 `mmap`、`pread`）在系统调用层拦下来改回原字节 —— 这正是本项目 KPM 侧一直在做的事。
+2. **硬件断点单步**：不碰页表，用 `DBGBVR/DBGBCR` 或 perf 断点在被补丁指令处陷入，执行完再单步回去
+   —— `modules/KPM/stealth_hook` 已经实现了这条路，且不依赖 VA 搬迁。
+3. **同 VA 换地址空间**：需要控制 ASID/TTBR0 级别（hypervisor 或内核线程切换），KPM 里没有这个能力。
+
+另外两个已修的坑（都在 `wxs_mem_abort_before` / `wxs_write_pte`）：
+
+- **必须校验 mm**：同一个 VA 在别的进程里是另一套映射。静态链接程序 text 常落在 `0x221000` 一带，
+  不比对 `mm->pgd` 就会把无关进程的取指重定向到它自己没有映射的影子 VA —— 实测 `kpmctl` 因此
+  段错误，而 `su`/`dmesg` 正常，很容易误判成「设备坏了」。
+- **TLB 必须全 ASID 刷**：`tlbi vaae1is` 只刷当前 ASID；目标进程在另一个 ASID 上，旧的可执行项
+  不会失效，改过的 UXN 它根本看不见。改成 `tlbi vmalle1is` 只在安装/复原时付一次代价。

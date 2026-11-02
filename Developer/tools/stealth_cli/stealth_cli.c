@@ -175,7 +175,9 @@ static void usage(void)
         "  pte query                          查本机是否支持 PTE 重定向\n"
         "\n"
         "地址可写 0x... 或十进制；--tid 省略时用当前线程。\n"
-        "所有命令需要受信 uid（root 或 shell），否则内核侧返回 EPERM。\n",
+        "权限：status 需要受信 uid（root 或 shell，可经 ctl0 allow:<uid> 追加）;\n"
+        "      hook / unhook / enable / disable / list / query / override / skip / ghost\n"
+        "      自 0.3.1 起只允许 uid 0，非 root 一律返回 EPERM。\n",
         SH_SYSCALL_NR, (unsigned long)SH_SYSCALL_MAGIC);
 }
 

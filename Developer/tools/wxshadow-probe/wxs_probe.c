@@ -270,7 +270,13 @@ static int wxs_dump_page(pid_t pid, uint64_t va, char *out, int outlen)
 static uint64_t wxs_pte_uxn;
 static int wxs_uxn_on;
 static int wxs_hold;
+static int wxs_xo_guard;
 static unsigned long wxs_switch_count;
+static unsigned long wxs_n_iabt, wxs_n_dabt, wxs_n_other;
+static uint64_t wxs_pte_shadow_exec, wxs_pte_orig_exec;
+static int wxs_dual;
+static int wxs_dual_mode;
+static unsigned long wxs_dual_sw;
 static void *wxs_do_mem_abort;
 static int wxs_hook_on;
 static unsigned long wxs_fault_count;
@@ -293,6 +299,12 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
         return;
     wxs_fault_count++;
     ec = (esr >> 26) & 0x3f;
+    if (ec == 0x20 || ec == 0x21)
+        wxs_n_iabt++;
+    else if (ec == 0x24 || ec == 0x25)
+        wxs_n_dabt++;
+    else
+        wxs_n_other++;
     fsc = esr & 0x3f;
 
     /*
@@ -301,6 +313,36 @@ static void wxs_mem_abort_before(hook_fargs2_t *args, void *udata)
      * 若同一页连续切换太多次（说明影子页本身也取不到指），放弃处理并报错，
      * 避免把设备拖进死循环。
      */
+    if (wxs_dual && (ec == 0x20 || ec == 0x24)) {
+        if (wxs_dual_sw < 200000) {
+            wxs_dual_sw++;
+            if (ec == 0x20)
+                wxs_write_pte(wxs_pte_shadow_exec);
+            else
+                wxs_write_pte(wxs_pte_orig_exec);
+            if (wxs_dual_sw <= 6)
+                logki("wxs_probe: dual sw=%lu ec=0x%x far=0x%llx\n",
+                      wxs_dual_sw, ec, (unsigned long long)far);
+            args->skip_origin = 1;
+            return;
+        }
+        logke("wxs_probe: dual switch storm, disabling\n");
+        wxs_dual = 0;
+        wxs_write_pte(wxs_pte_orig);
+        args->skip_origin = 1;
+        return;
+    }
+
+    if (wxs_xo_guard && ec == 0x24) {
+        logki("wxs_probe: xo probe ec=0x%x fsc=0x%x far=0x%llx pc=0x%llx (no exec-only)\n",
+              ec, fsc, (unsigned long long)far,
+              (unsigned long long)(regs ? regs->pc : 0));
+        wxs_xo_guard = 0;
+        wxs_write_pte(wxs_pte_orig);
+        args->skip_origin = 1;
+        return;
+    }
+
     if (ec == 0x20 && wxs_hold && wxs_pte_installed) {
         if (wxs_switch_count < 64) {
             wxs_switch_count++;
@@ -399,7 +441,7 @@ static int wxs_attach(pid_t pid, uint64_t va, char *out, int outlen)
                     (unsigned long long)pte);
 }
 
-static int wxs_install(const char *hexpat, char *out, int outlen)
+static int wxs_install(const char *hexpat, char *out, int outlen, int dual)
 {
     uint64_t src_pa;
     uint64_t off;
@@ -455,6 +497,24 @@ static int wxs_install(const char *hexpat, char *out, int outlen)
 
     newpte = (wxs_pte_orig & ~WXS_PTE_ADDR_MASK) | (wxs_shadow_pa & WXS_PTE_ADDR_MASK);
     wxs_pte_installed = newpte;
+    if (wxs_dual_mode) {
+        /*
+         * 双视图：影子页做成「EL0 只能取指、不能读写」（清 UXN 与用户位），
+         * 原页做成「EL0 只读、不可执行」（置 UXN）。两条路都靠缺页来回切。
+         */
+        wxs_pte_shadow_exec = (newpte & ~PTE_UXN & ~PTE_USER) | PTE_AF;
+        wxs_pte_orig_exec = wxs_pte_orig | PTE_UXN;
+        wxs_dual = 1;
+        wxs_dual_sw = 0;
+        wxs_write_pte(wxs_pte_orig_exec);
+        wxs_state = 2;
+        return snprintf(out, outlen,
+                        "dual ok pid=%d va=0x%llx shadow_pa=0x%llx exec=0x%llx read=0x%llx\n",
+                        wxs_tpid, (unsigned long long)wxs_tva,
+                        (unsigned long long)wxs_shadow_pa,
+                        (unsigned long long)wxs_pte_shadow_exec,
+                        (unsigned long long)wxs_pte_orig_exec);
+    }
     asm volatile("dsb ishst" ::: "memory");
     *wxs_ptep = newpte;
     wxs_tlbi_va(wxs_tva);
@@ -561,6 +621,19 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
         snprintf(buf, sizeof(buf), "disarm ok\n");
         goto out;
     }
+    if (!strncmp(p, "xo", 2)) {
+        uint64_t cur;
+        if (wxs_state < 1) {
+            snprintf(buf, sizeof(buf), "xo: not attached\n");
+            goto out;
+        }
+        cur = *(volatile uint64_t *)wxs_ptep;
+        wxs_xo_guard = 1;
+        wxs_write_pte((cur & ~PTE_USER) | PTE_AF);
+        snprintf(buf, sizeof(buf), "xo ok pte=0x%llx (user bit cleared)\n",
+                 (unsigned long long)((cur & ~PTE_USER) | PTE_AF));
+        goto out;
+    }
     if (!strncmp(p, "hold", 4)) {
         if (wxs_state != 2) {
             snprintf(buf, sizeof(buf), "hold: install first\n");
@@ -585,6 +658,7 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
         }
         wxs_write_pte(wxs_pte_orig);
         wxs_uxn_on = 0;
+        wxs_dual = 0;
         snprintf(buf, sizeof(buf), "uxnclear ok pte=0x%llx\n",
                  (unsigned long long)wxs_pte_orig);
         goto out;
@@ -608,6 +682,11 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
                  (unsigned long long)cur, (unsigned long long)wxs_pte_uxn);
         goto out;
     }
+    if (!strncmp(p, "stats", 5)) {
+        snprintf(buf, sizeof(buf), "stats iabt=%lu dabt=%lu other=%lu sw=%lu\n",
+                 wxs_n_iabt, wxs_n_dabt, wxs_n_other, wxs_switch_count);
+        goto out;
+    }
     if (!strncmp(p, "faults", 6)) {
         snprintf(buf, sizeof(buf), "faults=%lu logged=%u hook=%d sw=%lu hold=%d va=0x%llx\n",
                  wxs_fault_count, wxs_fault_logged, wxs_hook_on, wxs_switch_count, wxs_hold,
@@ -622,11 +701,21 @@ static long wxs_probe_control0(const char *args, char *__user out_msg, int outle
         wxs_release(buf, (int)sizeof(buf));
         goto out;
     }
+    if (!strncmp(p, "dual", 4)) {
+        p += 4;
+        while (*p == ' ')
+            p++;
+        wxs_dual_mode = 1;
+        n = wxs_install(p, buf, (int)sizeof(buf), 1);
+        (void)n;
+        goto out;
+    }
     if (!strncmp(p, "install", 7)) {
         p += 7;
         while (*p == ' ')
             p++;
-        wxs_install(p, buf, (int)sizeof(buf));
+        wxs_dual_mode = 0;
+        wxs_install(p, buf, (int)sizeof(buf), 0);
         goto out;
     }
 

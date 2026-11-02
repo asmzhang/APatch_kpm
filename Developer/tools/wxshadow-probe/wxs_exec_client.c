@@ -45,6 +45,7 @@ int main(int argc, char **argv)
     const char *outpath = argc > 1 ? argv[1] : "/data/local/tmp/wxs_exec.txt";
     const char *logpath = argc > 2 ? argv[2] : "/data/local/tmp/wxs_exec.log";
     int secs = argc > 3 ? atoi(argv[3]) : 90;
+    int nofault = (argc > 4 && argv[4][0] == 'n');
     size_t pagesz = (size_t)sysconf(_SC_PAGESIZE);
     unsigned char *base;
     unsigned int *code;
@@ -87,7 +88,7 @@ int main(int argc, char **argv)
     signal(SIGBUS, on_segv);
     for (i = 0; i < ticks; i++) {
         int v;
-        if (i == 6) {
+        if (i == 6 && !nofault) {
             /* 制造一次可控缺页：把这页设成 PROT_NONE 再读它，看内核侧能否记到。 */
             volatile unsigned char sink;
             if (mprotect(base, pagesz, PROT_NONE) == 0) {
@@ -107,10 +108,14 @@ int main(int argc, char **argv)
         }
         v = fn();
         if (v != last) {
-            fprintf(f, "t=%d ret=%d (changed)\n", i, v);
+            fprintf(f, "t=%d ret=%d rd=%02x%02x%02x%02x (changed)\n", i, v,
+                    ((volatile unsigned char *)code)[0], ((volatile unsigned char *)code)[1],
+                    ((volatile unsigned char *)code)[2], ((volatile unsigned char *)code)[3]);
             last = v;
         } else {
-            fprintf(f, "t=%d ret=%d\n", i, v);
+            fprintf(f, "t=%d ret=%d rd=%02x%02x%02x%02x\n", i, v,
+                    ((volatile unsigned char *)code)[0], ((volatile unsigned char *)code)[1],
+                    ((volatile unsigned char *)code)[2], ((volatile unsigned char *)code)[3]);
         }
         fflush(f);
         usleep(500 * 1000);

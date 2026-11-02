@@ -63,12 +63,28 @@ prctl 接口（`wxshadow.h`）：`0x57580001` SET_BP / `0x57580002` SET_REG / `0
 页级切换在 Pixel 6 上确认在跑：`exec fault at 221d28 → shadow (--x)` /
 `read fault at 221c98 → switched to live original (r--)`。
 
+### 端到端：读原字节 + 执行补丁（2026-11-03，Pixel 6）
+
+prctl 通道修好之后，两个靶子都验过：
+
+| 靶子 | 做什么 | 结果 |
+| --- | --- | --- |
+| `wx_t` | 每 100ms 调一次 `target(x)`，`x` 取自 volatile | 断点挂在 `ret` 上改 `x0=7` → 日志 `ret=7`，dmesg `Breakpoint Hit` + `modifying x0: 29 -> 7` |
+| `wx_v` | 同上，另外每 50 轮把自己 `.text` 的前 8 字节打印出来 | 打印 `28 00 80 52 00 05 00 2a`（原始 `mov w8,#1; orr w0,w8,w0,lsl#1`）**且** `ret=7` |
+
+`wx_v` 那一行就是「双视图」：同一个 VA，读路径拿到原始指令，执行路径跑的是改了寄存器的补丁。
+
+**验证时踩过的坑（写下来免得再犯）**：第一版靶子写 `target(20)`，编译器把常量折叠、把 `bl target`
+提到了循环外（`llvm-objdump` 里循环体内没有 `bl`），于是「断点不触发、返回值恒 41」看起来像模块坏了。
+入参必须来自 `volatile`，并且要用 `llvm-objdump` 确认循环体内真的有 `bl target`。
+
 ## 已知问题（本移植未修，按「先移植、后修错」分开处理）
 
-1. **prctl 通道不通**：客户端所有命令返回 `EINVAL`，内核侧连日志都进不去。原因是
-   `wxshadow.c:1495` 用 `hook_syscalln(__NR_prctl, 5, ...)`，而这版 KernelPatch 的
-   `hook_syscalln` 不采纳 `args->skip_origin` / `args->ret`（`panda_hide` 踩过同一个坑）。
-   修法：改 `syscalln_addr(nr, 0)` + `hook_wrap(addr, has_syscall_wrapper ? 1 : 6, ...)`。
+1. ~~**prctl 通道不通**~~（**已修，本仓 1.2.0**）：原实现用 `hook_syscalln(__NR_prctl, 5, ...)`，
+   而这版 KernelPatch 的 `hook_syscalln` 走 `syscall_hook_add(..., allow_skip=0)`，不采纳
+   `args->skip_origin` / `args->ret`，请求落回原生 `prctl` → `EINVAL`。改成自己按
+   `__arm64_sys_prctl`（`.cfi_jt → .cfi → 无后缀`）解析地址再 `hook_wrap(...)`，卸载走
+   `hook_unwrap(...)`；两种装载形态都验过。详见 `Developer/reports/2026-11-03-wxshadow-port.md`。
 2. **卸载会让设备重启**：`kpmctl unload wxshadow` 之后设备掉线、`uptime` 归零。它 hook 了
    `copy_process` / `exit_mmap`，卸载要逐个摘钩并释放所有影子页，这条路径在 6.1 上直接带崩内核。
    **在修好之前：只加载，不卸载；要清状态就重启。**

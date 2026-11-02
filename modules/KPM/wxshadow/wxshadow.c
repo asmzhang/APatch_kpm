@@ -1385,6 +1385,52 @@ static int wxshadow_parse_stage(const char *args)
     return 9;
 }
 
+/*
+ * prctl 通道：不能用 hook_syscalln。
+ *
+ * 这版 KernelPatch 的 hook_syscalln 走 syscall_hook_add(..., allow_skip=0)，
+ * 回调里写 args->ret / args->skip_origin 不会被采纳，请求会落回原生 prctl，
+ * 客户端拿到的就是 EINVAL（内核侧连 wxshadow_do_patch 的第一行日志都进不去）。
+ *
+ * 改成自己解析 __arm64_sys_prctl 再 inline hook：候选顺序与 KP 的
+ * syscalln_name_addr() 一致（.cfi_jt -> .cfi -> 无后缀；前缀 __arm64_ -> 无）。
+ * 两种装载形态都导出 kallsyms_lookup_name / hook_wrap，所以这条路是通用的。
+ */
+#define WX_SYSCALL_NAME_MAX 96
+
+static uintptr_t wx_lookup_name3(const char *prefix, const char *name, const char *suffix)
+{
+    char buffer[WX_SYSCALL_NAME_MAX];
+    size_t n = 0;
+
+    for (const char *p = prefix; *p && n + 1 < sizeof(buffer); p++)
+        buffer[n++] = *p;
+    for (const char *p = name; *p && n + 1 < sizeof(buffer); p++)
+        buffer[n++] = *p;
+    for (const char *p = suffix; *p && n + 1 < sizeof(buffer); p++)
+        buffer[n++] = *p;
+    buffer[n] = 0;
+
+    return (uintptr_t)kallsyms_lookup_name(buffer);
+}
+
+static uintptr_t wx_syscall_addr(const char *name)
+{
+    static const char *prefixes[] = {"__arm64_", ""};
+    static const char *suffixes[] = {".cfi_jt", ".cfi", ""};
+
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 3; j++) {
+            uintptr_t addr = wx_lookup_name3(prefixes[i], name, suffixes[j]);
+            if (addr)
+                return addr;
+        }
+    }
+    return 0;
+}
+
+static uintptr_t wx_prctl_sys_addr;
+
 long wxshadow_init(const char *args, const char *event, void *__user reserved)
 {
     int ret;
@@ -1492,7 +1538,15 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
         return 0;
 
     /* Hook prctl syscall */
-    ret = hook_syscalln(__NR_prctl, 5, prctl_before, NULL, NULL);
+    wx_prctl_sys_addr = wx_syscall_addr("sys_prctl");
+    if (!wx_prctl_sys_addr) {
+        pr_err("wxshadow: prctl syscall address not found\n");
+        ret = -ENOENT;
+    } else {
+        /* arm64 GKI 的 __arm64_sys_prctl 只收一个 struct pt_regs *，参数个数按 1 记账 */
+        ret = hook_wrap((void *)wx_prctl_sys_addr, has_syscall_wrapper ? 1 : 5,
+                        prctl_before, NULL, NULL);
+    }
     if (ret != HOOK_NO_ERR) {
         pr_err("wxshadow: failed to hook prctl: %d\n", ret);
         /* Cleanup based on hook method */
@@ -1531,7 +1585,8 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
         pr_err("wxshadow: refusing to load without exit_mmap cleanup\n");
         if (kfunc_do_page_fault)
             hook_unwrap(kfunc_do_page_fault, do_page_fault_before, NULL);
-        unhook_syscalln(__NR_prctl, prctl_before, NULL);
+        if (wx_prctl_sys_addr)
+            hook_unwrap((void *)wx_prctl_sys_addr, prctl_before, NULL);
         if (hook_method == WX_HOOK_METHOD_DIRECT) {
             hook_unwrap(kfunc_single_step_handler, single_step_handler_before, NULL);
             hook_unwrap(kfunc_brk_handler, brk_handler_before, NULL);
@@ -1663,7 +1718,8 @@ long wxshadow_exit(void *__user reserved)
      * BRK/step/fault/exit_mmap hooks remain active throughout Phase 2
      * to handle any in-flight operations while pages are being cleaned.
      */
-    unhook_syscalln(__NR_prctl, prctl_before, NULL);
+    if (wx_prctl_sys_addr)
+        hook_unwrap((void *)wx_prctl_sys_addr, prctl_before, NULL);
     pr_info("wxshadow: unhooked prctl (phase 1)\n");
     wait_for_handlers_drain("phase1-prctl");
 

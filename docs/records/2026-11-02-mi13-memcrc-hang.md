@@ -86,5 +86,41 @@ note: kpmctl[25198] exited with preempt_count 1
 ## 5. 待验证（需要重启后的 5.10 设备）
 
 1. `load memcrc_0.2.4.kpm` 是否不再出现 `-HOOK_BAD_RELO`（与 mount_hidder 共存）。
-2. 第二次加载是否还会在 `misc_register()` 挂死 —— 若仍复现，说明失败回滚问题与本次改动无关，需要单独报给 KernelPatch。
+2. ~~第二次加载是否还会在 `misc_register()` 挂死~~ —— 已定位为 memcrc 自身的卸载不幂等（见第 6 节），与 KernelPatch 无关，0.2.5 修掉后重测。
 3. `PTRACE:` / `RANGE:` 在 5.10 上的实际效果（6.1 已验）。
+## 6. 根因：卸载不幂等，二次 `misc_deregister` 打了个 BUG
+
+第一次加载失败的完整 Oops（`dmesg` 原文，2026-11-02 12:08）：
+
+```
+Internal error: Oops - BUG: 0 [#1] PREEMPT SMP
+pc : __list_del_entry_valid+0xa0/0xd4
+Call trace:
+ __list_del_entry_valid+0xa0/0xd4
+ misc_deregister+0x5c/0x164
+ 0xffffffde901fc268          // memcrc komm 的 ioctl_exit()
+ 0xffffffde901fb55c          // memcrc mod_exit()
+ kp_load_module+0x122c/0x1230 [kernelpatch]
+note: kpmctl[25198] exited with preempt_count 1
+```
+
+机制：`mod_init()` 的失败路径自己调过一次 `ioctl_exit()`（`misc_deregister` 一次，日志里的“komm unloaded”），装载器随后按约定照样调 `mod_exit()`，于是 `misc_deregister(&yuuki_misc)` 又跑了一次。`struct miscdevice` 挂进去的 `list` 已经被 `list_del` 过，`__list_del_entry_valid()` 的调试检查直接 `BUG()`。**这一 BUG 是在 `misc_mtx` 持锁期间发生的**，线程死掉后那把锁没有任何人释放，所以第二次 `misc_register()` 永远等在 `mutex_lock(&misc_mtx)` 上 —— 这就是 12:08 那个 `kpmctl` 卡在 D 状态、栈顶是 `misc_register+0x38` 的全部原因。
+
+两件事要分开记：
+
+1. 第一次失败的**触发原因**是 `hook()` 装到了被 `hook_wrap2` 占用的函数上（`-HOOK_BAD_RELO`，4092）；
+2. 第一次失败的**后果**（设备挂死）是 memcrc 卸载不幂等，把内核的 `misc_mtx` 留在了锁定状态。
+
+同类风险排查：`feature` / `redirect` / `ptrace_hide` 的 `*_exit()` 本来就有 `hook_installed` / `hook_err` 守卫，`shared_data_exit()` 有 `initialized` 守卫，**只有 komm 的 misc 设备与 getcwd 的 syscall 钩子没有** —— 恰好是这两个在失败路径上会被清理两次。
+
+## 7. 0.2.5 修复
+
+- `komm/komm.c`：新增 `static int komm_registered`，`misc_register()` 成功后才置 1；`ioctl_exit()` 只在置位时 `misc_deregister()` 并清零。
+- `control/control.c`：新增 `static int getcwd_hooked`，`syscall_init()` 成功后置 1；`syscall_exit()` 只在置位时 `mc_unhook_syscall()`。
+- 产物：`memcrc_0.2.5.kpm` 96320 B `sha256=0ffdf5f79307a5cdbe2ca26997c41f5dd48b715c72be77f9b34c18d16804b84d`；`memcrc_0.2.5_debug.kpm` 96320 B `sha256=60750fc6e5cab6b463667b8d9d3f533be483f2832de8eea15459ee1ab415724e`。
+- 符号面：`tools/load_forms.py --artifact modules/KPM/memcrc/memcrc_0.2.5.kpm --kallsyms local/mi13_kallsyms.txt` → `und=27 形态=kernel,lkm kernel缺=0 lkm缺=0`，与 0.2.4 一致。
+- 真机：**待重启后的 5.10 设备验证**；6.1 侧回归项记在开发报告的 0.2.5 节。
+
+## 8. 一条构建教训
+
+升版本号后必须 `make clean` 再构建：版本串由 `KPM_VERSION(MYKPM_VERSION)` 编进 `mod_main.o`，若只改了别的文件，make 不会重编 `mod_main.o`，产出的文件名是 0.2.5、里面却还写着 `version=0.2.4`。这次就是这样发现的（`strings memcrc_0.2.5.kpm` 显示 `version=0.2.4`），clean 重建后两个变体分别是 `version=0.2.5` / `version=0.2.5_d`。

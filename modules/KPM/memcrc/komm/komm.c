@@ -338,6 +338,11 @@ static const struct file_operations my_fops = {
         .release = on_misc_release,
 };
 
+/* ★v0.2.5：init 失败时 mod_init 已清过一次，装载器随后还会调 mod_exit，
+ * 重复 misc_deregister 会在 list_del 里 BUG() 并带着 misc_mtx 死掉，
+ * 下一次 misc_register 就永远等那把锁。用状态位保证幂等。 */
+static int komm_registered;
+
 static struct miscdevice yuuki_misc = {
         .minor = MISC_DYNAMIC_MINOR,
         .name = DEVICE_NAME,
@@ -362,12 +367,16 @@ long ioctl_init() {
         return ret;
     }
 
+    komm_registered = 1;
     pr_info("[yuuki] komm loaded successfully\n");
     return 0;
 }
 
 long ioctl_exit() {
-    misc_deregister(&yuuki_misc);
+    if (komm_registered) {
+        misc_deregister(&yuuki_misc);
+        komm_registered = 0;
+    }
     shared_data_exit();
     pr_info("[yuuki] komm unloaded\n");
     return 0;

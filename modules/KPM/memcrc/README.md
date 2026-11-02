@@ -94,6 +94,11 @@ python3 tools/load_forms.py --module memcrc --strict
 
 ## 更新记录
 
+### 0.2.5
+
+- 卸载幂等：`ioctl_exit()` 只在 `misc_register()` 真的成功过之后才 `misc_deregister()`；`syscall_exit()` 同理只卸真挂上的 getcwd 钩子。
+- 背景：`mod_init()` 失败路径已清过一次，装载器随后还会调 `mod_exit()`，重复 `misc_deregister()` 会在 `__list_del_entry_valid()` 里 `BUG()`，并带着 `misc_mtx` 死掉，使下一次 `misc_register()` 永久阻塞（小米 13 / 5.10 / LKM 实测，见 `docs/records/2026-11-02-mi13-memcrc-hang.md`）。
+
 ### 0.2.4
 
 procfs 的五个 `show_*` 钩子从整函数替换（`hook()`）改成链式 before/after（`hook_wrap()`）：

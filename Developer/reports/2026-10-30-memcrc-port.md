@@ -262,3 +262,27 @@ SELinux 的 `setattr` 检查挡成 `EACCES`（与模块无关，读和 `>>` 都�
   `misc_register()`（D 状态），需重启后重测，事故记录见
   [2026-11-02-mi13-memcrc-hang.md](../../docs/records/2026-11-02-mi13-memcrc-hang.md)。
 - `mc_task_uid()` 的偏移推导在 6.1 与 5.10 上各验一次即止，没有覆盖 `init_cred` 布局差异更大的内核。
+
+## 0.2.5：卸载幂等化（2026-11-02）
+
+### 触发
+
+小米 13（5.10.149-android12-9 / `kernelpatch-lkm`）加载 0.2.4 前一次尝试留下的现场：第一次加载因 `-HOOK_BAD_RELO` 失败后，内核在 `misc_deregister()` 里 `BUG()`（`__list_del_entry_valid+0xa0`，调用链 `misc_deregister ← ioctl_exit ← mod_exit ← kp_load_module`），随后第二次加载永久卡在 `misc_register()`。完整证据见 `docs/records/2026-11-02-mi13-memcrc-hang.md`。
+
+### 改动
+
+- `komm/komm.c`：`static int komm_registered` 守 `misc_deregister()`。
+- `control/control.c`：`static int getcwd_hooked` 守 `mc_unhook_syscall()`。
+- 其余子系统原本就有守卫（`hook_installed` / `hook_err` / `initialized`），本轮逐个核对后未动。
+
+### 产物与自检
+
+- `memcrc_0.2.5.kpm` 96320 B `sha256=0ffdf5f79307a5cdbe2ca26997c41f5dd48b715c72be77f9b34c18d16804b84d`
+- `memcrc_0.2.5_debug.kpm` 96320 B `sha256=60750fc6e5cab6b463667b8d9d3f533be483f2832de8eea15459ee1ab415724e`
+- `tools/load_forms.py`：`und=27`，两形态 0 缺失。
+- 版本串：`version=0.2.5` / `version=0.2.5_d`（clean 重建后确认）。
+
+### 未覆盖
+
+1. 5.10 / LKM 侧真机验证待重启设备后进行（本次只做了离线构建与符号面自检）。
+2. 6.1 侧只跑了加载与 `PTRACE:` / `RANGE:` 的功能回归，未复现「init 失败 → mod_exit 二次清理」这条路径（该路径需要构造一次加载失败）。

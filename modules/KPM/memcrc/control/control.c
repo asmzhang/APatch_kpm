@@ -174,6 +174,9 @@ void before_getcwd(hook_fargs1_t *args, void *udata) {
     shared_data_add_parsed_scoped(cmd, uid, control_is_privileged(uid));
 }
 
+/* ★v0.2.5：只有真的挂上过才卸，避免在没装上的实例上做 unhook。 */
+static int getcwd_hooked;
+
 long syscall_init() {
 
     err = mc_hook_syscall(__NR_getcwd, 2, before_getcwd, 0, 0);
@@ -183,12 +186,16 @@ long syscall_init() {
         return err;
     }
 
+    getcwd_hooked = 1;
     pr_info("[yuuki] Successfully hooked getcwd syscall\n");
     return 0;
 }
 
 long syscall_exit() {
-    mc_unhook_syscall(__NR_getcwd, before_getcwd, 0);
+    if (getcwd_hooked) {
+        mc_unhook_syscall(__NR_getcwd, before_getcwd, 0);
+        getcwd_hooked = 0;
+    }
     pr_info("[yuuki] getcwd syscall uninstalled successfully\n");
     return 0;
 }

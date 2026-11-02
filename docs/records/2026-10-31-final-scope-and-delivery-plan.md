@@ -388,3 +388,35 @@ Pixel 6（Android 15 / 6.1.99-android14 / APatch 11282）：
 AUD-C-11 的越界样本构造不出来（两个写通道都送不进 ≥512 字节的规则），只能作为
 防御性守卫记录；AUD-C-12 的 `ALLOWLIST` 输出未真机触发（ctl0 需要 superkey 或管理器
 身份，本轮未走 UI 参数框）。
+
+## 十四、第七轮复核与 R4 收口（2026-11-02）
+
+第七轮独立复核（`Auditor/reports/2026-11-02-r4i-review.md`）对 R4i 四条给出结论：
+
+| 编号 | 判定 |
+| --- | --- |
+| AUD-B-2-1（幂等单向子集） | 已修好 |
+| AUD-B-2-2（skip 不回传个数） | 已修好 |
+| AUD-C-11（读路径截断越界） | 已修好 |
+| AUD-C-12（ctl0 累加下溢） | 已修好 |
+
+新增两条 info（`[END]` 段缺 `else goto buffer_full`、`if` 缩进异常），均为格式/一致性问题、无行为
+影响，**记录不改**：`memcrc 0.2.2` 已冻结并经真机验证，改动会让产物哈希与 instance 失效、重走冻结
+与真机，收益为零。
+
+### R4 总体状态
+
+从 R3 首轮 21 单（3 critical / 8 high / 5 medium / 5 low）起，经 R4a–R4i 九轮修复与六轮复核：
+
+- critical：3 条全关（内核栈溢出、设备通道越权、断点回调 panic）。
+- high：8 条全关（seq 堆越界写、shell 越权挂钩、链表无锁、task 引用 UAF、ctl0 空指针、钩子内
+  self-unhook、frida 隐藏越界、非法断点地址 panic）。
+- medium / low：除上述两条 info 外全关。
+- 期间由审计发现的**自引入回归**一条（R4d 误删 `sh_hwbp_cleanup()`，AUD-e-4），已修并复验。
+
+### 当前交付状态
+
+- 仓库 HEAD `9cdc009`，`origin/my` 同步；14 个可构建模块，五个新模块全部有 README、元数据与
+  冻结构建记录。
+- 门禁（WSL）14 项 0 失败 3 警告（三条均存量）。
+- 下一步：R5 真机矩阵（由 Tester 按用例执行）、R6 验收签名。

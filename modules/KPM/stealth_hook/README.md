@@ -106,6 +106,10 @@ stealth_cli unhook 0x7a1b2c3d4e --tid all
   5.10 上虽有该 hook，但真正的重定向还需要用户态 DBI 把目标页重编译成「搬家版页」并给出
   `offset_map[1024]`，否则钩子无处跳转。本移植只保留 `PTE_QUERY` 能力探测，其余命令统一返回
   `-EOPNOTSUPP`——不做半套，也不猜。
+  能力探测已在两台真机上对齐（2026-11-03）：Pixel 6（6.1.99-android14，kernel 形态）`pte query` →
+  `no (6.1+ removed) (0x0)`；小米 13（5.10.149-android12-9，APatch LKM 形态）→
+  `yes (5.10 vendor hook) (0x1)`。也就是说 5.10 这条**内核侧前提是满足的**，缺的是我们自己的
+  install 路径与 DBI 客户端，不是内核不支持。
 - **FULL_HOOK / AUTO_THREAD 未移植**：前者依赖用户态 DBI 整页重编译；后者靠钩 `wake_up_new_task`
   给新线程补断点，CLI 轮询 `/proc/<pid>/task` 即可替代，少一个全局钩子。
 - **ghost 不自动隐藏**：上游建完 VMA 会调 maps_hide 抹掉；本仓 maps_hide 在 memcrc 里，按 uid 作用域。

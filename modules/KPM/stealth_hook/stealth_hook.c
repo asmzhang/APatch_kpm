@@ -122,7 +122,7 @@ extern long sh_hwbp_unhook(uint64_t target_addr, uint32_t tid);
 extern long sh_hwbp_enable(uint64_t target_addr, uint32_t tid, int enable);
 extern long sh_hwbp_query(struct sh_hwbp_query __user *req);
 extern long sh_hwbp_set_override(struct sh_hwbp_override __user *req);
-extern long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count);
+extern long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count, uint32_t tid);
 extern void sh_hwbp_init(void);
 extern void sh_hwbp_cleanup(void);
 
@@ -205,7 +205,7 @@ static long sh_dispatch_body(long cmd, long arg1, long arg2, long arg3, long arg
         return sh_hwbp_set_override((struct sh_hwbp_override __user *)arg1);
 
     case SH_CMD_HWBP_SET_SKIP:
-        return sh_hwbp_set_skip((uint64_t)arg1, (uint32_t)arg2);
+        return sh_hwbp_set_skip((uint64_t)arg1, (uint32_t)arg2, (uint32_t)arg3);
 
     default:
         return -1;  /* 未实现：上游是 -1，保持一致 */

@@ -142,6 +142,10 @@ static int parse_u64(const char *s, uint64_t *out)
 static uint32_t parse_tid(const char *s)
 {
     uint64_t v = 0;
+    /* all / * 表示不区分线程（内核侧 tid == 0 即通配） */
+    if (!strcmp(s, "all") || !strcmp(s, "*")) {
+        return 0;
+    }
     if (parse_u64(s, &v) != 0) {
         fprintf(stderr, "bad tid: %s\n", s);
         exit(1);
@@ -157,12 +161,13 @@ static void usage(void)
         "  status                             查询模块状态\n"
         "  hook <addr> [--tid N] [--dump N] [--flags F] [--inline ADDR] [--listen-ret]\n"
         "                                     下硬件执行断点（默认挂当前线程）\n"
-        "  unhook <addr> [--tid N]            摘断点\n"
-        "  enable|disable <addr> [--tid N]    启停断点\n"
+        "  unhook <addr> [--tid N|all]        摘断点（all 或 0 = 该地址全部线程）\n"
+        "  enable|disable <addr> [--tid N|all] 启停断点\n"
+        "  list                               列出所有已挂断点\n"
         "  query <addr> [--tid N] [--index N] 读命中记录（参数/返回值/dump）\n"
         "  override <addr> [--tid N] --set N=VAL ... [--modify]\n"
         "                                     改第 N 个参数（X0..X7）\n"
-        "  skip <addr> [--count N]           忽略接下来 N 次命中（不记录）\n"
+        "  skip <addr> [--count N] [--tid N|all] 忽略接下来 N 次命中（不记录）\n"
         "  ghost alloc <size> [--va ADDR] [--prot rwx]\n"
         "  ghost write <va> <hex|@file>       把数据写进幽灵内存\n"
         "  ghost list                         列出幽灵内存段\n"
@@ -268,7 +273,8 @@ static int cmd_unhook(int argc, char **argv)
     if (rc < 0) {
         die("unhook", rc);
     }
-    printf("unhook: rc=%ld addr=0x%llx tid=%u\n", rc, (unsigned long long)addr, tid);
+    printf("unhook: removed=%ld addr=0x%llx tid=%s\n", rc, (unsigned long long)addr,
+           tid ? "指定线程" : "全部线程");
     return 0;
 }
 
@@ -289,7 +295,8 @@ static int cmd_enable(int argc, char **argv, int enable)
     if (rc < 0) {
         die(enable ? "enable" : "disable", rc);
     }
-    printf("%s: rc=%ld\n", enable ? "enable" : "disable", rc);
+    printf("%s: changed=%ld addr=0x%llx tid=%s\n", enable ? "enable" : "disable", rc,
+           (unsigned long long)addr, tid ? "指定线程" : "全部线程");
     return 0;
 }
 
@@ -305,6 +312,47 @@ static void dump_hex(const uint8_t *p, size_t n)
     if (n % 32) {
         printf("\n");
     }
+}
+
+static int cmd_list(int argc, char **argv)
+{
+    struct sh_hwbp_query q;
+    uint32_t index = 0;
+    uint32_t total = 0;
+
+    (void)argc;
+    (void)argv;
+
+    for (;;) {
+        long rc;
+
+        memset(&q, 0, sizeof(q));
+        q.target_addr = 0;   /* 0 = 全部地址 */
+        q.tid = 0;           /* 0 = 全部线程 */
+        q.node_index = index;
+
+        rc = sh_call(SH_CMD_HWBP_QUERY, (long)&q, 0, 0, 0);
+        if (rc < 0) {
+            if (index == 0) {
+                printf("list: 没有已挂断点 (rc=%ld)\n", rc);
+                return 0;
+            }
+            die("list", rc);
+        }
+        total = q.node_total;
+        if (index == 0) {
+            printf("list: %u 个断点\n", total);
+        }
+        printf("  [%u/%u] tid=%u addr=0x%llx hits=%u %s last_pc=0x%llx ret_x0=0x%llx\n",
+               index + 1, total, q.tid, (unsigned long long)q.target_addr, q.hit_count,
+               q.is_disabled ? "disabled" : "enabled",
+               (unsigned long long)q.last_pc, (unsigned long long)q.ret_x0);
+        index++;
+        if (index >= total) {
+            break;
+        }
+    }
+    return 0;
 }
 
 static int cmd_query(int argc, char **argv)
@@ -422,19 +470,22 @@ static int cmd_skip(int argc, char **argv)
 {
     uint64_t addr = 0;
     uint32_t count = 1;
+    uint32_t tid = (uint32_t)syscall(SYS_gettid);
     int i;
     long rc;
 
     if (argc < 1 || parse_u64(argv[0], &addr) != 0) {
-        fprintf(stderr, "skip: need <addr> [--count N]\n");
+        fprintf(stderr, "skip: need <addr> [--count N] [--tid N|all]\n");
         return 1;
     }
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--count") && i + 1 < argc) {
             count = parse_tid(argv[++i]);
+        } else if (!strcmp(argv[i], "--tid") && i + 1 < argc) {
+            tid = parse_tid(argv[++i]);
         }
     }
-    rc = sh_call(SH_CMD_HWBP_SET_SKIP, (long)addr, (long)count, 0, 0);
+    rc = sh_call(SH_CMD_HWBP_SET_SKIP, (long)addr, (long)count, (long)tid, 0);
     if (rc < 0) {
         die("skip", rc);
     }
@@ -669,6 +720,9 @@ int main(int argc, char **argv)
     }
     if (!strcmp(argv[1], "disable")) {
         return cmd_enable(argc - 2, argv + 2, 0);
+    }
+    if (!strcmp(argv[1], "list")) {
+        return cmd_list(argc - 2, argv + 2);
     }
     if (!strcmp(argv[1], "query")) {
         return cmd_query(argc - 2, argv + 2);

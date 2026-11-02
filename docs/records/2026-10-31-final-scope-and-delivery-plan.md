@@ -326,3 +326,35 @@ BVR，断点可能回旧地址**错采一拍**（多记或少记一次命中）�
 ### 下一步
 
 R5 真机全矩阵（NEW-g-1 随后跟进）；门禁：14 项检查 0 失败 2 警告（均为存量）。
+
+## 十二、R4h 执行记录（2026-11-02）
+
+### 范围
+
+R5 前审计遗留的 1 张 high（AUD-B-1）+ 1 张 medium（AUD-c-10）+ 一张 info
+（NEW-g-3 版本未 bump）。用户口径：「可以拆分，可以改，怎么好用怎么来，功能不能少」。
+
+### 做了什么
+
+- **AUD-B-1 根治**：断点节点去重键取 `(addr, tid)`。`HWBP_HOOK` 同参数重复调用
+  返回 0（幂等）、参数不同返回 `-EEXIST`；`unhook`/`enable`/`disable`/`set_skip`
+  的 `tid == 0` 表示「该地址全部线程」并返回影响个数；`HWBP_QUERY` 的
+  `target_addr == 0` 列出全部节点，CLI 新增 `list` 与 `--tid all`。
+  审计里的误伤场景（同一线程同一地址两个节点）在结构上不再可能，而「一个函数挂到
+  多线程」的合法用法保留。
+- **AUD-c-10 根治**：`komm.c` 空表 read 的 `snprintf` 返回值按实际写入长度钳制。
+- **NEW-g-3**：stealth_hook 0.3.0 → 0.3.1、memcrc 0.2.0 → 0.2.1。
+
+### 真机
+
+Pixel 6（Android 15 / 6.1.99-android14 / APatch 11282）：
+
+- stealth_hook 0.3.1：探针三种模式（dedup / multi / states）全部 PASS；
+  `stealth_cli selftest` 全链路回归通过；同地址两线程共 2 个节点、
+  通配 `unhook` 一次摘 2 个。
+- memcrc 0.2.1：`head -c 8 /dev/yuuki_misc` 返回 7 字节、`head -c 1` 返回 1 字节、
+  `cat` 完整六段；`MAP:` 规则重定向 `mc_a.txt → BBB_MC` 生效、`CMD:CLEAR` 归零。
+
+### 状态
+
+待登记冻结构建并交同一批独立审计员复核（AUD-B-1 / AUD-c-10 / NEW-g-3）。

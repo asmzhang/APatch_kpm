@@ -174,3 +174,24 @@ ci_build_selection 已把 memcrc 计入构建列表（12 个模块）。
 - `ptrace_hide.c` 对 `m->count` 做 memmove 调整，未校验 `m->buf` 剩余空间与 `count` 边界；`proc_pid_status` 输出被并发读时是否安全需确认。
 - `data/shared_data.c` 的 `kf_raw_spin_lock_irqsave` 使用 KP 的 `_raw_spin_lock_irqsave` 指针；若目标内核该符号被内联化（部分 6.6+ 配置）则 `init_symbols` 失败，模块整体不加载（安全默认，但等于不可用）。
 - 门禁 `tool_selftest` 在本机恒 FAIL（gbk 解码），本次未修；若交接前仍需绿，需要单独处理该夹具的编码问题。
+
+## 0.2.1：空表 read 的长度钳制（AUD-c-10）
+
+R5 前独立审计 **AUD-c-10（medium）**：`komm/komm.c` 的空表覆盖分支用
+`snprintf(kernel_buf, count, "[MAPPINGS:0]...")` 后直接 `total_len = temp_len`。
+`snprintf` 返回「本应写入的长度」，`count` 小于该串时返回值大于 `count`，
+随后的 `compat_copy_to_user(buf, kernel_buf, total_len)` 会越过 `kf_vmalloc(count)`
+的缓冲，把内核堆内存读给调用者。
+
+修法：按实际写入长度钳制（`min(temp_len, count - 1)`，`temp_len < 0` 归零）。
+判据未变，只改这一处赋值。
+
+真机（Pixel 6 / 6.1.99-android14 / memcrc 0.2.1）：
+`head -c 8 /dev/yuuki_misc` → 7 字节 `5b4d 4150 5049 4e47`（`[MAPPING`）；
+`head -c 1` → 1 字节；`cat` 仍是完整六段。规则增删（`MAP:`/`CMD:CLEAR`）回归正常。
+
+### 顺带记录的设备事实
+
+`/dev/yuuki_misc` 是 `0600 root:root`，`>`（`O_TRUNC`）打开在该机型上会被
+SELinux 的 `setattr` 检查挡成 `EACCES`（与模块无关，读和 `>>` 都正常）。
+写规则请用 `>>` 或 `dd conv=notrunc`，已写进 README。

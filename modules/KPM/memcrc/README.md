@@ -30,6 +30,15 @@ cat /dev/yuuki_misc                  # 列出全部规则
 echo 'CMD:CLEAR' > /dev/yuuki_misc   # 清空规则
 ```
 
+设备节点是 `0600 root:root`，只有受信 uid 能开（`on_misc_open` 再校验一次）。
+部分机型上 `>`（`O_TRUNC`）打开该字符设备会被 SELinux 的 `setattr` 检查挡成
+`EACCES`，与模块无关；写规则改用下面两种不带截断的方式：
+
+```sh
+printf 'CMD:CLEAR\n' >> /dev/yuuki_misc
+printf 'CMD:CLEAR\n' > /tmp/r.txt && dd if=/tmp/r.txt of=/dev/yuuki_misc conv=notrunc
+```
+
 管理命令：`CMD:STATUS`、`CMD:HELP`、`CMD:DUMP`、`CMD:LIST`、`CMD:CLEAR`、`CMD:REMOVE:<type>:<index>`。
 
 ## 信任模型
@@ -58,6 +67,14 @@ echo 'CMD:CLEAR' > /dev/yuuki_misc   # 清空规则
 - 进程状态伪装只改 `/proc/<pid>/status` 与 `/proc/<pid>/stat` 的状态字符，不改调度行为。
 
 ## 更新记录
+
+### 0.2.1
+
+`komm.c` 空表覆盖分支的 `snprintf` 返回值按实际写入长度钳制（AUD-c-10）：
+`snprintf` 返回「本应写入的长度」，缓冲不够时它大于 `count`，原实现直接赋给
+`total_len` 会让随后的 `copy_to_user` 越过 vmalloc 缓冲，把小缓冲的 read
+变成内核堆内存泄露。真机验证：`head -c 8 /dev/yuuki_misc` 返回 7 字节
+（`[MAPPIN`），`head -c 1` 返回 1 字节，`cat` 仍是完整六段。
 
 ### 0.2.0
 

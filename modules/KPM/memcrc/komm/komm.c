@@ -268,7 +268,13 @@ static ssize_t my_read(struct file *file, char __user *buf, size_t count, loff_t
                            range_count == 0 && regs_count == 0)) {
         temp_len = snprintf(kernel_buf, count,
                             "[MAPPINGS:0]\n[PATHS:0]\n[PTRACE:0]\n[RANGES:0]\n[REGS:0]\n[END]\n");
-        total_len = temp_len;
+        /* AUD-c-10：snprintf 返回的是"本应写入的长度"，缓冲不够时它大于 count；
+         * 直接赋给 total_len 会让下面的 copy_to_user 越过 vmalloc 缓冲，
+         * 把内核堆内存泄露给调用者。这里按实际写入长度（<= count - 1）钳制。 */
+        if (temp_len < 0) {
+            temp_len = 0;
+        }
+        total_len = ((size_t)temp_len < count) ? (size_t)temp_len : (count > 0 ? count - 1 : 0);
     }
 
     if (!compat_copy_to_user(buf, kernel_buf, total_len)) {

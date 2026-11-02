@@ -40,12 +40,12 @@ ctl0 通过 APatch 管理器的「参数」对话框下发，或 `kpatch <superk
 | STATUS | `0x0001` | — | `0x53484F4B + 版本码` |
 | ECHO | `0x0002` | `arg1` | `arg1`（通道自检） |
 | HWBP_HOOK | `0x1001` | `struct sh_hwbp_request *` | 0 / 负错误码 |
-| HWBP_UNHOOK | `0x1002` | `addr, tid` | 0 |
-| HWBP_ENABLE | `0x1003` | `addr, tid` | 0 |
-| HWBP_DISABLE | `0x1004` | `addr, tid` | 0 |
-| HWBP_QUERY | `0x1005` | `struct sh_hwbp_query *` | 0 |
+| HWBP_UNHOOK | `0x1002` | `addr, tid` | 摘掉的节点数 / `-1` 无匹配 / `-2` 已退役 |
+| HWBP_ENABLE | `0x1003` | `addr, tid` | 变更的节点数 / `-1` |
+| HWBP_DISABLE | `0x1004` | `addr, tid` | 变更的节点数 / `-1` |
+| HWBP_QUERY | `0x1005` | `struct sh_hwbp_query *`（`target_addr=0` 列出全部） | 0 / `-2` 无节点 |
 | HWBP_SET_OVERRIDE | `0x1006` | `struct sh_hwbp_override *` | 0 |
-| HWBP_SET_SKIP | `0x1007` | `addr, count` | 0（忽略接下来 count 次命中，只跳过记录） |
+| HWBP_SET_SKIP | `0x1007` | `addr, count, tid` | 0（忽略接下来 count 次命中，只跳过记录） |
 | PTE_QUERY | `0x2001` | — | 1=支持 / 0=不支持 |
 | PTE_HOOK/REARM/UNHOOK | `0x2002`–`0x2004` | — | `-EOPNOTSUPP`（本移植未实现） |
 | GHOST_ALLOC | `0x3001` | `va, size, prot` | 分配的 VA |
@@ -54,6 +54,19 @@ ctl0 通过 APatch 管理器的「参数」对话框下发，或 `kpatch <superk
 | GHOST_LIST | `0x3004` | `struct sh_ghost_info *, max` | 条数 |
 
 结构体定义见 `stealth_hook.h`，与上游逐字段一致，方便直接对表上游 CLI 协议。
+
+### 节点身份、去重与通配（0.3.1）
+
+- 一个断点节点的身份是 **(target_addr, tid)**，不是地址。同一个函数挂到 10 个线程
+  就是 10 个节点，各自独立计数、独立 query——CLI 循环给 90 个线程挂钩用的就是它。
+- `HWBP_HOOK` 按 `(addr, tid)` 去重：参数完全相同的重复 hook 返回 0（幂等，脚本循环
+  重跑安全）；参数不同返回 `-EEXIST`（-17），要改配置先 `unhook`，或走
+  `HWBP_SET_OVERRIDE`。**不做静默覆盖**——覆盖会让先挂的节点失去归属，多线程调试时
+  很难发现。
+- `unhook` / `enable` / `disable` / `set_skip` 的 `tid` 传 0 表示「该地址的全部线程」，
+  一次改齐，返回值是实际影响的节点数；`set_override` 本来就按 `target_pid=0` 通配。
+- `HWBP_QUERY` 的 `target_addr` 传 0 表示列出全部节点（CLI 的 `list` 走这条），
+  配合 `node_index`/`node_total` 分页。
 
 ## 典型用法
 
@@ -67,8 +80,12 @@ stealth_cli query 0x7a1b2c3d4e
 stealth_cli override 0x7a1b2c3d4e --set 0=0x100 --modify
 # 跳过原函数，直接返回 0x777
 stealth_cli override 0x7a1b2c3d4e --skip-ret 0x777
-# 摘断点
+# 看当前挂了哪些断点（等价 query 0）
+stealth_cli list
+# 摘断点（只摘当前线程）
 stealth_cli unhook 0x7a1b2c3d4e
+# 摘掉这个地址上所有线程的断点
+stealth_cli unhook 0x7a1b2c3d4e --tid all
 ```
 
 `stealth_cli selftest` 会在自己的进程里对一个 `noinline` 目标函数跑完整链路
@@ -107,6 +124,12 @@ make all debug
 
 ## 更新记录
 
+- **0.3.1** — 可用性一轮（AUD-B-1 根治）：`HWBP_HOOK` 按 `(addr, tid)` 去重
+  （同参数幂等返回 0、不同参数 `-EEXIST`）；`unhook`/`enable`/`disable`/`set_skip`
+  支持 `tid=0` 通配并返回影响个数——此前只改第一个匹配节点，同址多线程的其余节点
+  成了没有任何命令能单独操作的孤儿（rearm 里「一次改齐所有匹配槽」的补偿逻辑就是
+  给它擦屁股的）；`query` 的 `target_addr=0` 列出全部节点，CLI 新增 `list` 与
+  `--tid all` 别名。同址不同线程仍然允许。
 - **0.3.0** — HWBP 全链路（入口抓 X0–X7/LR、返回抓 X0、改参数、跳过原函数、按指针 dump 内存）+
   GHOST + PTE 能力探测；通道 uid 门；CLI `Developer/tools/stealth_cli/`。
   R4f–R4g 修复（登记 instance 见 metadata）：rearm 从 perf 三件套改 MSR 直写

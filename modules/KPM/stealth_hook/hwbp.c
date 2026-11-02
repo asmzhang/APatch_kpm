@@ -515,6 +515,27 @@ static void hwbp_handler(void *bp, void *sample_data, struct sh_pt_regs *regs)
     }
 }
 
+/* 按 (addr, tid) 查已有节点；tid == 0 表示不区分线程。
+ * AUD-B-1：去重键必须是 (addr, tid)——只按地址会把「多线程同址」这个
+ * 合法用法一起掐掉（CLI 循环 hook 每个线程就是靠它）。 */
+static struct sh_hwbp_node *hwbp_find_node(uint64_t addr, uint32_t tid)
+{
+    struct list_head *pos;
+
+    for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
+        struct sh_hwbp_node *node =
+            (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+
+        if (node->retired) {
+            continue;
+        }
+        if (node->target_addr == addr && (tid == 0 || node->tid == tid)) {
+            return node;
+        }
+    }
+    return 0;
+}
+
 long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
 {
     struct sh_hwbp_request req;
@@ -550,6 +571,28 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
     if (!sh_addr_is_valid(task, req.target_addr)) {
         pr_err("[hwbp] target not readable user code: %llx\n", req.target_addr);
         return -22;   /* AUD-d-1：非法地址静默成功会导致内核 panic */
+    }
+
+    {
+        /* AUD-B-1：同 (addr, tid) 只允许一个节点。参数完全相同视为幂等成功，
+         * 参数不同则报 -EEXIST——静默覆盖会让先挂的那个节点失去归属，
+         * 多线程调试时很难发现。要改配置请走 SET_OVERRIDE 或先 unhook。 */
+        struct sh_hwbp_node *dup = hwbp_find_node(req.target_addr, req.target_pid);
+
+        if (dup) {
+            uint32_t dump = req.dump_size > SH_DUMP_MAX ? SH_DUMP_MAX : req.dump_size;
+            uint32_t mask = SH_HWBP_FLAG_EXECUTE | SH_HWBP_FLAG_READ | SH_HWBP_FLAG_WRITE |
+                            SH_HWBP_FLAG_LISTEN_RET | SH_HWBP_FLAG_INLINE |
+                            SH_HWBP_FLAG_NO_AUTO_ENABLE;
+
+            if ((dup->flags & (req.flags & mask)) == (req.flags & mask) &&
+                dup->dump_size == dump && dup->trampoline_addr == req.trampoline_addr) {
+                return 0;
+            }
+            pr_err("[hwbp] already hooked: tid=%d addr=%llx flags=%x (unhook first)\n",
+                   dup->tid, (unsigned long long)req.target_addr, dup->flags);
+            return -17;   /* -EEXIST */
+        }
     }
 
     node = (struct sh_hwbp_node *)sh_vmalloc(sizeof(*node));
@@ -610,39 +653,8 @@ long sh_hwbp_hook(struct sh_hwbp_request __user *ureq)
 long sh_hwbp_unhook(uint64_t target_addr, uint32_t tid)
 {
     struct list_head *pos;
-    struct list_head *tmp;
-
-    if (!hwbp_list_ready) {
-        return -1;
-    }
-    for (pos = hwbp_list.next; pos != &hwbp_list; pos = tmp) {
-        struct sh_hwbp_node *node =
-            (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
-        tmp = pos->next;
-        if (node->target_addr == target_addr && (tid == 0 || node->tid == tid)) {
-            if (node->retired) {
-                return -2;   /* 已退役：不重复 release（NEW-b-3a） */
-            }
-            if (node->bp_handle) {
-                if (sh_perf_event_release_kernel) {
-                    sh_perf_event_release_kernel(node->bp_handle);
-                } else if (sh_unregister_hw_breakpoint) {
-                    sh_unregister_hw_breakpoint(node->bp_handle);
-                }
-            }
-            node->bp_handle = 0;   /* 已 release，置零避免 cleanup 二次 release（NEW-b-3a） */
-            /* 只退役：摘链/释放交给 cleanup（AUD-b-3） */
-            node->retired = 1;
-            node->is_disabled = 1;
-            return 0;
-        }
-    }
-    return -1;
-}
-
-long sh_hwbp_enable(uint64_t target_addr, uint32_t tid, int enable)
-{
-    struct list_head *pos;
+    int removed = 0;
+    int seen_retired = 0;
 
     if (!hwbp_list_ready) {
         return -1;
@@ -650,22 +662,62 @@ long sh_hwbp_enable(uint64_t target_addr, uint32_t tid, int enable)
     for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
         struct sh_hwbp_node *node =
             (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+
+        if (node->target_addr != target_addr || (tid && node->tid != tid)) {
+            continue;
+        }
+        if (node->retired) {
+            seen_retired++;
+            continue;
+        }
+        if (node->bp_handle) {
+            if (sh_perf_event_release_kernel) {
+                sh_perf_event_release_kernel(node->bp_handle);
+            } else if (sh_unregister_hw_breakpoint) {
+                sh_unregister_hw_breakpoint(node->bp_handle);
+            }
+        }
+        node->bp_handle = 0;   /* 已 release，置零避免 cleanup 二次 release（NEW-b-3a） */
+        /* 只退役：摘链/释放交给 cleanup（AUD-b-3） */
+        node->retired = 1;
+        node->is_disabled = 1;
+        removed++;
+    }
+    if (removed) {
+        return removed;   /* tid == 0 时一次摘干净，返回实际摘掉的节点数 */
+    }
+    return seen_retired ? -2 : -1;
+}
+
+long sh_hwbp_enable(uint64_t target_addr, uint32_t tid, int enable)
+{
+    struct list_head *pos;
+    int changed = 0;
+
+    if (!hwbp_list_ready) {
+        return -1;
+    }
+    for (pos = hwbp_list.next; pos != &hwbp_list; pos = pos->next) {
+        struct sh_hwbp_node *node =
+            (struct sh_hwbp_node *)((char *)pos - __builtin_offsetof(struct sh_hwbp_node, list));
+
         if (node->retired) {
             continue;   /* 已退役节点不再 enable/disable（NEW-b-3b） */
         }
-        if (node->target_addr == target_addr && (tid == 0 || node->tid == tid)) {
-            node->is_disabled = enable ? 0 : 1;
-            if (node->bp_handle) {
-                if (enable && sh_perf_event_enable) {
-                    sh_perf_event_enable(node->bp_handle);
-                } else if (!enable && sh_perf_event_disable) {
-                    sh_perf_event_disable(node->bp_handle);
-                }
-            }
-            return 0;
+        if (node->target_addr != target_addr || (tid && node->tid != tid)) {
+            continue;
         }
+        node->is_disabled = enable ? 0 : 1;
+        if (node->bp_handle) {
+            if (enable && sh_perf_event_enable) {
+                sh_perf_event_enable(node->bp_handle);
+            } else if (!enable && sh_perf_event_disable) {
+                sh_perf_event_disable(node->bp_handle);
+            }
+        }
+        changed++;
     }
-    return -1;
+    return changed ? changed : -1;
 }
 
 long sh_hwbp_query(struct sh_hwbp_query __user *ureq)
@@ -692,7 +744,9 @@ long sh_hwbp_query(struct sh_hwbp_query __user *ureq)
         if (node->retired) {
             continue;   /* 已退役节点不参与查询（NEW-b-3b） */
         }
-        if (node->target_addr == req.target_addr && (req.tid == 0 || node->tid == req.tid)) {
+        /* target_addr == 0 表示列出全部节点（CLI 的 list 走这条）。 */
+        if ((req.target_addr == 0 || node->target_addr == req.target_addr) &&
+            (req.tid == 0 || node->tid == req.tid)) {
             if (total == index) {
                 chosen = node;
             }
@@ -709,6 +763,7 @@ long sh_hwbp_query(struct sh_hwbp_query __user *ureq)
     }
 
     node = chosen;
+    req.target_addr = node->target_addr;   /* list 需要回显地址 */
     req.tid = node->tid;
     req.hit_count = node->hit_count;
     req.last_pc = node->last_pc;
@@ -776,7 +831,7 @@ long sh_hwbp_set_override(struct sh_hwbp_override __user *ureq)
     return found > 0 ? 0 : -2;
 }
 
-long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count)
+long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count, uint32_t tid)
 {
     struct list_head *pos;
     int found = 0;
@@ -790,7 +845,10 @@ long sh_hwbp_set_skip(uint64_t target_addr, uint32_t skip_count)
         if (node->retired) {
             continue;   /* AUD-b-3 */
         }
-        if (node->target_addr == target_addr) {
+        if (node->target_addr != target_addr || (tid && node->tid != tid)) {
+            continue;
+        }
+        {
             node->skip_count = skip_count;
             node->skipped = 0;
             node->hit_count = 0;

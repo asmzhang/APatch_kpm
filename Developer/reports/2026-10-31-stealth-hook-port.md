@@ -169,3 +169,60 @@ PTE_UNHOOK rc=-1 errno=95
    但需要 Auditor 确认没有绕过路径。
 5. **`sh_dispatch` 的 default 返回 `-1`（EPERM）**：与上游一致，但会把「未知命令」伪装成权限错误，
    调试时容易误判（CLI 的 `die()` 已区分 `errno`）。
+
+## R4h：节点身份、去重与通配（0.3.1）
+
+### 触发
+
+R5 前独立审计 **AUD-B-1（high）**：`hwbp.c` 的 rearm/disarm 按「BVR 值匹配」找槽，
+同址第二个节点会被误伤（rearm 挪错槽、disarm 把别人 BCR.E 清零且 perf 不知道 →
+断点永久静默）。根因是 `HWBP_HOOK` 不做去重，同一个 `(addr, tid)` 可以挂出多个节点。
+
+### 决定：去重键是 (addr, tid)，不是 addr
+
+审计前我先核对了每个命令的匹配方式：`unhook`/`enable`/`disable`/`query`/
+`set_override`/`set_skip` 全部按 `(target_addr, tid)` 匹配（`tid == 0` 通配）。
+所以「只按地址去重」会掐掉「同一个函数挂到多个线程」这个合法用法——CLI 循环给
+90 个线程挂钩靠的就是它。去重键取 `(addr, tid)` 之后，AUD-B-1 的场景（同一线程
+同一地址两个节点）在结构上不再可能出现，而多线程同址保留。
+
+顺带修掉一处「孤儿」：`unhook`/`enable`/`disable`/`set_skip` 原来「匹配到第一个就
+return」，同 `(addr, tid)` 第二次 hook 出来的节点没有任何命令能单独操作（只有
+`query` 看得见）；rearm 注释里「一次改齐所有匹配槽」就是给它擦屁股的补偿逻辑。
+现在这些命令按 `tid == 0` 通配、一次改齐，并返回实际影响的节点数。
+
+### 改动
+
+- `hwbp.c`：新增 `hwbp_find_node(addr, tid)`；`sh_hwbp_hook` 入口去重（参数完全相同
+  返回 0 幂等，不同返回 `-17`/EEXIST 并 `pr_err` 说明先 unhook）；`sh_hwbp_unhook`/
+  `sh_hwbp_enable` 改为遍历全部匹配并返回个数（`-2` 仍表示「只剩已退役节点」，
+  保持 NEW-b-3a 的语义）；`sh_hwbp_set_skip` 增加 `tid` 形参；`sh_hwbp_query` 的
+  `target_addr == 0` 表示列出全部，并在回包里回显节点的真实地址。
+- `stealth_hook.c`：`sh_hwbp_set_skip` 调用点传 `arg3` 作 tid。
+- `stealth_cli`：新增 `list`（等价 `query 0` 分页）；`--tid all`/`*` 别名；
+  `unhook`/`enable`/`disable` 打印影响个数；`skip` 支持 `--tid`。
+- 版本 0.3.0 → 0.3.1（同时关掉 NEW-g-3「版本未 bump」）。
+
+### 真机验证（Pixel 6 / Android 15 / 6.1.99-android14 / APatch 11282）
+
+探针 `r4h`（只走 syscall 427，不链接模块）三种模式全 PASS：
+
+| 用例 | 期望 | 实测 |
+| --- | --- | --- |
+| 同参数重复 hook | rc=0 幂等 | rc=0，`query` total=1（没有孤儿） |
+| 不同 dump 再 hook | `-EEXIST` | rc=-1 errno=17 |
+| `unhook addr --tid all` | 返回摘掉个数 | removed=1 |
+| 同地址挂两个线程 | 都允许 | rc=0、rc=0，`query` total=2 |
+| 通配 unhook 两线程 | 一次摘 2 个 | removed=2 |
+| 通配 disable / enable | 各命中 1 个且回显状态 | changed=1、`is_disabled` 1→0 |
+| `skip` 带 tid | rc=0 | rc=0 |
+| `selftest` 回归 | 全链路仍通过 | hook/query/modify/skip/SKIP_ORIGIN/unhook 全 PASS |
+
+### 残余与边界
+
+- 去重是「同 (addr, tid) 拒绝第二次」，不是「合并配置」。要改 flags/dump 必须先
+  `unhook`；`MODIFY_ARGS`/`SKIP_ORIGIN` 走 `SET_OVERRIDE`，不触发去重比较
+  （比较时只取 hook 期 flag 掩码）。
+- `unhook`/`enable` 的返回值从 0 变成「个数」，调用方若断言 `rc == 0` 需要改成
+  `rc >= 0`；CLI 已同步。
+- 未变：链表仍无锁（AUD-b-3 的残余）、rearm 仍在异常上下文直写 MSR。

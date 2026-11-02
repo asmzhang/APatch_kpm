@@ -364,6 +364,14 @@ static int wxs_install(const char *hexpat, char *out, int outlen)
     off = wxs_toff;
     memcpy((char *)wxs_shadow + off, pat, (size_t)patlen);
     wxs_dcache_clean(wxs_shadow, 4096);
+    /*
+     * 影子页可能被当成代码执行（P2 的执行视图）。I-cache 按 VA+ASID 维护，
+     * 目标进程在别的 ASID 上，按 VA 刷刷不到它，只能用 IALLUIS 全刷这个
+     * inner-shareable 域。代价大，但 Probe 阶段够用；成品要给每页记 ASID 再精确刷。
+     */
+    asm volatile("ic ialluis" ::: "memory");
+    asm volatile("dsb ish" ::: "memory");
+    asm volatile("isb" ::: "memory");
 
     wxs_shadow_pa = wxs_at_s1e1w((uint64_t)wxs_shadow);
     if (!wxs_shadow_pa) {

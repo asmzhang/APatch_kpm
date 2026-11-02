@@ -102,6 +102,11 @@ return inline_wrap_syscalln(nr, narg, 0, before, after, udata);
   落在表外的符号记为「无法判定」。
 - 交接前（Developer）与验收前（维护者）各跑一次；`tools/check_repository.py` 的
   `check_load_forms` 对声明过形态的构建做同一判定。
+- **同名影子符号不算缺**：KP 内核形态自己实现了一小批与内核同名的函数并把同名符号导出
+  （判据：同一文件里既 `KP_EXPORT_SYMBOL(X)` 又 `kfunc_call(X)`，目前只有
+  `get_random_u64`，见 `KernelPatch/kernel/patch/common/utils.c:163-169`）。这些名字在 lkm
+  形态没有表项，但装载器会继续用 `kallsyms_lookup_name()` 拿到真实内核符号，所以工具把它
+  记为「无法判定」而不是「必然缺」；不加 `--kallsyms` 时才能看出这条差别，加了表就按表判。
 
 ## 三条可选路线
 

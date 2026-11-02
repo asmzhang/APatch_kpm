@@ -1035,6 +1035,45 @@ def _run_checks():
     generation = load("selftest_report_generation", REPO / "tools/selftest_report_generation.py")
     generation_cases = generation.run_checks()
     results.append(("report_generation_scope", all(generation_cases.values()), str(generation_cases)))
+
+    # 35) 装载形态判据（load_forms）：影子符号不得判 missing，kernel 独占符号必须判 missing。
+    #     影子 = KP 内核形态自己实现却 kfunc_call() 真实内核同名函数（如 get_random_u64），
+    #     lkm 形态没有表项但装载器会经 kallsyms 拿到真实符号；把它判 missing 会让门禁误报。
+    tmp = make_tmp()
+    kp = Path(tmp) / "KernelPatch"
+    (kp / "kernel" / "patch" / "common").mkdir(parents=True)
+    (kp / "kernel" / "patch" / "common" / "utils.c").write_text(
+        "uint64_t get_random_u64(void)\n{\n" + "    kfunc_call(get_random_u64);\n"
+        + "    return 0;\n}\nKP_EXPORT_SYMBOL(get_random_u64);\n"
+        + "int cred_offset;\nKP_EXPORT_SYMBOL(cred_offset);\n", encoding="utf-8")
+    (kp / "lkm" / "kpm").mkdir(parents=True)
+    (kp / "lkm" / "kpm" / "symbols.c").write_text(
+        "static const struct ksym kp_kpm_symbols[] = {\n"
+        + '    { "hook_wrap", (unsigned long)0 },\n};\n'
+        + "static int (*kf_strlen)(const char *s);\n", encoding="utf-8")
+    saved_repo = os.environ.get("LOAD_FORMS_REPO")
+    os.environ["LOAD_FORMS_REPO"] = tmp
+    try:
+        forms = load("load_forms_fixture", REPO / "tools/load_forms.py")
+        kernel_set = forms.kernel_surface()
+        lkm_set = forms.lkm_surface()
+        shadowed = forms.kernel_shadowed()
+        cases = {
+            "kernel_surface": {"get_random_u64", "cred_offset"} <= kernel_set,
+            "lkm_surface": {"hook_wrap", "kf_strlen"} <= lkm_set,
+            "shadowed_detected": "get_random_u64" in shadowed and "cred_offset" not in shadowed,
+            "shadow_unknown": forms.classify(["get_random_u64"], lkm_set, kernel_set, None)[0] == [],
+            "owned_missing": forms.classify(["cred_offset"], lkm_set, kernel_set, None)[0] == ["cred_offset"],
+            "kallsyms_rescues": forms.classify(["get_random_u64"], lkm_set, kernel_set,
+                                               {"get_random_u64"})[0] == [],
+            "loader_first": forms.classify(["hook_wrap"], lkm_set, kernel_set, set())[0] == [],
+        }
+    finally:
+        if saved_repo is None:
+            os.environ.pop("LOAD_FORMS_REPO", None)
+        else:
+            os.environ["LOAD_FORMS_REPO"] = saved_repo
+    results.append(("load_forms_classify", all(cases.values()), str(cases)))
     return results
 
 

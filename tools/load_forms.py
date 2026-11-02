@@ -106,6 +106,31 @@ def kernel_surface():
 
 _KF_SLOT = re.compile(r"\(\s*\*\s*(kf_\w+)\s*\)")
 
+_SHADOWED_CACHE = []
+
+
+def kernel_shadowed():
+    """kernel 形态里「同名影子」导出的符号。
+
+    KP 在内核形态自己实现了一小批与内核同名的函数（例如 `get_random_u64()` 内部
+    `kfunc_call(get_random_u64)` 拿真实内核值），并把同名符号导出。这些名字在 lkm 形态
+    没有表项，但装载器会继续走 `kallsyms_lookup_name()` 拿到真实内核符号，因此不能算
+    「本形态必然装不上」。判据：同一文件里既 `KP_EXPORT_SYMBOL(X)` 又 `kfunc_call(X)`。
+    """
+    if _SHADOWED_CACHE:
+        return _SHADOWED_CACHE[0]
+    names = set()
+    for path in glob.glob(os.path.join(KP, "kernel", "**", "*.c"), recursive=True):
+        text = read(path)
+        if "kfunc_call" not in text:
+            continue
+        for m in re.finditer(r"KP_EXPORT_SYMBOL\(\s*(\w+)\s*\)", text):
+            name = m.group(1)
+            if re.search(r"kfunc_call\(\s*" + re.escape(name) + r"\s*\)", text):
+                names.add(name)
+    _SHADOWED_CACHE.append(names)
+    return names
+
 
 def lkm_surface():
     """lkm 形态：kernelpatch.ko 的 KPM 兼容表 + 它代理的 kf_* 槽位。"""
@@ -122,8 +147,11 @@ def classify(und, loader, other, kallsyms):
 
     顺序与装载器一致：先查本形态自带表，再走 kallsyms 兜底。给了导出表时
     只认表；没给表时，落在另一形态自带表里的符号判为「KP 自造、本形态没有」，
-    其余判为「无法判定」。
+    其余判为「无法判定」。落在另一形态表里、但属于「同名影子」导出的（KP 自己实现
+    却 `kfunc_call()` 真实内核同名函数的，如 `get_random_u64`）也归入「无法判定」，
+    因为 lkm 形态会经 kallsyms 拿到真实内核符号。
     """
+    shadowed = kernel_shadowed() if kallsyms is None else set()
     missing, unknown = [], []
     for name in und:
         if name in loader:
@@ -131,7 +159,7 @@ def classify(und, loader, other, kallsyms):
         if kallsyms is not None:
             if name not in kallsyms:
                 missing.append(name)
-        elif name in other:
+        elif name in other and name not in shadowed:
             missing.append(name)
         else:
             unknown.append(name)

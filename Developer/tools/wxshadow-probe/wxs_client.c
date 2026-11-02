@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-#define PATTERN "ORIGINAL-0123456789ABCDEF"
+#define PATTERN "ORIGINAL-wxshadow-p0"
 
 int main(int argc, char **argv)
 {

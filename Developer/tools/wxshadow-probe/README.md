@@ -12,7 +12,7 @@ wxshadow 立项前的 P0 探针：只读，不改任何页表。用来回答两�
 | 文件 | 作用 |
 | --- | --- |
 | `wxs_probe.c` | KPM，`ctl0` 两条命令：`self`（换算因子与自校验）、`probe <pid> <hexva>`（dump 该页） |
-| `wxs_client.c` | 对照进程：`mmap` 一页 rwx，写 `ORIGINAL-0123456789ABCDEF`，把自己 pid/va/内容写文件后睡住 |
+| `wxs_client.c` | 对照进程：`mmap` 一页 rwx，写一段固定字符串（见源码），把自己 pid/va/内容写文件后睡住 |
 | `Makefile` | `make all` 出 `.kpm`，`make client` 出静态链接客户端 |
 
 ## 地址换算方式（不猜版本、不用 KP 私有全局）

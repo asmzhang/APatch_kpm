@@ -52,6 +52,20 @@ static char hm_paths[HM_MAX_PATHS][HM_MAX_PATH_LEN];
 static int hm_path_count; /* 高水位：0..count-1 是槽位，槽内首字节为 0 表示空槽 */
 static int hm_hook_count;
 
+/* AUD-ctl-ws / AUD-rule-slash：ctl0 参数去掉尾部空白（space/tab/CR/LF）与尾斜杠。
+ * 字符用十进制写，避免转义层把反斜杠吃掉。 */
+static int hm_arg_len(const char *s)
+{
+    int len;
+
+    if (!s) return 0;
+    len = (int)strlen(s);
+    while (len > 0 && (s[len - 1] == 32 || s[len - 1] == 9 ||
+                       s[len - 1] == 13 || s[len - 1] == 10)) len--;
+    while (len > 1 && s[len - 1] == 47) len--; /* 47 = slash */
+    return len;
+}
+
 static int hm_add_path(const char *s, int len)
 {
     int i, slot;
@@ -91,7 +105,7 @@ static int hm_del_path(const char *s, int len)
 {
     int i;
 
-    if (!s || len <= 0) return -1;
+    if (!s || len <= 0 || len >= HM_MAX_PATH_LEN) return -1; /* AUD-del-oob */
 
     for (i = 0; i < hm_path_count; i++) {
         if (hm_paths[i][0] && strncmp(hm_paths[i], s, (size_t)len) == 0 && hm_paths[i][len] == '\0') {
@@ -314,11 +328,12 @@ static long hide_mount_control0(const char *args, char *__user out_msg, int outl
     if (args && args[0] && strncmp(args, "status", 6) != 0) {
         /* AUD-b-9：命令前缀要整词匹配，避免 "clearXXX" 被当成 clear */
         if (strncmp(args, "add:", 4) == 0) {
-            rc = hm_add_path(args + 4, (int)strlen(args + 4));
+            rc = hm_add_path(args + 4, hm_arg_len(args + 4));
         } else if (strncmp(args, "del:", 4) == 0) {
-            rc = hm_del_path(args + 4, (int)strlen(args + 4));
+            rc = hm_del_path(args + 4, hm_arg_len(args + 4));
         } else if (strncmp(args, "clear", 5) == 0 &&
-                   (args[5] == '\0' || args[5] == ' ' || args[5] == '\n')) {
+                   (args[5] == '\0' || args[5] == ' ' || args[5] == '\n' ||
+                    args[5] == '\r' || args[5] == '\t')) {
             hm_clear_paths();
         } else {
             rc = -2; /* 未知命令 */

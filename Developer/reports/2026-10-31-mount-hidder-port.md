@@ -159,9 +159,9 @@ $ ls /data/local/tmp/debug_ramdisk | wc -l      # 15 → 挂载确实生效（�
 | # | 问题 | 影响 | 修法 |
 | --- | --- | --- | --- |
 | 1 | 匹配是**整行任意子串**（上游语义） | 规则 `/data` 会误伤 `/data_mirror`；还可能在 root/source 字段里命中 | 只查挂载点字段，并按「路径段边界」比对：等于 / 前缀（下一字符 `/`）/ 后缀 |
-| 2 | 三个钩子的挂载点位置不同 | `mountinfo` 是第 5 字段、`/proc/mounts` 是第 2 字段、`mountstats` 形如 `device X mounted on <mp> with fstype Y`。原实现只在 mountinfo 上碰巧正确，另外两个钩子实际从未命中 | `hook_wrap2` 的 `udata` 传字段序号（`2`/`5`/`0`，`0` 表示按 `" mounted on "` 定位） |
+| 2 | 三个钩子的挂载点位置不同 | `mountinfo` 是第 5 字段、`/proc/mounts` 是第 2 字段、`mountstats` 形如 `device X mounted on <mp> with fstype Y`。原实现只在 mountinfo 上碰巧正确，另外两个钩子的字段号不保证正确（命中与否未验证） | `hook_wrap2` 的 `udata` 传字段序号（`2`/`5`/`0`，`0` 表示按 `" mounted on "` 定位） |
 
-顺带移除了 R4d 期间加进 `hm_after` 的临时调试计数（`hm_dbg`）。
+顺带移除了本地调试期间加进 `hm_after` 的临时计数（`hm_dbg`）；该调试代码从未进入任何提交（`git log --all -S hm_dbg` 为空），属脏树实验。
 
 ### 真机自检（Pixel 6 / Android 15 / 6.1.99-android14 / APatch 11282）
 
@@ -190,6 +190,49 @@ $ ls /data/local/tmp/debug_ramdisk | wc -l      # 15 → 挂载确实生效（�
 
 ### 未覆盖
 
-- `del:` 只测了「删存在的规则」，没测删不存在的规则（实现上返回 0 且不改表）。
+- `del:` 只测了「删存在的规则」；删不存在的规则在 1.0.2 上实测返回 **-1** 且不改表（1.0.1 报告曾误写「返回 0」，见 AUD-d-1）。
 - 加载参数直接给路径（`load mount_hidder.kpm "/foo /bar"`）未在真机跑过。
 - 只测了 Pixel 6；小米 13（5.10）没有 APatch，无法加载 KPM。
+
+## R4k：1.0.1 独立复核问题单收口（1.0.2）
+
+独立审计（`my-wb/glm-5.3-flash`，两路：代码 + 文档）对 1.0.1 的结论是「代码暂不可关单、文档基本可关单」，
+本轮按问题单逐条处理，业务语义未改。
+
+### 修了什么
+
+| 单号 | 级别 | 位置 | 修法 |
+| --- | --- | --- | --- |
+| AUD-del-oob | medium | `hide_mount.c` `hm_del_path()` | 补 `len >= HM_MAX_PATH_LEN` 上限（与 `hm_add_path` 对齐） |
+| AUD-rule-slash | low | `hm_path_match()` 语义 | ctl0 参数先做尾斜杠规整（`add:/data/` ≡ `add:/data`），README 说明 |
+| AUD-ctl-ws | low | `hide_mount_control0()` | 参数尾部空白（space/TAB/CR/LF）规整；`clear` 终止符白名单补 CR/TAB |
+| AUD-d-1 | medium | 本报告「未覆盖」段 | `del:` 删不存在的规则实际返回 **-1**（原文误写「返回 0」） |
+| AUD-d-2 | low | 本报告 R4j 修法表 | 「另外两个钩子实际从未命中」改为「字段号不保证正确（未验证命中）」 |
+| AUD-d-3 | low | `README.md` 匹配语义 + 更新记录 | 说明 1.0.0 内 R4d 曾加过边界检查但仍为整行子串；补 1.0.2 更新记录 |
+
+新增内部辅助 `hm_arg_len()`：去尾部空白 + 去尾斜杠，`add:`/`del:` 共用。
+
+### 未修（记录为已知限制）
+
+- **AUD-race-add（low）**：`add`/`clear` 无锁并发可丢规则。ctl0 由管理器串行调用，实际并发窗口极窄；
+  加锁需要引入 `_raw_spin_lock_irqsave` 之类符号，收益低于风险，记录为已知限制。
+- **AUD-barrier（info）**：读侧无 acquire 屏障；ARMv8 other-multi-copy-atomic + 写侧 `dmb ish` 实践成立。
+- **AUD-mp-space（info）**：连续空格会让字段号偏移（内核单空格生成，实际不触发）。
+- **AUD-comment-stale（info）**：`hide_mount.c` 里 vfsstat 注释已随本轮改动一并更正为「按 `" mounted on "` 定位」。
+- **AUD-ctl-empty（info）**：`status` 整词判断靠 else 兜底，行为正确，不改。
+
+### 产物（当前源码）
+
+- `mount_hidder_1.0.2.kpm` 10960B `sha256=32735f5ed1a2bd02c791e037fb35295b33df3047e72a75b354466e6c9ecc4d98`
+- `mount_hidder_1.0.2_debug.kpm` 10968B `sha256=d0dfe6540b9942e100bb0481fe345b3683c955382113759a6def4d4890e7b0e9`
+
+### 真机自检（Pixel 6 / Android 15 / 6.1.99-android14 / APatch 11282，kpmctl 以管理器 uid 10273 发 ctl0）
+
+| 用例 | 观察 | 结果 |
+| --- | --- | --- |
+| `del:` + 200 字节路径（AUD-del-oob） | `out: rc=-1`，无崩溃、路径表不变 | 拒绝越界 |
+| `add:/apex/`（尾斜杠） | status 回显规整为 `/apex`；`grep -c " /apex"` 83 → **0** | 规整生效 |
+| `add:/data_mirror `（尾随空格） | status 回显 `/data_mirror`；`/data_mirror` 9 → **0**，`/data` 计数不变 | 规整生效 |
+| `add:/apex<TAB>` | status 回显 `/apex`；apex 83 → **0** | 规整生效 |
+| `clear<CR>` / `clear<TAB>` | `out: rc=0 paths=0` | 白名单生效 |
+

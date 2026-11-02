@@ -23,8 +23,9 @@
 | 规则是挂载点的前缀，且下一字符是 `/` | 规则 `/apex` 命中 `/apex/com.android.art`；规则 `/data` **不**命中 `/data_mirror` |
 | 规则是挂载点的后缀（规则自带前导 `/`，天然落在路径段边界） | 规则 `/persist` 命中 `/mnt/vendor/persist` |
 
-1.0.0 用任意子串匹配（上游语义），`/data` 会误伤 `/data_mirror`，还可能在 root/source 字段里误命中；
+1.0.0 是上游的任意子串匹配语义，`/data` 会误伤 `/data_mirror`，还可能在 root/source 字段里误命中（同版本内 R4d 曾加过一次字段边界检查，但匹配仍是整行子串）；
 1.0.1 收紧为「只查挂载点字段 + 路径段边界」，同时保留「藏一棵子树」和「按尾部名字藏」两种用法。
+1.0.2 再补三处 ctl0 健壮性：`del:` 长度上限、规则尾斜杠规整、参数尾部空白（含 CR/TAB）规整。
 
 ## 命令（ctl0）
 
@@ -80,6 +81,13 @@ make all debug
 ```
 
 ## 更新记录
+
+### 1.0.2
+
+- `del:` 补路径长度上限（`hm_del_path` 缺 `len >= HM_MAX_PATH_LEN` 检查，AUD-del-oob）。
+- 规则尾斜杠规整：`add:/data/` 与 `add:/data` 等价（原先带尾斜杠永不命中子树，AUD-rule-slash）。
+- ctl0 参数尾部空白（空格 / TAB / CR / LF）规整；`clear` 终止符白名单补 CR / TAB（AUD-ctl-ws）。
+- 文档修正：`del:` 删不存在的规则返回 -1（AUD-d-1）；1.0.0「任意子串」措辞与 R4d 边界检查的关系（AUD-d-3）。
 
 ### 1.0.1
 

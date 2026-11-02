@@ -698,7 +698,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "mount_hidder-1.0.2+gb7adce8021f5.r130db140.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "05d376edc7b57c58d4b494b4fd51767985cfce5a",
+      "fingerprint_sha256": "130db14095b160b3947680d2ba7bd9807ca54552895ab30140a933aa82fde16a",
+      "artifacts": {
+        "mount_hidder_1.0.2.kpm": "32735f5ed1a2bd02c791e037fb35295b33df3047e72a75b354466e6c9ecc4d98"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-02T02:50:39Z",
   "updated_by": "维护者"

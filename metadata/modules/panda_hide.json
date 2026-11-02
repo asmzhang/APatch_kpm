@@ -826,7 +826,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "panda_hide-2.0.0+gb68c8e3ee23a.r19a3bffb.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
+      "fingerprint_sha256": "19a3bffbf51c6dcf6cf505a2c6b9b039eb504944780e92c19e2bfa89e86758e2",
+      "artifacts": {
+        "panda_hide_2.0.0.kpm": "2f354020a2a3f3a97bb2e70d4ce2f1aa9db2073135416f2e903832f4171e8d0b"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-10-31T12:10:53Z",
   "updated_by": "维护者"

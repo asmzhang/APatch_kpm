@@ -556,7 +556,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "qti_battery_charger-1.0.2+g29951ee67dca.rb1b7cc59.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
+      "fingerprint_sha256": "b1b7cc59b5c5977dc66911bbe2d599abb0fceac10f2ef152d14197f9ddf4562e",
+      "artifacts": {
+        "qti_battery_charger_1.0.2.kpm": "9b8dfb9a240cddf4de804df721d009566cb2b8acda0c8c8ac7567f0b0916b8e3"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-10-31T12:10:54Z",
   "updated_by": "维护者"

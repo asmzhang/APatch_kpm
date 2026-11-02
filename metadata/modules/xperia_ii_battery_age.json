@@ -526,7 +526,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "xperia_ii_battery_age-1.1.2+gf129865e4ea2.r8661a2cf.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "209d0ecca4638bd80f722bc01d74c1d608086457",
+      "fingerprint_sha256": "8661a2cf10d539d27b5a58d8a9f7482c919b50b964d1f3b2525169731629133f",
+      "artifacts": {
+        "xperia_ii_battery_age_1.1.2.kpm": "f4346ed03c8d89d43202766c90860df557e59e1f6058f12473cdb89ee8ebf955"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-10-31T12:10:54Z",
   "updated_by": "维护者"

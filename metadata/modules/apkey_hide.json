@@ -334,7 +334,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "apkey_hide-3.6.3+g51e26a79f02e.r557fddd0.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "649be6135d4b5d47dfca069b821daa3e0ec46025",
+      "fingerprint_sha256": "557fddd0e296c92fb5200330efc5203f245205ade2ab6d846444ea2b78934995",
+      "artifacts": {
+        "apkey_hide_3.6.3.kpm": "8a340d1b1a7dc9fee5a6e43bcf851a39549dae9c9ca09b4acdc71f12bc379ac0"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-02T02:42:35Z",
   "updated_by": "维护者"

@@ -1710,7 +1710,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "memcrc-0.2.2+gd9b507b9c087.rc9cb12f1.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "1167b334bc5be64e21a7b35d53268a15961b5b8f",
+      "fingerprint_sha256": "c9cb12f13748b8d7c1c1a4e48ca8dc6803b69cc31e0a78f8b2a498123bb824e7",
+      "artifacts": {
+        "memcrc_0.2.2.kpm": "1d64faf393109c9c0016041c5cf6d5341c8984f430db7fc067633781c7a41f0d"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-02T02:07:01Z",
   "updated_by": "维护者"

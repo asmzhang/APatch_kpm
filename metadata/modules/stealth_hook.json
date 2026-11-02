@@ -2116,7 +2116,20 @@
   "audits": [],
   "device_tests": [],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "stealth_hook-0.3.3+g9df3b80e1098.r46914147.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "a45fa4b258b13ae6aa85ed0d8e88cf4d556c2a66",
+      "fingerprint_sha256": "46914147cfda57d1d20062e4c9c6cdbe54e46f63fadba2dd29c4d7c23880a987",
+      "artifacts": {
+        "stealth_hook_0.3.3.kpm": "2c7e1ecbd1bf8638bd970ee8369b8f022788b22b48eaa4ea803afbe67dd3e313"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-02T02:55:59Z",
+      "report": "docs/records/2026-11-02-r6-acceptance.md",
+      "scope": "release 变体；debug 变体只经构建与内嵌版本串核对，未单独上机（见报告「变体差异」）。限制与已批准风险见验收记录对应小节。"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-02T02:53:00Z",
   "updated_by": "维护者"

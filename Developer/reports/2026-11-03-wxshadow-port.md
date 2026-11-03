@@ -30,8 +30,11 @@
 
 ## 自检（实现方，不是结论）
 
-- 编译：`make all` 通过；仅 10 条告警，全部来自 KernelPatch 头文件
-  （`asm/cmpxchg.h` 的 `-Wc2x-extensions` 与 `-Wsometimes-uninitialized`），本模块源码 0 告警。
+- 编译：`make all` 通过；frozen 构建日志里共 **53 条 warning、6 类**，其中绝大多数来自
+  KernelPatch 头（`asm/cmpxchg.h` 的 `-Wc2x-extensions`、`rcupdate.h` 等），模块源码自身有 3 条：
+  `wxshadow.c:361` `wxshadow_bitmap_clear_range` 未使用（上游既有）、`wxshadow_pgtable.c:116`
+  `pa` set but not used、`wxshadow_pgtable.c:373` `mode_str` set but not used。
+  （1.2.2 起 `wxshadow_bitmap_clear_range` 仍未被引用，属上游既有告警，未清理。）
 - 导入符号 17 个，全部为 KernelPatch 导出：`has_syscall_wrapper`、`hook_syscalln`、
   `hook_unwrap_remove`、`hook_wrap`、`kallsyms_lookup_name`、`kallsyms_on_each_symbol`、
   `kf_memcpy`、`kf_memset`、`mm_struct_offset`、`printk`、`sp_el0_is_current`、
@@ -80,7 +83,7 @@ has_syscall_wrapper ? 1 : 5, prctl_before, NULL, NULL)`，两处 `unhook_syscall
 
 - `wxshadow_1.2.0.kpm` 159,616 B
   `sha256=482be50301bdfce7920368f00a629c78729f35df1fb58c56bd16d6128938d0cb`（两次构建同哈希）。
-- 唯一告警是既有的 `wxshadow_bitmap_clear_range` 未使用。
+- 告警与既有项同前：`wxshadow_bitmap_clear_range` 未使用等 3 条模块源码告警（见上节 R5 更正）。
 
 ### 真机结果（Pixel 6 / 6.1.99-android14 / APatch 11282 / kernel 形态）
 
@@ -142,7 +145,7 @@ has_syscall_wrapper ? 1 : 5, prctl_before, NULL, NULL)`，两处 `unhook_syscall
 | WX-3 | low | `buf_off + len > PAGE_SIZE` / `offset + len > PAGE_SIZE` 可被整型回绕绕过 | 改为 `len == 0 \|\| len > PAGE_SIZE - off` |
 | WX-5 | info | 源内 `KPM_VERSION("1.2.0-k66")` 与产物名 1.2.0 不一致 | 改 `KPM_VERSION(MYKPM_VERSION)`，Makefile 注入；`MYKPM_VERSION := 1.2.1` |
 | F4 | medium | 客户端 README 仍写「所有命令返回 EINVAL」 | 重写「当前状态」节，写清已修、必须 root、权限门、卸载兜底 |
-| F5 | low | 模块 README 仍写「只能加载不能卸载」 | 已知问题 2 改写为「9 次复现 7 次正常、不宣称已修、1.2.1 有兜底、未实测该分支」 |
+| F5 | low | 模块 README 仍写「只能加载不能卸载」 | 已知问题 2 改写为「累计 9 次：早期 2 次重启 + 随后 7 次正常、不宣称已修、1.2.1 加兜底（1.2.2 已按 NX-1 撤回）、未实测该分支」 |
 | WX-4 | low | `copy_from_user_via_pte` 无 `mmap_lock`、无 pin、未校验 `pfn_valid` | **未修**：加锁会与调用路径的锁序冲突，且影响面是「读到错页/旧数据」非提权；如实留在已知问题 |
 | F9 | low | handoff JSON 的 `recipe.cc`/`excerpt` 含本机绝对路径 | 登记时把 `Developer/reports/handoffs/` 副本归一为占位符（`local/` 下的原件不动） |
 
@@ -184,3 +187,59 @@ Magisk 环境下 `su -c 'kpmctl 10273 ...'` 会报 `setuid(10273) failed: Operat
 - WX-2 的超时中止分支没有真机触发条件（需要制造一个卡死的 handler），只做了静态验证与正常路径回归。
 - WX-4 未修（见上）。
 - 小米 13（5.10 LKM 形态）已补测加载/权限门/设断点/卸载（见下「双形态复验」），但**未测端到端双视图**（该机没有现成的自读靶子，且 LKM 形态下无法用 `kpmctl load` 反复重启靶子）。
+
+## 1.2.2：WX-9 根因（跨进程刷 icache 触发 kernel panic）与同批修复（2026-11-03）
+
+### 现象与取证
+Pixel 6（6.1.99-android14，APatch 11282，kernel 形态）加载 1.2.1 后，对普通系统进程
+（`/system/bin/sleep`）设断点：命令无输出、adb 立即掉线、设备硬重启，**4/4 复现**
+（`uptime` 回来分别为 7.37s / 6.56s / 6.15s）。同样的操作在小米 13（5.10.149，APatch LKM）
+与自建静态靶子（`wx_t` / `wx_v`，映射在 `0x221000` 段）上完全正常。
+
+pstore 里只有 2025-03-25 的旧 `console-ramoops-0`，`/proc/last_kmsg` 不存在，设备端「dmesg
+落盘快照」在硬重启下丢页缓存，改为**主机侧流式抓取**：`adb shell su -c 'cat /dev/kmsg' > 主机文件`，
+重启后主机侧日志完整保留。
+
+### 根因
+```
+wxshadow: [set_bp] addr=6042f50100 once=0
+wxshadow: created page for mm=ffffff8880c88800 addr=6042f50000
+Unable to handle kernel paging request at virtual address 0000006042f50000
+ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation fault
+```
+设断点路径（`wxshadow_page_activate_shadow_locked()` 等）在写完 PTE 后调
+`wxshadow_flush_icache_page(addr)` → `wxshadow_flush_icache_range(addr & PAGE_MASK, +PAGE_SIZE)`
+→ `kfunc___flush_icache_range()`（内部 `dc cvau` / `ic ivau` 循环）。传入的是**目标进程的用户 VA**，
+而该 VA 在调用者（`wxshadow_client`，另一个进程）的 mm 里没有映射 → `dc cvau` 视为未映射地址，
+在 EL1 触发 data abort → oops → panic → 重启。
+
+静态靶子为什么没事：`0x221000` 恰好也映射在静态链接的客户端进程里（两者都是静态非 PIE），
+`dc cvau` / `ic ivau` 不 fault，只是刷了错的物理行——既解释了「为什么以前看起来能用」，
+也解释了「为什么只有跨进程到普通系统进程才炸」。
+
+### 修复
+新增 `wxshadow_flush_icache_kva(unsigned long kva)`（`wxshadow_internal.h`）：一律按**影子页的内核 VA**
+刷（TTBR1 恒有效；dcache 是 PIPT，按内核 VA 清的就是指令取指要读的同一物理行），拿不到合法
+内核 VA 时退化为全量 `ic ialluis`。把 11 处用户 VA 调用点全改：`wxshadow.c` 1 处、
+`wxshadow_bp.c` 2 处、`wxshadow_pgtable.c` 8 处。
+
+### 同批按独立复核问题单修复
+| 单号 | 处理 |
+| --- | --- |
+| NX-1 / WX-2 | **撤回** 1.2.1 的 `-EBUSY` 早退。`unload_module()` 是先 `list_del`、再调 `mod->exit`、随后无条件 `kp_free_exec(mod->start)`，返回值没有生命周期语义；早退会让六组钩子指向已释放代码且无法再清理。改为只记录超时、始终走完七个 phase。 |
+| WX-8 | `debug_print_tasks_list(10)` 用 `WXSHADOW_DEBUG_TASKS` 宏关掉，默认不再往 dmesg 打 10 行 `task=/mm=` 内核地址。 |
+| NX-6 | `wxshadow.c` 两处、`wxshadow_bp.c` 一处 `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`。 |
+| NX-5 / R3 | `metadata` 的 `version_declared` 与 `version_sources.makefile` 同步到 1.2.2，并把 WX-*/NX-*/R* 登记进 `issues[]`。 |
+
+### 真机复验（1.2.2）
+| 场景 | Pixel 6（6.1.99 kernel） | 小米 13（5.10.149 LKM） |
+| --- | --- | --- |
+| 加载 | `load rc=0` | `load rc=0` |
+| 跨进程设断点（toybox 页，正是原先必崩场景） | `Breakpoint set at 0x6042f50100` + `bp at … orig_pfn=81ecd shadow_pfn=959534`，**设备不重启** | `Breakpoint set at 0x5edb84a000`，不重启 |
+| 释放 | `Modification released at 0x6042f50100` | — |
+| 卸载（页在场） | `unload rc=0`，七阶段全过 + `cleaned 0 pages` | `unload rc=0`，七阶段全过 + `cleaned 1 pages` |
+
+### 未覆盖
+- 未在 Pixel 6 上重跑「读原字节 + 执行补丁」端到端（该验证在 1.2.1 已做过；1.2.2 只改了刷 icache
+  的方式与 drain 语义，未动映射/断点数据流）。
+- 1.2.1 的两次卸载重启仍无法复现，1.2.2 亦未宣称已修。

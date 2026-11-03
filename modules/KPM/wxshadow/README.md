@@ -27,7 +27,7 @@
 ```bash
 cd modules/KPM/wxshadow
 export ANDROID_NDK_LATEST_HOME=/path/to/ndk
-make            # 产出 wxshadow_1.2.1.kpm
+make            # 产出 wxshadow_1.2.2.kpm
 make clean
 ```
 
@@ -89,21 +89,47 @@ prctl 通道修好之后，两个靶子都验过：
    `args->skip_origin` / `args->ret`，请求落回原生 `prctl` → `EINVAL`。改成自己按
    `__arm64_sys_prctl`（`.cfi_jt → .cfi → 无后缀`）解析地址再 `hook_wrap(...)`，卸载走
    `hook_unwrap(...)`；两种装载形态都验过。详见 `Developer/reports/2026-11-03-wxshadow-port.md`。
-2. **卸载稳定性**（1.2.1 起有兜底，仍未定位根因）：早期观察到两次 `kpmctl unload wxshadow`
-   之后设备掉线、`uptime` 归零。随后的复现尝试 9 次里 7 次正常（空闲 5 次、靶子退出后 1 次、
-   靶子仍在跑 1 次），两次历史重启**复现不出来**，因此不宣称已修；`wxshadow_exit()` 的七阶段
-   顺序与上游逐字节一致，未改动。
+2. **卸载稳定性**（仍未定位根因）：累计 9 次：早期 2 次 `unload` 之后设备掉线、`uptime`
+   归零，随后 7 次正常（空闲 5 次、靶子退出后 1 次、靶子仍在跑 1 次）。两次历史重启
+   **复现不出来**，因此不宣称已修。
 
-   1.2.1 补了一道兜底（独立复核问题单 WX-2）：`wait_for_handlers_drain()` 原来是
-   `void`，自旋上限到了只打一条 `pr_warn` 就继续往下走，而 KP 在 `mod_exit` 返回 0 后立刻
-   `kp_free_exec(mod->start)`——handler 还在模块代码里就会执行到已释放页。现在改成返回
-   `int`，超时由 `wx_drain_checked()` 转成 `-EBUSY` 中止卸载：宁可模块停在已加载状态，
-   也不释放还被引用的代码。**该分支没有真机触发条件，未实测**（要制造一个卡死的 handler）。
+   1.2.1 曾把 `wait_for_handlers_drain()` 超时改成回 `-EBUSY` 中止卸载；1.2.2 按独立复核
+   的 NX-1 **撤回**该做法——`unload_module()`（`KernelPatch/kernel/patch/module/module.c:540-547`，
+   LKM 同构 `KernelPatch/lkm/kpm/module.c:865-880`）是先 `list_del`、再调 `mod->exit`、随后
+   **无条件** `kp_free_exec(mod->start)`，`mod_exit` 的返回值没有任何生命周期语义。早退的真实
+   后果是：prctl 钩子已摘、模块已不在册、代码已释放，而 dup_mmap / uprobe_dup_mmap /
+   brk+step / do_page_fault / follow_page_pte / exit_mmap 六组钩子仍指向已释放代码，且用户态
+   再没有任何通道能清掉断点。所以现在的行为是**只记录超时、始终走完七个 phase**；残留风险
+   是 handler 可能在代码释放后短暂运行（`kp_free_exec` 用的是 TLSF 池，池本身从不解映射，
+   因此不会立刻缺页，但块会被后续模块复用）。
 
    使用建议：能重启就重启；必须运行中卸载时，先 `-d` 删断点、让靶子退出或空闲再卸。
 
+3. ~~**跨进程设断点必崩（kernel panic）**~~（**已修，本仓 1.2.2**）：Pixel 6（6.1.99 kernel
+   形态）对普通系统进程设断点时，命令无输出、adb 掉线、设备硬重启（4/4 复现）；而同一操作
+   在小米 13（5.10 LKM）与自建静态靶子（`0x221000` 段）上却正常。根因是设断点路径调用
+   `wxshadow_flush_icache_page(addr)` → `__flush_icache_range(用户 VA, +PAGE_SIZE)`，而目标
+   进程的用户 VA 在调用者上下文里**没有映射**：
+
+   ```
+   wxshadow: created page for mm=ffffff8880c88800 addr=6042f50000
+   Unable to handle kernel paging request at virtual address 0000006042f50000
+   ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation fault
+   ```
+
+   静态靶子不崩是因为 `0x221000` 恰好也映射在静态链接的客户端进程里，`dc cvau` / `ic ivau`
+   不 fault（刷的是错的物理行，但没报错）。修法见 1.2.2：按影子页的内核 VA 刷。
+
 ## 更新记录
 
+- **1.2.2（2026-11-03）**：修 **WX-9**——设断点路径用**目标用户 VA** 调
+  `__flush_icache_range()`，在跨进程场景（该 VA 不在调用者 mm 里）触发 EL1 translation
+  fault → kernel panic/重启；新增 `wxshadow_flush_icache_kva()` 按**影子页内核 VA** 刷
+  （拿不到合法 KVA 时退化 `ic ialluis`），11 处调用点全改。按 NX-1 撤回 1.2.1 的
+  `-EBUSY` 早退（`mod_exit` 返回值无生命周期语义，早退会留下指向已释放代码的钩子），
+  改为只记录超时、走完七个 phase。WX-8：`debug_print_tasks_list(10)` 用
+  `WXSHADOW_DEBUG_TASKS` 关掉（不再往 dmesg 打内核地址）。NX-6：`wxshadow.c` 两处、
+  `wxshadow_bp.c` 一处 `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`。
 - **1.2.1（2026-11-03）**：独立复核问题单修复——WX-1 `prctl_before` 加权限门（只允许
   uid 0 / 2000）；WX-2 `wait_for_handlers_drain` 超时改为中止卸载；WX-3 两处
   `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`（防整型回绕）；

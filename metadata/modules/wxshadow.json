@@ -1,9 +1,9 @@
 {
   "module": "wxshadow",
   "status": "candidate",
-  "version_declared": "1.2.1",
+  "version_declared": "1.2.2",
   "version_sources": {
-    "makefile": "1.2.0",
+    "makefile": "1.2.2",
     "upstream": "1.2.0-k66"
   },
   "builds": [
@@ -121,7 +121,62 @@
   ],
   "audits": [],
   "device_tests": [],
-  "issues": [],
+  "issues": [
+    {
+      "id": "WX-1",
+      "severity": "high",
+      "status": "fixed",
+      "summary": "prctl_before 无权限校验（1.2.1 修：只放行 uid 0/2000）"
+    },
+    {
+      "id": "WX-2",
+      "severity": "high",
+      "status": "superseded",
+      "summary": "drain 超时早退（1.2.2 按 NX-1 撤回：mod_exit 返回值无生命周期语义，早退会留下指向已释放代码的钩子）"
+    },
+    {
+      "id": "WX-3",
+      "severity": "low",
+      "status": "fixed",
+      "summary": "长度检查可整型回绕（1.2.1/1.2.2 改为 len > PAGE_SIZE - off）"
+    },
+    {
+      "id": "WX-4",
+      "severity": "low",
+      "status": "open",
+      "summary": "copy_from_user_via_pte 无 mmap_lock/pin（读错页或旧数据，非提权；未修）"
+    },
+    {
+      "id": "WX-8",
+      "severity": "low",
+      "status": "fixed",
+      "summary": "init 无条件打印任务表泄漏内核地址（1.2.2 用 WXSHADOW_DEBUG_TASKS 关闭）"
+    },
+    {
+      "id": "WX-9",
+      "severity": "critical",
+      "status": "fixed",
+      "summary": "跨进程设断点用目标用户 VA 刷 icache，触发 EL1 translation fault → panic 重启（1.2.2 改按影子页内核 VA 刷）"
+    },
+    {
+      "id": "NX-1",
+      "severity": "high",
+      "status": "fixed",
+      "summary": "unload_module 不采纳 mod_exit 返回值，早退即留下已释放代码上的钩子（1.2.2 改为走完七阶段）"
+    },
+    {
+      "id": "NX-3",
+      "severity": "low",
+      "status": "open",
+      "summary": "权限门硬编码 0/2000，无 runtime ALLOW/DENY 维护入口（接受风险）"
+    },
+    {
+      "id": "NX-6",
+      "severity": "info",
+      "status": "fixed",
+      "summary": "另三处 offset+len>PAGE_SIZE 回绕写法（1.2.2 改 len > PAGE_SIZE - off）"
+    }
+  ],
   "acceptances": [],
   "deliveries": [],
   "updated_at": "2026-11-03T01:46:02Z",

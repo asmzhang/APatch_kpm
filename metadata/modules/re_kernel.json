@@ -1500,7 +1500,7 @@
       "owner": "Developer",
       "status": "fixed",
       "title": "3a9dcfc 的失败归因错误：真正拦截项只有 kfree_skb，kmalloc 判定在失败点之后才执行",
-      "evidence": "旧判定在 prepare_rekernel_genl_server() 之前的可用性检查里包含 kfree_skb；6.1 无该符号，因此 prepare 阶段返回 -EOPNOTSUPP。kmalloc 判定在 prepare 成功之后才执行，未参与本次失败；且 __kmalloc 经 kallsyms_lookup_name_by_suffix 的精确首轮即可命中，旧判据本就为假。",
+      "evidence": "旧判定里 `|| !kfunc(kfree_skb)` 位于 prepare_rekernel_genl_server() 阶段的可用性条件内（modules/KPM/re_kernel/re_kernel.c:261-268）；6.1 无该符号，因此 prepare 返回 -EOPNOTSUPP。kmalloc 兜底在 inline_hook_init 里、该阶段成功之后才执行，未参与本次失败；且 __kmalloc 经 kallsyms_lookup_name_by_suffix 精确首轮即可命中，旧判据本就为假。",
       "closure": "更正提交说明、metadata notes 与报告根因表述；kmalloc 兜底保留（fail-closed、无害）但不再作为修复理由",
       "class": "product",
       "frequency": "未知",

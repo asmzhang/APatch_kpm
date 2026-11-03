@@ -26,7 +26,7 @@
 
 - 现象：Pixel 6（6.1.99-android14）上 `load rc=-1`，dmesg 只有 BTF 偏移打印 + `load_module_ex: [re_kernel] failed with [(null)] error: -95`。
 - 定位：在 `prepare_rekernel_genl_server()` 前后插桩，逐项打印可用性判定的 11 个符号结果，得到 `kfree_skb=0`、`__reg=0`（`kfunc(kmalloc)` 为空）。
-  **归因更正（独立复核 AUD-103）**：真正拦截本次加载的只有 `kfree_skb` —— 可用性检查在 `prepare_rekernel_genl_server()` 之前，而 `kmalloc` 判定在其成功之后才执行，未参与本次失败；`__kmalloc` 经 `kallsyms_lookup_name_by_suffix` 精确首轮即可命中，旧判据本就为假。`KernelPatch/kernel/patch/ksyms/misc.c:333-334` 注释掉 `kfunc_match` 只影响 KP 内部表，与模块 `kfunc()` 无关。
+  **归因更正（独立复核 AUD-103）**：真正拦截本次加载的只有 `kfree_skb` —— 可用性判定位于 `prepare_rekernel_genl_server()` 阶段内（`modules/KPM/re_kernel/re_kernel.c:261-268`），而 `kmalloc` 兜底在 `inline_hook_init` 里、该阶段成功之后才执行，未参与本次失败；`__kmalloc` 经 `kallsyms_lookup_name_by_suffix` 精确首轮即可命中，旧判据本就为假。`KernelPatch/kernel/patch/ksyms/misc.c:333-334` 注释掉 `kfunc_match` 只影响 KP 内部表，与模块 `kfunc()` 无关。
 - 根因：
   1. `KernelPatch/kernel/patch/ksyms/misc.c` 把 `kfunc_match(kmalloc)` 注释掉了，`kfunc(kmalloc)` 恒为 NULL，而 genl server 用 `kmalloc(...)` 分配；
   2. 6.1 起内核不再导出 `kfree_skb`（只有 `kfree_skb_reason`），而判定要求它非空。
@@ -113,12 +113,12 @@ python tools/build_candidate.py <mod> --toolchain ndk26.1.10909125 --target "all
 
 | 编号 | 严重度 | 内容 | 处置 |
 | --- | --- | --- | --- |
-| A-01 / AUD-101 | 中 | `hosts_redirect` debug 变体复用 base 的 `.o`，`-DCONFIG_DEBUG` 从未生效 | 已修 `Makefile`（独立对象），待重建复测 |
-| A-02 / AUD-103 | 中 | `3a9dcfc` 把失败归因给了 `kmalloc`，实际拦截项只有 `kfree_skb` | 已更正本文与提交说明 |
+| A-01 / AUD-101 | 中 | `hosts_redirect` debug 变体复用 base 的 `.o`，`-DCONFIG_DEBUG` 从未生效 | 已修 `Makefile`（独立对象）并重建复测（`8abac56`）：debug 11896 B ≠ base 10440 B，双机均 load/unload rc=0 |
+| A-02 / AUD-103 | 中 | `3a9dcfc` 把失败归因给了 `kmalloc`，实际拦截项只有 `kfree_skb` | 已更正本文（提交说明按「只追加」不可改写，以本文为 errata） |
 | A-04 / AUD-104 | 中低 | `kfree_skb` 有 5 处真实调用，6.1 上静默泄漏 skb | 登记 open，待按符号可用性二选一解析 |
 | A-03 | 中 | `sanitize()` 对 `--env` 值做纯子串替换，`PYTHONUTF8=1` 把字面 `1` 变成 `<PYTHONUTF8>`，污染 recipe/instance 身份 | 已修 `tools/identity.py`（只把像路径的值当替换目标） |
 | A-05 / AUD-02 | 中低 | 两条 `tested_bytes.sha256` 只有 16 hex，门禁只校验 `retest` 形态故漏过 | 已补全 64 hex；门禁收紧为「任何登记了 tested_bytes.sha256 的条目都必须 64 位且命中在册产物」 |
-| A-10 / AUD-102 | 低 | `cgroupv2_freeze` 用 `-24`（EMFILE）表达设计内拒绝 | 已改 `-EOPNOTSUPP`，待重建复测 |
+| A-10 / AUD-102 | 低 | `cgroupv2_freeze` 用 `-24`（EMFILE）表达设计内拒绝 | 已改 `-EOPNOTSUPP` 并重建复测（`8abac56`）：dmesg `error: -95`，仍按设计拒绝 |
 | A-12 | 低 | `builds[].handoff_manifest` 指向被 gitignore 的 `local/handoff-rest/` | 已改指 `Developer/reports/handoffs/2026-11-03-remaining-modules/`（30 条） |
 | A-06 | 中低 | baselines 的 `<name>.kpm.json` 偏移表被 gitignore、未进 `artifacts[]`；`patch_offsets.py` 不在 `sources[]` | open（涉及产物清单口径，需维护者定） |
 | A-07 / AUD-07 | 中低 | 实例绑定的 `source_tree_sha256` 依赖工作树 EOL（本仓 536 条 CRLF / 1042 条 LF） | open（仓库级设计问题，需统一 `.gitattributes`） |
@@ -129,3 +129,26 @@ python tools/build_candidate.py <mod> --toolchain ndk26.1.10909125 --target "all
 | A-14 / AUD-105 | 低 | `zram_zstd` 重启归因未闭环（前次 unload 残留 vs 冻结件） | 登记 open，标为未验证风险 |
 | AUD-06 | 低 | `kmalloc` 兜底是死代码（全模块无 `kfunc(kmalloc)(` 调用） | 记入 AUD-103 说明，不单开单 |
 | AUD-11 | 低 | `IGNORED_SUFFIX` 潜在静默排除、构建日志 `errors="replace"` 吞非法字节 | open（工具级，留待下一轮门禁整理） |
+
+## 10. 修复后的针对性复审（2026-11-03，单路独立 agent）
+
+复审范围：只判上一轮问题单的六项修复是否到位，不重审全量。结论：**部分项判为已修，另开 7 条新单。**
+
+| 项 | 判定 | 关键证据 |
+| --- | --- | --- |
+| AUD-101 hosts_redirect debug | 已修 | `Makefile:37-38/49-50/52-53` 让 debug 走独立对象；自算 10440 B `de45aba5…` vs 11896 B `382f11e4…`；debug 件含 8 条 base 没有的 printk 串 |
+| AUD-102 cgroupv2 errno | 已修 | `cgroupv2_freeze.c:412-414` 返回 `-EOPNOTSUPP`；整目录无 `-24`；产物级仅 2 字节差异（`0x928002e0`→`0x92800bc0`） |
+| AUD-103 归因 | **部分修** | 结论（kmalloc 未参与）已对，但位置描述错：被删条件原在 prepare 阶段的可用性判定里（`re_kernel.c:261-268`），不在 prepare 之前；且 `3a9dcfc` 提交说明不可改写，本文已作为 errata |
+| AUD-104 kfree_skb 5 处调用 | 已修（记录）+ 残留注释 | 记录与报告已承认 5 处；源码注释仍写「本模块未调用」→ 本轮已改 |
+| identity.py sanitize | 已修 | 直接调 `sanitize()` 断言：`PYTHONUTF8=1` 不再污染、含 NDK 路径仍被替换成 `<ANDROID_NDK_LATEST_HOME>` |
+| 设备测试字节绑定 | **部分修** | 判据已扩到「任何登记 sha256 的条目」，负向注入实测能红；但 `tools/selftest_tools.py` 对新分支**零夹具**（违反 R11），且本机 Windows 下 selftest 37/39 |
+
+新增问题单（均已登记或记档）：
+
+- `AUD-N01`（中低）`Auditor/tools/artifact_audit.py:557-562` 用 `startswith(r.rstrip("/") + "/")` 判归属，键已 normpath 成反斜杠 → Windows 上「已登记但产物缺失」分支永不触发。
+- `AUD-N02`（中低）新判据缺正反夹具，建议固化为三例（16 位应红 / 64 位错哈希应红 / 64 位正确应绿）。
+- `AUD-N03`（低）`re_kernel.c` / `re_kernel_x/re_kernel.c` 注释仍称未调用 → 本轮已改。
+- `AUD-N04`（中低）AUD-103 的位置描述错误 → 本轮已改。
+- `AUD-N05`（低）处置表「待重建复测」已过时 → 本轮已改。
+- `AUD-N06`（中低）`tools/selftest_tools.py` 子进程未传 `encoding`，zh-CN Windows 下 gbk 解码失败；`candidate_build_transaction` 夹具用无扩展名 `mock-clang`，Windows 上 `shutil.which` 返回 None 必失败 → 本轮给子进程加 `encoding="utf-8", errors="replace"`；夹具的平台限制记为已知缺口。
+- `AUD-N07`（低）`AUD-101/102` 在复核之前就被标 `fixed`，属「预先登记关闭」→ 流程上应待发现方复核后再置 fixed，后续按此执行。

@@ -264,7 +264,7 @@ static int prepare_rekernel_genl_server(void) {
   genl_rcv_msg = (typeof(genl_rcv_msg))kallsyms_lookup_name("genl_rcv_msg");
   if ((!kfunc(genl_register_family) && !kfunc(__genl_register_family)) || !kfunc(genl_unregister_family)
       || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(netlink_broadcast) || !genl_rcv_msg || !kfunc(__alloc_skb)
-      || !kfunc(netlink_unicast) || !kvar(init_net)) /* kfree_skb: 6.1 起改名 kfree_skb_reason，本模块未调用 */
+      || !kfunc(netlink_unicast) || !kvar(init_net)) /* kfree_skb: 6.1 起仅存 kfree_skb_reason，nlmsg_free 的 5 处错误路径会静默泄漏 skb（AUD-104，待按符号可用性解析） */
     return -EOPNOTSUPP;
   if (!rekernel_genl_sock())
     return -ENOTCONN;

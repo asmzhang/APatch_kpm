@@ -911,7 +911,17 @@ def _run_checks():
         "非本实例派生件被拒": not port_ok("d" * 64),
         "未声明一致被拒": not device_ok(dict(good_test, tested_bytes={"sha256": "a" * 64})),
         "哈希不在产物中被拒": not device_ok(dict(good_test, tested_bytes=dict(good_test["tested_bytes"], sha256="b" * 64))),
-        "非复测条目不检查": device_ok({"kind": "destructive-risk-verification", "instance_id": "m-1.0#1"}),
+        "非复测条目未登记哈希则跳过": device_ok({"kind": "destructive-risk-verification", "instance_id": "m-1.0#1"}),
+        # 2026-11-03 收紧（AUD-N02 正反夹具）：非复测条目一旦登记 tested_bytes.sha256，就必须 64 位且命中在册产物
+        "非复测条目 16 位哈希被拒": not device_ok({
+            "kind": "device-test", "instance_id": "m-1.0#1",
+            "tested_bytes": {"sha256": "a" * 16, "registered": True, "in_registry_match": True}}),
+        "非复测条目 64 位错哈希被拒": not device_ok({
+            "kind": "device-test", "instance_id": "m-1.0#1",
+            "tested_bytes": {"sha256": "b" * 64, "registered": True, "in_registry_match": True}}),
+        "非复测条目 64 位正确哈希通过": device_ok({
+            "kind": "device-test", "instance_id": "m-1.0#1",
+            "tested_bytes": {"sha256": "a" * 64, "registered": True, "in_registry_match": True}}),
     }
     results.append(("device_test_binding", all(device_cases.values()), str(device_cases)))
 

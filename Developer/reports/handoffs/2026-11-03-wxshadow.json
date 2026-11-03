@@ -1,22 +1,22 @@
 {
   "module": "wxshadow",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
   "handoff_by": "Developer",
-  "handoff_at": "2026-11-03T01:44:53Z",
+  "handoff_at": "2026-11-03T02:10:57Z",
   "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
   "builds": [
     {
       "module": "wxshadow",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "kind": "candidate",
-      "build_id": "wxshadow-1.2.1+g0d1fd69b3a7c.r0d3b4522.kpb51197a.ndk26.1.10909125",
+      "build_id": "wxshadow-1.2.2+g1497a6db4e55.r0ac889dd.kpb51197a.ndk26.1.10909125",
       "variant": "base",
-      "recorded_at": "2026-11-03T01:44:53Z",
-      "source_commit": "92de422eaece27e5a02182e70bd040dbc203bed4",
+      "recorded_at": "2026-11-03T02:10:56Z",
+      "source_commit": "26c0d33cfdf4d3fca819c726c511361196afeb52",
       "source_dirty": false,
-      "source_tree_sha256": "0d1fd69b3a7cec11a977b5f95bbbbb61a33f378dcef3e2c3ca23dbb2e7932a2f",
-      "source_tree_blob_sha256": "fdfd001656b7462d5a6248b93bad335cfc6e3a12b2162104185e0e0733da8fc7",
+      "source_tree_sha256": "1497a6db4e55987501b6af9cf2f430b802ed05c08ce617ae1e5b5ba6e50522d2",
+      "source_tree_blob_sha256": "ec649bacd3b72f472ed0b26e46e9e4d9c51df4e2c23bc148bbe787ecf25a4d18",
       "source_blob_missing": [],
       "sources": [
         {
@@ -26,13 +26,13 @@
         },
         {
           "path": "modules/KPM/wxshadow/Makefile",
-          "sha256": "9f6872a376c6e13d73486019cb2ad951fb863e205b6d6811e4b86a29418ab78f",
-          "blob_sha256": "fa1cd40d9eea2837a812a72c227f1c24608fe44c8f6be6d513d0ca1db6c0af66"
+          "sha256": "c8f50b6f9f646d5cb2a5d5aa80672246a63188e2c8c8e0a23711f1ec78cc2afd",
+          "blob_sha256": "11babc6c331ebf557c21bda80d0c2e45824bd996c38c184d04d59eced3a9d5af"
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow.c",
-          "sha256": "e76fa48bb3b9dbb55b5b1a7a6bb531ff8ae81fece6a7d38b5f1f7c2de7c876ef",
-          "blob_sha256": "8c87c202ff2862d45cbdfd01c769d433ae4d016ce3b4c6c5c2a920ec6961531b"
+          "sha256": "f01d5a3e125d66967a9034180fb182a8777c01000287c59746cadc85faab960b",
+          "blob_sha256": "c4a243f3a04171cf173b6ab4028ac167f7f8ec4644a7ce397b01cf8beb352e1e"
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow.h",
@@ -41,8 +41,8 @@
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow_bp.c",
-          "sha256": "034e32955abe7b71aeb49ec3f8e12db137540567fd4d45cde5276967b9f0e59d",
-          "blob_sha256": "1d4ed3f353a20ad003e2c600d0719214767365692eaf001ff930e86d36cdb142"
+          "sha256": "711c022f3d82931c0985035f86b3ed84763cefbd8e1fb45675e1f730b4546f04",
+          "blob_sha256": "5ed681a3bd64fa8e810ac6cf3b76f04dd628f2a003b126a15c4428f0ed93fe03"
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow_handlers.c",
@@ -51,13 +51,13 @@
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow_internal.h",
-          "sha256": "92d91d5724e7a4520d02a3bdf300bf7a78ec710ba0d627ae43c22aa181eece3e",
-          "blob_sha256": "e1b3b53927a6e132d314a62e19b2ed5bf87633985b43a526250c9024492de92a"
+          "sha256": "b66e52b01bd34dc6f518414ad01b2bed263e501e73db9618af8dd418f0ae2206",
+          "blob_sha256": "87c29485502d5092e5bf6f8fd2018d8a8bb04233e7cf9be8a5dff1762e8b6b43"
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow_pgtable.c",
-          "sha256": "e3528bd2c4b6034744315b3d204a7bc46eca1dc6e6f8234082882917ab08872c",
-          "blob_sha256": "ca55acd2d5795e29dda163fdb629711e4f9be5540efa58a7e40d94c664e63336"
+          "sha256": "860fe860340f5b56c60eef0e50b2e070d5de44205273271b5aca4472e1050137",
+          "blob_sha256": "d53a566cd1987af7286ceae7b6a2599390d5306de177b181fc2cea2567162702"
         },
         {
           "path": "modules/KPM/wxshadow/wxshadow_scan.c",
@@ -77,42 +77,42 @@
       ],
       "toolchain": "ndk26.1.10909125",
       "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-      "fingerprint_sha256": "0d3b4522af83330e5216fe83dea5c57a15ceaa9a797ddfb5eb2a20fb8a55dc3f",
+      "fingerprint_sha256": "0ac889dd75e0ab35c198e597a18ed7aa3af9672f4838436faa0618201ee2a98b",
       "recipe": {
         "captured": true,
         "command": "make -C '<repo>\\modules\\KPM\\wxshadow' all",
         "dry_run_args": "-n -B（强制重算配方）",
         "returncode": 0,
-        "dry_run_sha256": "92aab8fd8bfdcf1bf41181498bc9b3f981520540c08212015845b283fc40d245",
+        "dry_run_sha256": "51b865a01cfa9a45bbd4213d0189f1783d33b91f53288f078a681cbd8aad7723",
         "cc": "<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang",
         "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
-        "excerpt": "make: Entering directory '<repo>/modules/KPM/wxshadow'\n<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow.o wxshadow.c\n<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow_pgtable.o wxshadow_pgtable.c\n<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.1\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow_handlers.o wxshadow_handlers.c"
+        "excerpt": "make: Entering directory '<repo>/modules/KPM/wxshadow'\n<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow.o wxshadow.c\n<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow_pgtable.o wxshadow_pgtable.c\n<NDK>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android31-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.2\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow_handlers.o wxshadow_handlers.c"
       },
       "recorded_by": "Developer",
       "build_transaction": {
-        "source_commit": "92de422eaece27e5a02182e70bd040dbc203bed4",
-        "source_tree_sha256": "0d1fd69b3a7cec11a977b5f95bbbbb61a33f378dcef3e2c3ca23dbb2e7932a2f",
+        "source_commit": "26c0d33cfdf4d3fca819c726c511361196afeb52",
+        "source_tree_sha256": "1497a6db4e55987501b6af9cf2f430b802ed05c08ce617ae1e5b5ba6e50522d2",
         "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
-        "recipe_sha256": "92aab8fd8bfdcf1bf41181498bc9b3f981520540c08212015845b283fc40d245",
+        "recipe_sha256": "51b865a01cfa9a45bbd4213d0189f1783d33b91f53288f078a681cbd8aad7723",
         "input_unchanged": true,
         "returncode": 0
       },
       "artifacts": [
         {
-          "name": "wxshadow_1.2.1.kpm",
-          "sha256": "069ce62815f9e89022d8846e069746001ebf1a115ad9fdd8918ab5459ab4f3eb",
-          "size": 159536,
+          "name": "wxshadow_1.2.2.kpm",
+          "sha256": "7bf2ac5abbaa5a2d7cb9d092b912e9c42d830956bf34eb08906f9b31be82fd30",
+          "size": 159864,
           "embedded": {
             "name": "wxshadow",
-            "version": "1.2.1",
+            "version": "1.2.2",
             "license": "GPL v2",
             "author": "wxshadow",
             "description": "W^X Shadow Memory - Hidden BP/Patch (kernel 6.1+/6.6 maple-tree)"
           },
-          "path": "artifacts/wxshadow-1.2.1+g0d1fd69b3a7c.r0d3b4522.kpb51197a.ndk26.1.10909125/wxshadow_1.2.1.kpm"
+          "path": "artifacts/wxshadow-1.2.2+g1497a6db4e55.r0ac889dd.kpb51197a.ndk26.1.10909125/wxshadow_1.2.2.kpm"
         }
       ],
-      "instance_id": "wxshadow-1.2.1+g0d1fd69b3a7c.r0d3b4522.kpb51197a.ndk26.1.10909125#1"
+      "instance_id": "wxshadow-1.2.2+g1497a6db4e55.r0ac889dd.kpb51197a.ndk26.1.10909125#1"
     }
   ]
 }

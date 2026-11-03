@@ -690,5 +690,17 @@
   "acceptances": [],
   "deliveries": [],
   "updated_at": "2026-11-03T03:39:24Z",
-  "updated_by": "developer:r5"
+  "updated_by": "developer:r5",
+  "report_versions": [
+    {
+      "path": "Developer/reports/2026-11-03-wxshadow-port.md",
+      "versions": [
+        {
+          "sha256": "dba821305aa2e00c6581c83c2210a5c806e17590c9e0720372ff1b5c0a87da63",
+          "commit": "340729b",
+          "note": "1.2.5：复核问题单收口（含 1.2.4 批次）+ register 回落拆除 + AUD-024 工具归一"
+        }
+      ]
+    }
+  ]
 }

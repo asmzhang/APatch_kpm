@@ -489,7 +489,7 @@ static int write_shadow_bytes(struct wxshadow_page *page_info,
     }
 
     if (flush_icache)
-        wxshadow_flush_icache_page(page_addr);
+        wxshadow_flush_icache_kva(shadow_vaddr);
 
     return 0;
 }
@@ -586,7 +586,7 @@ static int wxshadow_rebuild_shadow_range(struct wxshadow_page *page_info,
         return -22;
     if (len == 0)
         return 0;
-    if (offset >= PAGE_SIZE || offset + len > PAGE_SIZE)
+    if (offset >= PAGE_SIZE || len > PAGE_SIZE - offset)
         return -22;
 
     /* Pre-read counts to size the ops array (allocated outside lock) */
@@ -699,7 +699,7 @@ static int wxshadow_rebuild_shadow_range(struct wxshadow_page *page_info,
     }
 
     wxshadow_flush_kern_dcache_area(shadow_vaddr + offset, len);
-    wxshadow_flush_icache_page(page_addr);
+    wxshadow_flush_icache_kva(shadow_vaddr);
     kfunc_kfree(ops);
     return 0;
 }

@@ -504,6 +504,30 @@ static inline void wxshadow_flush_icache_page(unsigned long addr)
     wxshadow_flush_icache_range(addr & PAGE_MASK, (addr & PAGE_MASK) + PAGE_SIZE);
 }
 
+/*
+ * wxshadow_flush_icache_kva - flush icache using the KERNEL VA of the shadow page.
+ *
+ * ★WX-9（1.2.2）：跨进程打补丁时，目标进程的用户 VA 在调用者上下文里没有映射，
+ * 用用户 VA 调 __flush_icache_range()（内部是 dc cvau / ic ivau 循环）会触发
+ * EL1 translation fault（实测 FSC=0x05 level 1，直接 panic 重启）。
+ * 因此一律按影子页的内核 VA 刷：内核 VA 恒在 TTBR1 中有效，PIPT 下刷的是同一
+ * 物理行；拿不到合法内核 VA 时退化为全量 ic ialluis（安全但更慢）。
+ */
+static inline void wxshadow_flush_icache_kva(unsigned long kva)
+{
+    unsigned long base;
+
+    if (!is_kva(kva)) {
+        asm volatile("ic ialluis" : : : "memory");
+        asm volatile("dsb ish" : : : "memory");
+        asm volatile("isb" : : : "memory");
+        return;
+    }
+
+    base = kva & PAGE_MASK;
+    wxshadow_flush_icache_range(base, base + PAGE_SIZE);
+}
+
 /* ========== Page table helpers ========== */
 
 /* NOTE: mm_page_table_lock helper removed - lockless operation */

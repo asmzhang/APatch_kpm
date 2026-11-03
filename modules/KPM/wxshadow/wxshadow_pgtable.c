@@ -576,7 +576,7 @@ int wxshadow_page_activate_shadow_locked(struct wxshadow_page *page, void *vma,
 
     ret = wxshadow_page_switch_mapping_locked(page, vma, addr, shadow_pfn, 0);
     if (ret == 0) {
-        wxshadow_flush_icache_page(addr);
+        wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
         spin_lock(&global_lock);
         if (!page->dead)
             page->state = WX_STATE_SHADOW_X;
@@ -668,7 +668,7 @@ int wxshadow_page_resume_shadow(struct wxshadow_page *page, void *vma,
 
     ret = wxshadow_page_switch_mapping_locked(page, vma, addr, shadow_pfn, 0);
     if (ret == 0) {
-        wxshadow_flush_icache_page(addr);
+        wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
         spin_lock(&global_lock);
         if (!page->dead)
             page->state = WX_STATE_SHADOW_X;
@@ -721,7 +721,7 @@ int wxshadow_page_begin_stepping(struct wxshadow_page *page, void *vma,
                                          get_user_pte(vma_mm(vma), addr, NULL),
                                          entry, true);
     if (ret == 0) {
-        wxshadow_flush_icache_page(addr);
+        wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
     } else {
         spin_lock(&global_lock);
         if (!page->dead && page->state == WX_STATE_STEPPING &&
@@ -780,7 +780,7 @@ int wxshadow_page_finish_stepping(struct wxshadow_page *page, void *vma,
                                                           NULL),
                                              original_entry, true);
         if (ret == 0)
-            wxshadow_flush_icache_page(addr);
+            wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
 
         spin_lock(&global_lock);
         if (ret == 0 && page->state == WX_STATE_STEPPING &&
@@ -820,7 +820,7 @@ int wxshadow_page_finish_stepping(struct wxshadow_page *page, void *vma,
                                                           NULL),
                                              original_entry, true);
         if (ret == 0)
-            wxshadow_flush_icache_page(addr);
+            wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
 
         spin_lock(&global_lock);
         if (ret == 0 && page->state == WX_STATE_STEPPING &&
@@ -843,7 +843,7 @@ int wxshadow_page_finish_stepping(struct wxshadow_page *page, void *vma,
 
     ret = wxshadow_page_switch_mapping_locked(page, vma, addr, shadow_pfn, 0);
     if (ret == 0) {
-        wxshadow_flush_icache_page(addr);
+        wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
         spin_lock(&global_lock);
         if (page->state == WX_STATE_STEPPING &&
             page->stepping_task == task) {
@@ -876,7 +876,7 @@ int wxshadow_page_enter_dormant_locked(struct wxshadow_page *page, void *vma,
                                          get_user_pte(vma_mm(vma), addr, NULL),
                                          entry, true);
     if (ret == 0) {
-        wxshadow_flush_icache_page(addr);
+        wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
         spin_lock(&global_lock);
         if (!page->dead) {
             page->state = WX_STATE_DORMANT;
@@ -905,7 +905,7 @@ int wxshadow_page_restore_original_for_teardown_locked(
                                          get_user_pte(vma_mm(vma), addr, NULL),
                                          entry, true);
     if (ret == 0)
-        wxshadow_flush_icache_page(addr);
+        wxshadow_flush_icache_kva((unsigned long)page->shadow_page);
 
     return ret;
 }

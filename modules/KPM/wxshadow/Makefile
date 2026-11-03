@@ -1,4 +1,4 @@
-MYKPM_VERSION := 1.2.1
+MYKPM_VERSION := 1.2.2
 
 ifndef KP_DIR
     KP_DIR = ../../../KernelPatch
@@ -26,8 +26,8 @@ else ifdef NDK_PATH
     CC := $(NDK_PATH)/aarch64-linux-android31-clang
 endif
 
-# wxshadow 自身在源码里写死 KPM_VERSION("1.2.0-k66")，这里不覆盖它，
-# 只把本仓的版本号用于产物命名，避免与上游字符串打架。
+# 1.2.1 起源码不再写死上游串：wxshadow.c 用 KPM_VERSION(MYKPM_VERSION)，
+# 版本号由下面的 -DMYKPM_VERSION 传进去（改版本只需改这一行）。
 CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\"$(MYKPM_VERSION)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include

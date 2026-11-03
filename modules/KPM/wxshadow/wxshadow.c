@@ -348,7 +348,7 @@ static void wxshadow_bitmap_set_range(unsigned long *bitmap,
     if (!bitmap || offset >= PAGE_SIZE || len == 0)
         return;
 
-    if (offset + len > PAGE_SIZE)
+    if (len > PAGE_SIZE - offset)
         len = PAGE_SIZE - offset;
 
     for (i = offset; i < offset + len; i++) {
@@ -367,7 +367,7 @@ static void wxshadow_bitmap_clear_range(unsigned long *bitmap,
     if (!bitmap || offset >= PAGE_SIZE || len == 0)
         return;
 
-    if (offset + len > PAGE_SIZE)
+    if (len > PAGE_SIZE - offset)
         len = PAGE_SIZE - offset;
 
     for (i = offset; i < offset + len; i++) {
@@ -557,7 +557,7 @@ int wxshadow_restore_shadow_ranges(struct wxshadow_page *page)
     }
 
     if (restored)
-        wxshadow_flush_icache_page(page_addr);
+        wxshadow_flush_icache_kva(shadow_vaddr);
 
     pr_info("wxshadow: [logical_release] restored %lu bytes at addr=%lx\n",
             restored, page_addr);
@@ -1660,8 +1660,10 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
         pr_info("wxshadow: GUP hiding DISABLED\n");
     }
 
-    /* Debug: print first 10 processes */
+#ifdef WXSHADOW_DEBUG_TASKS
+    /* Debug: print first 10 processes (仅排查用；默认关闭，避免泄漏内核地址) */
     debug_print_tasks_list(10);
+#endif
 
     return 0;
 }
@@ -1717,12 +1719,23 @@ static int wait_for_handlers_drain(const char *phase)
  */
 static int wx_drain_checked(const char *phase)
 {
-    if (wait_for_handlers_drain(phase) == 0)
-        return 0;
+    if (wait_for_handlers_drain(phase) != 0)
+        pr_err("wxshadow: [%s] in-flight handlers did not drain in time; "
+               "continuing unload anyway\n", phase);
 
-    pr_err("wxshadow: [%s] in-flight handlers did not drain; aborting unload "
-           "so module code is not freed while handlers still run\n", phase);
-    return -1;
+    /*
+     * ★WX-2 / NX-1（1.2.2）：这里必须继续走完全部 phase，不能提前返回。
+     * unload_module() 是「先 list_del、再调 mod->exit、随后无条件
+     * kp_free_exec(mod->start)」，mod_exit 的返回值没有任何生命周期语义
+     * （KernelPatch/kernel/patch/module/module.c:540-547，LKM 同构
+     * KernelPatch/lkm/kpm/module.c:865-880）。1.2.1 在这里返回 -EBUSY 的后果是：
+     * prctl 钩子已摘、模块已不在册、代码已释放，而 dup_mmap / uprobe_dup_mmap /
+     * brk+step / do_page_fault / follow_page_pte / exit_mmap 六组钩子仍指向
+     * 已释放代码，用户态也再没有任何通道能清掉断点。
+     * 所以：超时只记录，继续把每个钩子都摘干净；风险是 handler 可能在代码
+     * 释放后短暂运行（记录在 README 已知问题 2）。
+     */
+    return 0;
 }
 
 long wxshadow_exit(void *__user reserved)
@@ -1739,8 +1752,7 @@ long wxshadow_exit(void *__user reserved)
     if (wx_prctl_sys_addr)
         hook_unwrap((void *)wx_prctl_sys_addr, prctl_before, NULL);
     pr_info("wxshadow: unhooked prctl (phase 1)\n");
-    if (wx_drain_checked("phase1-prctl"))
-        return -16;  /* EBUSY */
+    wx_drain_checked("phase1-prctl");
 
     /*
      * Phase 2: Iteratively pop and clean every page from page_list.
@@ -1760,16 +1772,14 @@ long wxshadow_exit(void *__user reserved)
     if (kfunc_dup_mmap) {
         hook_unwrap(kfunc_dup_mmap, before_dup_mmap_wx, after_dup_mmap_wx);
         pr_info("wxshadow: unhooked dup_mmap (phase 2.5)\n");
-        if (wx_drain_checked("phase2.5-dup_mmap"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase2.5-dup_mmap");
     }
     if (kfunc_uprobe_dup_mmap) {
         hook_unwrap(kfunc_uprobe_dup_mmap,
                     before_uprobe_dup_mmap_wx,
                     after_uprobe_dup_mmap_wx);
         pr_info("wxshadow: unhooked uprobe_dup_mmap (phase 2.5)\n");
-        if (wx_drain_checked("phase2.5-uprobe_dup_mmap"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase2.5-uprobe_dup_mmap");
     }
 
     /*
@@ -1786,8 +1796,7 @@ long wxshadow_exit(void *__user reserved)
         pr_info("wxshadow: unhooked brk/step handlers (direct, phase 3)\n");
 
         /* Wait for any in-flight direct-hook handler to complete */
-        if (wx_drain_checked("phase3-direct"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase3-direct");
 
     } else if (hook_method == WX_HOOK_METHOD_REGISTER) {
         /*
@@ -1798,8 +1807,7 @@ long wxshadow_exit(void *__user reserved)
          */
         pr_info("wxshadow: unregistering hooks (manual, phase 3)...\n");
         wx_unregister_brk_step_hooks();
-        if (wx_drain_checked("phase3-register"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase3-register");
         pr_info("wxshadow: unregistered break/step hooks (register API, phase 3)\n");
     }
     hook_method = WX_HOOK_METHOD_NONE;
@@ -1811,8 +1819,7 @@ long wxshadow_exit(void *__user reserved)
     if (kfunc_do_page_fault) {
         hook_unwrap(kfunc_do_page_fault, do_page_fault_before, NULL);
         pr_info("wxshadow: unhooked do_page_fault (phase 4)\n");
-        if (wx_drain_checked("phase4-fault"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase4-fault");
     }
 
     /*
@@ -1823,8 +1830,7 @@ long wxshadow_exit(void *__user reserved)
         hook_unwrap(kfunc_follow_page_pte, follow_page_pte_before,
                     follow_page_pte_after);
         pr_info("wxshadow: unhooked follow_page_pte (phase 4.5)\n");
-        if (wx_drain_checked("phase4.5-follow_page_pte"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase4.5-follow_page_pte");
     }
 
     /*
@@ -1835,8 +1841,7 @@ long wxshadow_exit(void *__user reserved)
     if (kfunc_exit_mmap) {
         hook_unwrap(kfunc_exit_mmap, exit_mmap_before, NULL);
         pr_info("wxshadow: unhooked exit_mmap (phase 5)\n");
-        if (wx_drain_checked("phase5-exit_mmap"))
-            return -16;  /* EBUSY */
+        wx_drain_checked("phase5-exit_mmap");
     }
 
     pr_info("wxshadow: module unloaded (cleaned %d pages)\n", page_count);

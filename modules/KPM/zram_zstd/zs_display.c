@@ -6,6 +6,10 @@ static void (*display_mutex_unlock)(void*);
 static struct module* (*display_module_text)(unsigned long);
 static int (*display_core_text)(unsigned long);
 static bool display_installed;
+// 1.0.2：卸载时必须把两个 hook 摘掉，否则装载器释放镜像后，
+// do_init_module / zcomp_available_show 仍会跳到已回收的块（AUD-107）。
+static void* display_show_target;
+static void* display_init_target;
 
 static bool display_has_algorithm(const char* buf, size_t len) {
   for (size_t start = 0; start < len;) {
@@ -54,6 +58,7 @@ static void install_zram_display(void) {
     if (ready) {
       int rc = hook_wrap(target, 2, NULL, zstd_list_after, NULL);
       if (!rc) {
+        display_show_target = target;
         __atomic_store_n(&display_installed, true, __ATOMIC_RELEASE);
         logkm("zram algorithm list now includes zstd-kpm\n");
       } else {
@@ -85,5 +90,22 @@ static void start_zram_display(void) {
   void* init_module = (void*)kallsyms_lookup_name_by_suffix("do_init_module");
   if (!init_module || hook_wrap(init_module, 1, NULL, zram_module_after, NULL))
     logkm("module load hook unavailable; updating the current zram list only\n");
+  else
+    display_init_target = init_module;
   install_zram_display();
 }
+
+// 1.0.2：摘掉 start_zram_display() 装的两个 hook。必须在镜像被释放前完成，
+// 否则下一次任何 LKM 加载（do_init_module）或读 comp_algorithm 都会跳进已回收的块。
+static void stop_zram_display(void) {
+  if (display_init_target) {
+    hook_unwrap_remove(display_init_target, NULL, (void*)zram_module_after, 1);
+    display_init_target = NULL;
+  }
+  if (display_show_target) {
+    hook_unwrap_remove(display_show_target, NULL, (void*)zstd_list_after, 1);
+    display_show_target = NULL;
+  }
+  __atomic_store_n(&display_installed, false, __ATOMIC_RELEASE);
+}
+

@@ -8,7 +8,9 @@
 
 **嵌入后不要卸载。要移除模块，请取消嵌入，再重启设备。**
 
-1.0.1 起 `exit` 会调用 `crypto_unregister_alg` 把 `zstd-kpm` 从内核算法列表摘掉，这样卸载后列表里不会再留下指向已释放镜像的悬空项（1.0.0 会留，表现为**下次加载必定 panic**，2026-11-03 在 Pixel 6 / 6.1.99 上实测）。但 zram 正在使用该算法时卸载依旧不安全，而且卸载后再加载，`zcomp_available_show` 的显示钩子会降级（`algorithm list hook failed: -4094`，算法注册本身仍成功，见 AUD-106）。
+1.0.2 起 `exit` 先摘掉 `start_zram_display()` 装的两个 hook（`do_init_module` 与 `zcomp_available_show`），再调 `crypto_unregister_alg` 把 `zstd-kpm` 从内核算法列表摘掉。这样卸载后列表里不会再留下指向已释放镜像的悬空项（1.0.0 会留，表现为**下次加载必定 panic**，2026-11-03 在 Pixel 6 / 6.1.99 上实测）。但 zram 正在使用该算法时卸载依旧不安全。
+
+**1.0.1 只摘算法、不摘 hook**：镜像被 `kp_free_exec` 回收后这两个 hook 仍指向那块内存——卸载之后任何一次 LKM 加载都会跳进已回收的块（AUD-107，高）；`-4094` 正是 `HOOK_DUPLICATED`，即第二次加载想在同一 `after` 上再挂一次钩，说明第一次的钩还在原处。1.0.2 实测：`load rc=0` → `unload rc=0` → `load rc=0`（重新挂上显示钩子，**没有** `-4094`、**没有** `module load hook unavailable`）→ 再加载另一个模块 `re_kernel` `load rc=0` / `unload rc=0`，uptime 连续、设备不重启。
 
 ## 用哪个文件
 

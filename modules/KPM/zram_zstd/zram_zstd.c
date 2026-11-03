@@ -36,7 +36,7 @@ static bool registered;
 
 static int kfunc_def(crypto_has_alg)(const char* name, u32 type, u32 mask);
 static int kfunc_def(crypto_register_alg)(void* alg);
-static void kfunc_def(crypto_unregister_alg)(void* alg);
+static int kfunc_def(crypto_unregister_alg)(void* alg);
 static void* kfunc_def(vzalloc)(unsigned long size);
 static void kfunc_def(vfree)(const void* ptr);
 
@@ -176,6 +176,10 @@ static long zram_zstd_ctl0(const char* args, char __user* out_msg, int outlen) {
 }
 
 static long zram_zstd_exit(void* reserved) {
+  // 1.0.2：先摘 hook（AUD-107），再摘算法。两者都必须做：
+  // hook 留着 → do_init_module / zcomp_available_show 跳到已回收镜像；
+  // 算法留着 → crypto_has_alg() 遍历列表时解引用悬空项。
+  stop_zram_display();
   if (!registered)
     return 0;
   // 1.0.1：必须把算法从内核列表里摘掉。否则算法项仍指向本模块的代码，

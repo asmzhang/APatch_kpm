@@ -139,6 +139,28 @@ python tools/build_candidate.py <mod> --toolchain ndk26.1.10909125 --target "all
 
 新开 AUD-106（低）：1.0.1 卸载后再加载时 `zcomp_available_show` 显示钩子降级（`algorithm list hook failed: -4094`），算法注册仍成功。
 
+## 10.2 AUD-107：1.0.1 只摘算法、没摘 hook（2026-11-03 复核发现）
+
+独立复核（同一轮 AUD-104/105 复核）指出：`zram_zstd_exit()` 只调了 `crypto_unregister_alg`，
+`start_zram_display()` 在 `modules/KPM/zram_zstd/zs_display.c:55`（`zcomp_available_show`）与 `:86`
+（`do_init_module`）装的两个 `hook_wrap` 从未摘除；而 `unload_module()` 全文没有 hook 清理，
+`kp_free_exec()` 只是把 TLSF 块回收（不清零、不 unmap）。后果：卸载之后**任何一次 LKM 加载**
+（`do_init_module`）或读 `/sys/block/zram0/comp_algorithm`（`zcomp_available_show`）都会跳进
+已回收/可能被复用的镜像块 → UAF / panic，且非特权可触发。
+
+铁证：`-4094 == HOOK_DUPLICATED`（`KernelPatch/kernel/include/hook.h:18`、`hook.c:703` 同一 `after`
+重复挂载即返回该码），1.0.1 第二次加载打印的 `algorithm list hook failed: -4094` 只能来自第一次
+卸载时留下的 `zstd_list_after`；`module load hook unavailable` 同理。
+
+1.0.2 修法：`zs_display.c` 记住两个 hook 目标（`display_show_target` / `display_init_target`），
+新增 `stop_zram_display()` 用 `hook_unwrap_remove(target, NULL, fn, 1)` 摘除并复位 `display_installed`
+（API：`KernelPatch/kernel/include/hook.h:319`），`zram_zstd_exit()` 第一步调用它（先摘 hook、再摘算法）。
+顺带把 `kfunc_def(crypto_unregister_alg)` 的返回类型从 `void` 改成 `int`（与内核签名一致，AUD-109）。
+
+实测（Pixel 6 / 6.1.99 / APatch 11282）：`load rc=0` → `unload rc=0`（`unregistered zstd-kpm` 累计出现）
+→ `load rc=0`，**无** `-4094`、**无** `module load hook unavailable`；随后加载 `re_kernel` `load rc=0`
+/ `unload rc=0`（这正是 1.0.1 会跳进已回收块的路径），uptime 连续 12346→12418。
+
 ## 10. 修复后的针对性复审（2026-11-03，单路独立 agent）
 
 复审范围：只判上一轮问题单的六项修复是否到位，不重审全量。结论：**部分项判为已修，另开 7 条新单。**

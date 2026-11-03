@@ -24,7 +24,8 @@
 | run_cmd_demo 1.3.0 | base | pass（常驻） | dmesg `WARNING: do not unload this module; reboot to remove it` |
 | cgroupv2_freeze 1.0.12 | base | unsupported | 设计内拒绝：内核自带 `cgroup_freeze_write`，`error: -95`（EOPNOTSUPP） |
 | zram_zstd 1.0.0 | base | **fail** | 加载瞬间设备重启，见 §4（后经 AUD-105 定位为「卸载残留 + 再加载」链）|
-| zram_zstd 1.0.1 | base | pass | 干净启动后 `load rc=0` → `unload rc=0`（dmesg `unregistered zstd-kpm`）→ 再次 `load rc=0`，uptime 连续；实例 `zram_zstd-1.0.1+g1fd533e14ac9.rbc4a0401.kpb51197a.ndk26.1.10909125#1` |
+| zram_zstd 1.0.2 | base | pass | 卸载后加载另一模块（`re_kernel`）仍 `rc=0`，无 `-4094`；见 §4.1 |
+| zram_zstd 1.0.1 | base | **部分** | 只摘算法、未摘 hook（AUD-107，已由 1.0.2 修复）；干净启动后 `load rc=0` → `unload rc=0`（dmesg `unregistered zstd-kpm`）→ 再次 `load rc=0`，uptime 连续；实例 `zram_zstd-1.0.1+g1fd533e14ac9.rbc4a0401.kpb51197a.ndk26.1.10909125#1` |
 
 ## 3. 覆盖范围
 
@@ -34,9 +35,16 @@
   其未测变体按仓库规则由「变体差异」结论绑定，差异限于日志/断言级别；`re_kernel`/`re_kernel_x` 的 baselines 变体只做构建与身份校验。
 - `hosts_redirect` 例外：修复前 base/debug 同字节，修复后**两个变体都上机**（差异已不止日志）。
 
+### 4.1 AUD-107：卸载后 hook 悬空（1.0.2 已修）
+
+1.0.1 只摘了 `crypto_unregister_alg`，`do_init_module` 与 `zcomp_available_show` 两个 hook 留在原处；
+镜像被回收后，卸载之后的任何一次 LKM 加载都会跳进已回收的块（`-4094 == HOOK_DUPLICATED` 是它的现场证据）。
+1.0.2 在 `exit` 第一步摘掉两个 hook 再摘算法，并把 `kfunc_def(crypto_unregister_alg)` 的返回类型改成 `int`。
+Pixel 6 实测：`load`→`unload`→`load` 三连 `rc=0` 且无降级日志；随后加载 `re_kernel` 也 `rc=0`/`unload rc=0`，设备不重启。
+
 ## 4. 不覆盖与残余风险
 
-1. **zram_zstd 已由 1.0.1 闭环（原 1.0.0 记为未通过）**：1.0.0 的崩溃发生在「卸载残留 + 再加载」这条链上——`zram_zstd_exit()` 只打告警、不调用 `crypto_unregister_alg`，卸载后内核算法列表仍指向已释放的 KPM 镜像，再次 `load` 的 `crypto_has_alg()` 遍历时解引用悬空项 → EL1 缺页 panic。1.0.1 在 `exit` 摘除算法，Pixel 6 实测 `load rc=0` → `unload rc=0` → `load rc=0`，uptime 连续。残余：`AUD-106`（低）——卸载后再加载时 `zcomp_available_show` 的显示钩子降级（`algorithm list hook failed: -4094`），算法注册本身成功。
+1. **zram_zstd 已由 1.0.1（摘算法）+ 1.0.2（摘 hook）闭环（原 1.0.0 记为未通过）**：1.0.0 的崩溃发生在「卸载残留 + 再加载」这条链上——`zram_zstd_exit()` 只打告警、不调用 `crypto_unregister_alg`，卸载后内核算法列表仍指向已释放的 KPM 镜像，再次 `load` 的 `crypto_has_alg()` 遍历时解引用悬空项 → EL1 缺页 panic。1.0.1 在 `exit` 摘除算法；但只摘算法、未摘 hook（AUD-107，高，见 §4.1），卸载后任何一次 LKM 加载都会跳进已回收镜像块。1.0.2 在 `exit` 第一步摘掉两个 hook 再摘算法，Pixel 6 实测见 §4.1。原 `AUD-106`（卸载后再加载 `-4094`）实为 AUD-107 的现场证据，不再单列残余。
 2. **AUD-104**（`re_kernel` / `re_kernel_x`）：`kfree_skb` 在 6.1 上解析为空，`nlmsg_free` 的 5 处错误路径会静默泄漏 skb（不崩）。
    需在目标 kallsyms 上确认 `kfree_skb_reason` 后按符号可用性二选一解析，**不得按版本号猜**。
 3. **A-07**：实例绑定的是工作树字节，本仓工作树 EOL 混合（CRLF/LF 并存），换机重检出后 `source_tree_sha256` 不可复算。
@@ -50,4 +58,4 @@
 
 `re_kernel`、`re_kernel_x`、`hosts_redirect`（base+debug）、`dont_kill_freeze`、`lmkd_dont_kill`、`nomount`、`run_cmd_demo`
 共 8 个实例（7 个模块）验收通过，绑定上文列出的冻结构建；`cgroupv2_freeze` 记为设计内拒绝（unsupported），
-`zram_zstd` 1.0.0 记为未通过；1.0.1 已闭环并纳入验收（残余 `AUD-106` 记为低）。
+`zram_zstd` 1.0.0 记为未通过；1.0.1 部分闭环（摘算法，未摘 hook）、1.0.2 补齐摘 hook 并纳入验收（AUD-107 关单待独立复核）。

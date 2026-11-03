@@ -1,7 +1,7 @@
 {
   "module": "wxshadow",
   "status": "candidate",
-  "version_declared": "1.2.0",
+  "version_declared": "1.2.1",
   "version_sources": {
     "makefile": "1.2.0",
     "upstream": "1.2.0-k66"

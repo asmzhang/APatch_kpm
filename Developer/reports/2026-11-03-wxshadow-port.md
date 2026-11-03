@@ -2,12 +2,15 @@
 
 ## 身份
 
-- 模块：`wxshadow`，版本 `1.2.0`（产物名）／`1.2.0-k66`（源码内 `KPM_VERSION`，上游原值不改）。
+- 模块：`wxshadow`，版本 `1.2.1`（产物名）／`MYKPM_VERSION`（1.2.1 起源码不再写死上游串）。
 - 上游：`mkpms-stealth` 的 `kpms/wxshadow/`，CHANGELOG 最新条目 `[1.2.0-k66] - 2026-07-24`。
 - 产物（移植时，上游源码原样）：`modules/KPM/wxshadow/wxshadow_1.2.0.kpm`，157,904 B，
   `sha256=c254e1231f5c1655e1365060deee3fb8002c8c8a01c297a326e1e6e0e6f41a1c`。
-- 产物（含 prctl 修复，当前源码）：同路径 159,616 B，
+- 产物（含 prctl 修复，1.2.0）：`wxshadow_1.2.0.kpm` 159,616 B，
   `sha256=482be50301bdfce7920368f00a629c78729f35df1fb58c56bd16d6128938d0cb`。
+- 产物（含复核问题单修复，1.2.1，当前源码）：`wxshadow_1.2.1.kpm` 159,536 B，
+  `sha256=069ce62815f9e89022d8846e069746001ebf1a115ad9fdd8918ab5459ab4f3eb`（探索构建值，
+  冻结构建以 `metadata` 的 instance 为准）。
 - 客户端：`Developer/tools/wxshadow_client/wxshadow_client`，3,517,920 B（aarch64 静态）。
 
 ## 变更点（相对上游）
@@ -126,3 +129,44 @@ has_syscall_wrapper ? 1 : 5, prctl_before, NULL, NULL)`，两处 `unhook_syscall
 没有抓到这次的 Oops。**当前无法复现，也不宣称已修**；`wxshadow_exit()` 与上游逐字节一致，未做任何改动。
 
 使用建议：需要清状态时优先重启；必须在运行中卸载时，先 `release` 掉所有断点、让被挂进程退出或保持空闲，再执行卸载。
+
+## 1.2.1：独立复核问题单修复（2026-11-03）
+
+复核由独立审计员完成（workflow `wxshadow-102-audit`，代码路 + 文档路两路，未共享实现方脚本），
+两路 verdict 均为「暂不可关单」。本轮按问题单逐条处理：
+
+| 编号 | 级别 | 问题 | 处理 |
+| --- | --- | --- | --- |
+| WX-1 | high | `prctl_before` 无任何权限校验，任何进程知道魔数即可对任意 pid 打补丁（等价代码注入原语） | `wxshadow_bp.c` 在 `WX_HANDLER_ENTER()` 之前加身份门：只允许 uid 0 / 2000，其余 `-EPERM` 并 `skip_origin` |
+| WX-2 | high | `wait_for_handlers_drain` 超时只 `pr_warn` 后继续，`mod_exit` 仍返回 0 → KP 释放模块代码时 handler 可能还在跑 | 函数改返回 `int`；超时 `return -1`，由新增 `wx_drain_checked()` 转成 `-EBUSY` 中止卸载（8 个调用点全部改为检查返回值） |
+| WX-3 | low | `buf_off + len > PAGE_SIZE` / `offset + len > PAGE_SIZE` 可被整型回绕绕过 | 改为 `len == 0 \|\| len > PAGE_SIZE - off` |
+| WX-5 | info | 源内 `KPM_VERSION("1.2.0-k66")` 与产物名 1.2.0 不一致 | 改 `KPM_VERSION(MYKPM_VERSION)`，Makefile 注入；`MYKPM_VERSION := 1.2.1` |
+| F4 | medium | 客户端 README 仍写「所有命令返回 EINVAL」 | 重写「当前状态」节，写清已修、必须 root、权限门、卸载兜底 |
+| F5 | low | 模块 README 仍写「只能加载不能卸载」 | 已知问题 2 改写为「9 次复现 7 次正常、不宣称已修、1.2.1 有兜底、未实测该分支」 |
+| WX-4 | low | `copy_from_user_via_pte` 无 `mmap_lock`、无 pin、未校验 `pfn_valid` | **未修**：加锁会与调用路径的锁序冲突，且影响面是「读到错页/旧数据」非提权；如实留在已知问题 |
+| F9 | low | handoff JSON 的 `recipe.cc`/`excerpt` 含本机绝对路径 | 登记时把 `Developer/reports/handoffs/` 副本归一为占位符（`local/` 下的原件不动） |
+
+### 真机验证（Pixel 6 / 6.1.99-android14 / APatch 11282）
+
+| 项 | 命令 | 结果 |
+| --- | --- | --- |
+| 加载 | `kpmctl 10273 load wxshadow_1.2.1.kpm` | `load rc=0`，dmesg `load_module_ex: [wxshadow] succeed` |
+| 权限门（拒绝） | `su 10273 -c 'wxshadow_client -p <pid> -a 0x221cf4 -r x0=7'` | `prctl(SET_BP) failed: Operation not permitted (errno=1)`，靶子仍 `ret=41` |
+| 权限门（放行） | `su -c 'wxshadow_client -p <pid> -a 0x221cf4 -r x0=7'` | `Breakpoint set at 0x221cf4` + `Register modification set: x0 = 0x7`，靶子 `ret=7` |
+| 双视图 | `su -c 'wxshadow_client -p <pid> -a 0x221df8 -r x0=7'`（`wx_v` 自读 `.text`） | 日志 `text @0x221df0: 28 00 80 52 00 05 00 2a`（原字节）+ `i=100 ret=7`（补丁生效） |
+| 卸载 | `kpmctl 10273 unload wxshadow` | `unload rc=0`，`uptime` 8:45 连续、设备不重启 |
+
+页粒度边界照旧（同一页里既有读又有执行时命中是非确定性的：`i=2/50` 是 41、`i=100` 是 7），
+这是上游设计使然，本轮不改。
+
+### 环境注意（本轮踩到）
+
+`kpmctl` 内部要 `setgid/setuid` 到管理器 uid 才能过 `is_trusted_manager_uid`。当前这台
+Magisk 环境下 `su -c 'kpmctl 10273 ...'` 会报 `setuid(10273) failed: Operation not permitted`，
+改用 **`su 10273 -c 'kpmctl 10273 ...'`**（先切 uid，内部 setuid 变空操作）即可。与模块无关。
+
+### 未覆盖
+
+- WX-2 的超时中止分支没有真机触发条件（需要制造一个卡死的 handler），只做了静态验证与正常路径回归。
+- WX-4 未修（见上）。
+- 小米 13（5.10 LKM 形态）本轮只验加载，未复验 1.2.1 的功能与卸载。

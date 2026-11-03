@@ -3,7 +3,8 @@
 进程读取某页时看到的是**原始字节**，执行时跑的是**影子页里的补丁**。这是「双视图」的页级实现，
 不占硬件断点槽位，也不改原页一个字节。
 
-- 上游：`mkpms-stealth` 的 `kpms/wxshadow/`，版本 `1.2.0-k66`（源码里 `KPM_VERSION` 写死该串，本仓不覆盖）。
+- 上游：`mkpms-stealth` 的 `kpms/wxshadow/`，上游版本串 `1.2.0-k66`；本仓自 1.2.1 起把源码里的
+  `KPM_VERSION` 改成 `MYKPM_VERSION`（由 Makefile 注入），产物名与模块自报版本保持一致。
 - 本仓：`modules/KPM/wxshadow/` 只搬 KPM 侧 6 个源文件；用户态客户端在
   `Developer/tools/wxshadow_client/`。
 
@@ -26,7 +27,7 @@
 ```bash
 cd modules/KPM/wxshadow
 export ANDROID_NDK_LATEST_HOME=/path/to/ndk
-make            # 产出 wxshadow_1.2.0.kpm
+make            # 产出 wxshadow_1.2.1.kpm
 make clean
 ```
 
@@ -85,9 +86,28 @@ prctl 通道修好之后，两个靶子都验过：
    `args->skip_origin` / `args->ret`，请求落回原生 `prctl` → `EINVAL`。改成自己按
    `__arm64_sys_prctl`（`.cfi_jt → .cfi → 无后缀`）解析地址再 `hook_wrap(...)`，卸载走
    `hook_unwrap(...)`；两种装载形态都验过。详见 `Developer/reports/2026-11-03-wxshadow-port.md`。
-2. **卸载会让设备重启**：`kpmctl unload wxshadow` 之后设备掉线、`uptime` 归零。它 hook 了
-   `copy_process` / `exit_mmap`，卸载要逐个摘钩并释放所有影子页，这条路径在 6.1 上直接带崩内核。
-   **在修好之前：只加载，不卸载；要清状态就重启。**
+2. **卸载稳定性**（1.2.1 起有兜底，仍未定位根因）：早期观察到两次 `kpmctl unload wxshadow`
+   之后设备掉线、`uptime` 归零。随后的复现尝试 9 次里 7 次正常（空闲 5 次、靶子退出后 1 次、
+   靶子仍在跑 1 次），两次历史重启**复现不出来**，因此不宣称已修；`wxshadow_exit()` 的七阶段
+   顺序与上游逐字节一致，未改动。
+
+   1.2.1 补了一道兜底（独立复核问题单 WX-2）：`wait_for_handlers_drain()` 原来是
+   `void`，自旋上限到了只打一条 `pr_warn` 就继续往下走，而 KP 在 `mod_exit` 返回 0 后立刻
+   `kp_free_exec(mod->start)`——handler 还在模块代码里就会执行到已释放页。现在改成返回
+   `int`，超时由 `wx_drain_checked()` 转成 `-EBUSY` 中止卸载：宁可模块停在已加载状态，
+   也不释放还被引用的代码。**该分支没有真机触发条件，未实测**（要制造一个卡死的 handler）。
+
+   使用建议：能重启就重启；必须运行中卸载时，先 `-d` 删断点、让靶子退出或空闲再卸。
+
+## 更新记录
+
+- **1.2.1（2026-11-03）**：独立复核问题单修复——WX-1 `prctl_before` 加权限门（只允许
+  uid 0 / 2000）；WX-2 `wait_for_handlers_drain` 超时改为中止卸载；WX-3 两处
+  `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`（防整型回绕）；
+  `KPM_VERSION` 改用 `MYKPM_VERSION`，产物名与自报版本对齐。
+- **1.2.0（2026-11-03）**：从上游原样搬入（7 个源文件，业务代码零改动）；新写 Makefile
+  （不生成 debug 变体）；修 prctl 通道（`hook_syscalln` → `hook_wrap`），双视图端到端跑通。
+
 
 ## 边界
 

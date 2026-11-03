@@ -1093,7 +1093,7 @@ static void *copy_from_user_via_pte(void __user *ubuf, unsigned long len)
     unsigned long buf_pfn;
     void *buf_kaddr, *kbuf;
 
-    if (buf_off + len > PAGE_SIZE) {
+    if (len == 0 || len > PAGE_SIZE - buf_off) {  /* WX-3: 防整型回绕 */
         pr_err("wxshadow: user buffer %lx+%lu crosses page boundary\n", uaddr, len);
         return NULL;
     }
@@ -1147,7 +1147,7 @@ int wxshadow_do_patch(void *mm, unsigned long addr, void __user *buf, unsigned l
 
     pr_info("wxshadow: [patch] addr=%lx len=%lu\n", addr, len);
 
-    if (len == 0 || offset + len > PAGE_SIZE) {
+    if (len == 0 || len > PAGE_SIZE - offset) {  /* WX-3: 防整型回绕 */
         pr_err("wxshadow: [patch] invalid len=%lu offset=%lu\n", len, offset);
         return -22;  /* EINVAL */
     }
@@ -1311,6 +1311,23 @@ void prctl_before(hook_fargs4_t *args, void *udata)
     /* Only track wxshadow prctl calls for in-flight counting */
     if (option < PR_WXSHADOW_SET_BP || option > PR_WXSHADOW_RELEASE)
         return;
+
+    /*
+     * ★WX-1（1.2.1）：权限门。
+     * 上游对这条 prctl 通道不做任何身份校验，任何用户态进程只要知道魔数就能
+     * 对任意 pid 打补丁 / 设断点，等价任意代码注入原语。这里与同仓
+     * stealth_hook / memcrc 保持一致：只允许 uid 0（root）与 2000（shell）。
+     * 检查放在 WX_HANDLER_ENTER() 之前，不计入 in-flight。
+     */
+    {
+        uid_t wx_caller = current_uid();
+        if (wx_caller != 0 && wx_caller != 2000) {
+            pr_warn("wxshadow: prctl denied for uid %d\n", (int)wx_caller);
+            args->ret = -1;  /* -EPERM */
+            args->skip_origin = 1;
+            return;
+        }
+    }
 
     WX_HANDLER_ENTER();
 

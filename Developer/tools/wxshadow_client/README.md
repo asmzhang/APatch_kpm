@@ -46,11 +46,16 @@ make clean
 | `--release` | 释放影子页（不带 `-a` 释放全部） |
 | `--once` | 一次性断点，命中一次后自动解除 |
 
-## 当前状态（2026-11-03）
+## 当前状态（2026-11-03，模块 1.2.1）
 
-客户端能编译、能运行，但**所有命令都返回 `EINVAL`**：模块侧的 prctl 钩子用的是
-`hook_syscalln`，这版 KernelPatch 不采纳 `args->skip_origin` / `args->ret`，请求根本没进到
-`wxshadow_do_patch` / `wxshadow_do_set_bp_flags`。修法见
-`modules/KPM/wxshadow/README.md` 的「已知问题」第 1 条。
+prctl 通道已打通：模块侧改成自己解析 `__arm64_sys_prctl` 再 `hook_wrap(...)`，实测
+`-m` 能列出可执行映射、`-a <addr> -r x0=7` 能设断点并改写寄存器（靶子返回值从 41 变 7），
+`--patch` / `--release` 同样可用。
 
-另：模块**只能加载不能卸载**（卸载会让设备重启），清理状态请重启设备。
+**必须以 root 运行**。1.2.1 起模块在 `prctl_before` 加了权限门（独立复核问题单 WX-1）：
+只有 uid 0（root）与 2000（shell）能下发命令，其他身份（含管理器 uid 10273）一律
+`Operation not permitted (errno=1)`。这是有意的：这条通道能对任意 pid 打补丁，等价代码注入。
+
+卸载：1.2.1 起 `wait_for_handlers_drain()` 超时会**中止卸载**（`mod_exit` 返回 `EBUSY`），
+不再带着未排空的 handler 去释放模块代码。实测空闲卸载、挂过断点后卸载都是 `unload rc=0`
+且设备不重启；早期两次「卸载即重启」在当前产物上复现不出来，详见模块 README 已知问题 2。

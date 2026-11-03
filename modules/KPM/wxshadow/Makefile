@@ -1,4 +1,4 @@
-MYKPM_VERSION := 1.2.0
+MYKPM_VERSION := 1.2.1
 
 ifndef KP_DIR
     KP_DIR = ../../../KernelPatch
@@ -28,7 +28,7 @@ endif
 
 # wxshadow 自身在源码里写死 KPM_VERSION("1.2.0-k66")，这里不覆盖它，
 # 只把本仓的版本号用于产物命名，避免与上游字符串打架。
-CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common
+CFLAGS = -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\"$(MYKPM_VERSION)\"
 
 INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include linux/tools/arch/arm64/include
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))

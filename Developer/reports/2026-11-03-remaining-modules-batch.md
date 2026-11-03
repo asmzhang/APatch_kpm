@@ -130,6 +130,15 @@ python tools/build_candidate.py <mod> --toolchain ndk26.1.10909125 --target "all
 | AUD-06 | 低 | `kmalloc` 兜底是死代码（全模块无 `kfunc(kmalloc)(` 调用） | 记入 AUD-103 说明，不单开单 |
 | AUD-11 | 低 | `IGNORED_SUFFIX` 潜在静默排除、构建日志 `errors="replace"` 吞非法字节 | open（工具级，留待下一轮门禁整理） |
 
+## 10.1 AUD-104 / AUD-105 闭环（2026-11-03）
+
+| 问题单 | 根因 | 修法 | 实测证据 |
+| --- | --- | --- | --- |
+| AUD-104（re_kernel / re_kernel_x） | `nlmsg_free()` 依赖 `kfunc(kfree_skb)`；6.1 只有 `kfree_skb_reason(skb, reason)`，`kf_kfree_skb` 恒 NULL → 5 处错误路径静默泄漏 skb | 模块内函数指针 + `kallsyms_lookup_name("kfree_skb_reason")`，`reason=0`。**不能**用 `kfunc_def(kfree_skb_reason)`：KPM 符号表无该项，实测装载报 `unknown symbol: kf_kfree_skb_reason`（rc=-1） | 冻结件 Pixel 6 `load rc=0`，dmesg `re_kernel: skb free path: kfree_skb_reason(fallback)` / `[ReKernel-X] skb free path: kfree_skb_reason(fallback)` |
+| AUD-105（zram_zstd） | `zram_zstd_exit()` 只打警告、不 `crypto_unregister_alg`；卸载后内核算法列表仍指向已释放镜像 → 下次 `load` 的 `crypto_has_alg()` 解引用悬空项 → EL1 缺页 panic | `exit` 调用 `crypto_unregister_alg`（符号按需解析，缺失时退化告警） | 干净启动单独加载 1.0.0 → `rc=0`（崩的是「卸载残留 + 再加载」）；1.0.1 冻结件 `load rc=0` → `unload rc=0`（dmesg `unregistered zstd-kpm`）→ `load rc=0`，uptime 连续、设备不重启 |
+
+新开 AUD-106（低）：1.0.1 卸载后再加载时 `zcomp_available_show` 显示钩子降级（`algorithm list hook failed: -4094`），算法注册仍成功。
+
 ## 10. 修复后的针对性复审（2026-11-03，单路独立 agent）
 
 复审范围：只判上一轮问题单的六项修复是否到位，不重审全量。结论：**部分项判为已修，另开 7 条新单。**

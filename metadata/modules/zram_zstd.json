@@ -13212,6 +13212,13 @@
             "offset_mode": "static"
           },
           "path": "artifacts/zram_zstd-1.0.2_baselines+ged8a25f056f2.rccf307d2.kpb51197a.ndk26.1.10909125/zram_zstd_1.0.2_baselines.kpm"
+        },
+        {
+          "name": "zram_zstd_1.0.2_baselines.kpm.json",
+          "sha256": "744db269835a56137b4f4af1f93fa358a70632d4f2da515d4efa6b71ff6e18f8",
+          "size": 568,
+          "note": "A-06 整改：构建时生成于 out/ 后被清理丢失，2026-11-03 用 patch_offsets.py baseline 从已归档 .kpm + 现行 zs_offsets.c 重生成（表为全 -1 空表占位，作为可替换偏移表的格式载体交付）",
+          "path": "artifacts/zram_zstd-1.0.2_baselines+ged8a25f056f2.rccf307d2.kpb51197a.ndk26.1.10909125/zram_zstd_1.0.2_baselines.kpm.json"
         }
       ],
       "instance_id": "zram_zstd-1.0.2_baselines+ged8a25f056f2.rccf307d2.kpb51197a.ndk26.1.10909125#1",

@@ -452,7 +452,48 @@
       "handoff_manifest": "Developer/reports/handoffs/2026-11-03-wxshadow.json"
     }
   ],
-  "audits": [],
+  "audits": [
+    {
+      "audit_id": "AUD-2026-11-03-wxshadow-125",
+      "date": "2026-11-03",
+      "instance_id": "wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "340729b19c57ae01991a4c4781b7630a4913d19c",
+      "artifact_sha256": "fa24d9d017c416dd777e2046f10f2c2590a89a91804058afd5d9cdb95f10d4aa",
+      "verdict": "可关单",
+      "paths": [
+        "代码路",
+        "文档/身份路",
+        "复审确认路"
+      ],
+      "report": "Auditor/reports/2026-11-03-wxshadow-125-review.md",
+      "closed": [
+        "AUD-wx-4",
+        "AUD-wx-13",
+        "AUD-wx-14",
+        "AUD-019",
+        "AUD-020",
+        "AUD-021",
+        "AUD-022",
+        "AUD-023",
+        "AUD-024",
+        "AUD-025",
+        "AUD-026",
+        "AUD-027",
+        "AUD-wx-16"
+      ],
+      "still_open": [
+        "AUD-wx-11",
+        "AUD-wx-12",
+        "AUD-wx-15",
+        "AUD-wx-17"
+      ],
+      "not_verified": [
+        "未独立重编译产物",
+        "未做内核级行为验证",
+        "prctl inline-hook 异常路径未上机"
+      ]
+    }
+  ],
   "device_tests": [
     {
       "kind": "device-test",
@@ -636,7 +677,9 @@
       "closure": "报告身份节补齐 1.2.4（标注未单独冻结、并入 1.2.5）与 1.2.5 的 sha256+instance+source_commit；1.2.4 从未冻结，故 builds[] 无其记录，报告已显式说明，不再指向 metadata 兜底。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-020",
@@ -648,7 +691,9 @@
       "closure": "由 Auditor 按 docs/process/04-issue-ticket.md 复核字段完整性。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-021",
@@ -660,7 +705,9 @@
       "closure": "报告 NX-6 行、模块 README 更新记录与 metadata evidence 三处统一为「3 文件 6 处」并列出精确行号。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-022",
@@ -672,7 +719,9 @@
       "closure": "由 Auditor 核对状态与 fork 提交未采用的事实一致。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-023",
@@ -684,7 +733,9 @@
       "closure": "由 Auditor 对照 wxshadow_bp.c 权限门与 wxshadow.c 的 drain 实现复核。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-024",
@@ -696,7 +747,9 @@
       "closure": "由 Auditor 复核新归档不含盘符绝对路径，并接受历史四份的例外说明。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-025",
@@ -708,7 +761,9 @@
       "closure": "由 Auditor 按该口径复算一次 sources[] 校验。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-026",
@@ -720,7 +775,9 @@
       "closure": "三处自相矛盾逐条改毕，与本轮 README/Makefile 改动逐字对应。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
     },
     {
       "id": "AUD-027",
@@ -734,6 +791,44 @@
       "closed_by": "Auditor",
       "evidence": "Developer/reports/2026-11-03-wxshadow-port.md 的行尾口径一节原写「core.autocrlf=true、无 .gitattributes」。",
       "closure": "改为「模块源码工作树 CRLF / 提交 LF；本报告在 .gitattributes 里按 -text 豁免，使 report_versions 可直接复算」。"
+    },
+    {
+      "id": "AUD-wx-15",
+      "title": "无消费者的 kfunc 符号解析与无条件 %px 内核地址日志",
+      "severity": "低",
+      "class": "product",
+      "frequency": "低频",
+      "confidence": "已确认",
+      "owner": "Developer",
+      "status": "open",
+      "evidence": "wxshadow.c:85-87 定义 kfunc_register_user_break_hook/kfunc_register_user_step_hook/kptr_debug_hook_lock，wxshadow_scan.c:392-402 解析并 %px 打印，全仓无其他消费点；另有数十处无条件 pr_info %px。",
+      "closure": "下一版随日志降噪一起删除三个死符号及其解析/打印，并把 init 期 %px 收进 WXSHADOW_DEBUG_TASKS。"
+    },
+    {
+      "id": "AUD-wx-16",
+      "title": "Makefile 注释称上游无任何 #ifdef 调试宏，与 1.2.2 引入的 WXSHADOW_DEBUG_TASKS 矛盾",
+      "severity": "低",
+      "class": "product",
+      "frequency": "低频",
+      "confidence": "已确认",
+      "owner": "Developer",
+      "status": "fixed",
+      "closed_by": "Auditor",
+      "closed_review": "Auditor/reports/2026-11-03-wxshadow-125-review.md",
+      "evidence": "modules/KPM/wxshadow/Makefile 的 debug 变体说明段。",
+      "closure": "注释改为「1.2.2 起新增 WXSHADOW_DEBUG_TASKS，只多打几行 dmesg，默认关闭、不构成独立调试用途」，随 007fe51 入库。"
+    },
+    {
+      "id": "AUD-wx-17",
+      "title": "5.10 无 mmap_read_lock/pfn_valid 符号时的无锁走查与兜底 pfn 校验偏弱（登记为已知残余风险）",
+      "severity": "低",
+      "class": "product",
+      "frequency": "低频",
+      "confidence": "推断",
+      "owner": "Developer",
+      "status": "open",
+      "evidence": "wxshadow_pgtable.c:1046-1093：mmap_read_lock 解析失败时整段无锁；wx_pfn_is_valid 兜底仅 pfn != 0 且 pfn < (1UL<<32)；最坏后果是读到错误物理页（补丁数据损坏），不会崩在页表内存上。",
+      "closure": "已登记为降级路径的已知残余风险；若要加固，5.10 目标需用 mmap_lock 的 raw rwsem 地址做 trylock 等价物。"
     }
   ],
   "acceptances": [],

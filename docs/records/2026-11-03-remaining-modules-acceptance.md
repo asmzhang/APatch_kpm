@@ -23,7 +23,8 @@
 | nomount 2.1.1-20261014 | base | pass（常驻） | `NoMount: ready`，设计上常驻、只加载不卸载 |
 | run_cmd_demo 1.3.0 | base | pass（常驻） | dmesg `WARNING: do not unload this module; reboot to remove it` |
 | cgroupv2_freeze 1.0.12 | base | unsupported | 设计内拒绝：内核自带 `cgroup_freeze_write`，`error: -95`（EOPNOTSUPP） |
-| zram_zstd 1.0.0 | base | **fail** | 加载瞬间设备重启，见 §4；**不纳入本次验收** |
+| zram_zstd 1.0.0 | base | **fail** | 加载瞬间设备重启，见 §4（后经 AUD-105 定位为「卸载残留 + 再加载」链）|
+| zram_zstd 1.0.1 | base | pass | 干净启动后 `load rc=0` → `unload rc=0`（dmesg `unregistered zstd-kpm`）→ 再次 `load rc=0`，uptime 连续；实例 `zram_zstd-1.0.1+g1fd533e14ac9.rbc4a0401.kpb51197a.ndk26.1.10909125#1` |
 
 ## 3. 覆盖范围
 
@@ -35,8 +36,7 @@
 
 ## 4. 不覆盖与残余风险
 
-1. **zram_zstd 未通过**：加载冻结件瞬间设备重启，`/sys/fs/pstore/` 无新记录；此前探索阶段该模块曾在保留加载状态下被 unload，
-   而模块自身警告 `DO NOT UNLOAD: zram may retain codec callbacks`，两种解释无法区分 → 登记 `AUD-105`（open），本批次不验收该模块。
+1. **zram_zstd 已由 1.0.1 闭环（原 1.0.0 记为未通过）**：1.0.0 的崩溃发生在「卸载残留 + 再加载」这条链上——`zram_zstd_exit()` 只打告警、不调用 `crypto_unregister_alg`，卸载后内核算法列表仍指向已释放的 KPM 镜像，再次 `load` 的 `crypto_has_alg()` 遍历时解引用悬空项 → EL1 缺页 panic。1.0.1 在 `exit` 摘除算法，Pixel 6 实测 `load rc=0` → `unload rc=0` → `load rc=0`，uptime 连续。残余：`AUD-106`（低）——卸载后再加载时 `zcomp_available_show` 的显示钩子降级（`algorithm list hook failed: -4094`），算法注册本身成功。
 2. **AUD-104**（`re_kernel` / `re_kernel_x`）：`kfree_skb` 在 6.1 上解析为空，`nlmsg_free` 的 5 处错误路径会静默泄漏 skb（不崩）。
    需在目标 kallsyms 上确认 `kfree_skb_reason` 后按符号可用性二选一解析，**不得按版本号猜**。
 3. **A-07**：实例绑定的是工作树字节，本仓工作树 EOL 混合（CRLF/LF 并存），换机重检出后 `source_tree_sha256` 不可复算。
@@ -50,4 +50,4 @@
 
 `re_kernel`、`re_kernel_x`、`hosts_redirect`（base+debug）、`dont_kill_freeze`、`lmkd_dont_kill`、`nomount`、`run_cmd_demo`
 共 8 个实例（7 个模块）验收通过，绑定上文列出的冻结构建；`cgroupv2_freeze` 记为设计内拒绝（unsupported），
-`zram_zstd` 记为未通过并留待 `AUD-105` 闭环后再验。
+`zram_zstd` 1.0.0 记为未通过；1.0.1 已闭环并纳入验收（残余 `AUD-106` 记为低）。

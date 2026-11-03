@@ -160,7 +160,8 @@ def main():
         started = time.time()
         try:
             proc = subprocess.run(command[:1] + force + command[1:], cwd=str(REPO), env=env,
-                                  capture_output=True, text=True, timeout=args.timeout)
+                                  capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", timeout=args.timeout)
         except subprocess.TimeoutExpired:
             die(f"构建超时（>{args.timeout}s），日志见 {log_path.relative_to(REPO)}", 1)
         log_path.write_text(proc.stdout + proc.stderr, encoding="utf-8")

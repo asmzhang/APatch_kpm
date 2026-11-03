@@ -502,9 +502,16 @@ def _run_checks():
     struct.pack_into("<I", elf, 192, 11)
     struct.pack_into("<QQ", elf, 192 + 0x18, len(elf) + len(names), len(info))
     (root / "payload.bin").write_bytes(elf + names + info)
-    compiler = root / "mock-clang"
-    compiler.write_text(f"#!/bin/sh\ncp {root}/payload.bin mod_1.0.kpm\n")
-    compiler.chmod(0o755)
+    is_nt = os.name == "nt"
+    compiler = root / ("mock-clang.cmd" if is_nt else "mock-clang")
+    if is_nt:
+        # type src > dst: cmd 重定向新建目标文件，mtime 更新；copy /Y 保留源 mtime 会被 build_candidate 误判残留
+        cmd_body = "@echo off\n" + f'type "{root}\\payload.bin" > mod_1.0.kpm' + "\n"
+    else:
+        cmd_body = f"#!/bin/sh\ncp {root}/payload.bin mod_1.0.kpm\n"
+    compiler.write_text(cmd_body)
+    if not is_nt:
+        compiler.chmod(0o755)
     (root / "mod" / "Makefile").write_text(
         f"MYKPM_VERSION := 1.0\nall:\n\t{compiler} -o mod_1.0.kpm\n")
     (root / "metadata/modules/mod.json").write_text(json.dumps({
@@ -531,7 +538,12 @@ def _run_checks():
     repeated = (first.returncode == second.returncode == 0 and len(registered) == 2
                 and registered[0]["instance_id"] != registered[1]["instance_id"])
     fixture_commit(root, "second registration")
-    compiler.write_text(f"#!/bin/sh\ncp {root}/payload.bin mod_1.0.kpm\nprintf 'generated input' > new.h\n")
+    if is_nt:
+        # type src > dst: cmd 重定向新建目标文件，mtime 更新；copy /Y 保留源 mtime 会被 build_candidate 误判残留
+        cmd_body += f'type "{root}\\payload.bin" > mod_1.0.kpm\necho generated input> new.h\n'
+    else:
+        cmd_body += "printf 'generated input' > new.h\n"
+    compiler.write_text(cmd_body)
     fixture_commit(root, "compiler changes inputs")
     rejected = subprocess.run(command, cwd=root, capture_output=True, text=True)
     unchanged_count = len(json.loads((root / "metadata/modules/mod.json").read_text())["builds"]) == 2

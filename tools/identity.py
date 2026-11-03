@@ -416,6 +416,33 @@ def env_pairs(env_extra):
     return out
 
 
+def _shlex_variants(line):
+    """同一行给出 posix/非 posix 两种分词；Windows 反斜杠盘符路径只有 posix=False 能保真。"""
+    out = []
+    for posix in (True, False):
+        try:
+            parts = shlex.split(line, posix=posix)
+        except ValueError:
+            continue
+        if parts and parts not in out:
+            out.append(parts)
+    return out
+
+
+def _resolve_compiler(head, env_path):
+    """定位编译器字节：带路径分隔符/盘符的按文件直取，纯命令名走 PATH。
+
+    Windows 上 shutil.which 会给无扩展名文件补 PATHEXT（可能返回并不存在的假路径），
+    所以 which 的结果必须复核 isfile 才能作为哈希来源。
+    """
+    if not head:
+        return None
+    if "/" in head or "\\" in head or (len(head) > 1 and head[1] == ":"):
+        return head if os.path.isfile(head) else None
+    found = shutil.which(head, path=env_path)
+    return found if found and os.path.isfile(found) else None
+
+
 def capture_build_recipe(build_cmd, env_extra=None):
     """用 `make -n -B` 捕获配方；递归/带 + 的规则仍按 Makefile 语义执行。"""
     if not build_cmd:
@@ -441,15 +468,16 @@ def capture_build_recipe(build_cmd, env_extra=None):
     cc = ""
     compiler_sha = ""
     for ln in raw_text.splitlines():
-        try:
-            token = shlex.split(ln)
-        except ValueError:
-            continue
-        if token and ("clang" in token[0] or "gcc" in token[0] or token[0].endswith("cc")):
-            cc = sanitize(token[0])
-            compiler = shutil.which(token[0], path=env.get("PATH"))
+        for token in _shlex_variants(ln):
+            head = token[0].strip('"') if token else ""
+            if not head or not ("clang" in head or "gcc" in head or head.endswith("cc")):
+                continue
+            compiler = _resolve_compiler(head, env.get("PATH"))
             if compiler:
+                cc = sanitize(head)
                 compiler_sha = sha256_file(compiler)
+                break
+        if compiler_sha:
             break
     if not compiler_sha:
         return {"captured": False, "command": sanitize(build_cmd), "returncode": 0,

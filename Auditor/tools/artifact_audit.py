@@ -555,7 +555,8 @@ def scan_artifact_dirs(dirs, index):
                                  f"{rel}（sha256={digest[:16]}…，{size} 字节）不在登记表内："
                                  "无法绑定 commit/Build ID，此前对审计不可见"))
     for rel in sorted(index):
-        if not any(rel == r or rel.startswith(r.rstrip("/") + "/") for r in roots):
+        # rel/roots 都经 normpath，分隔符随平台（Windows 为反斜杠）；前缀拼接必须用 os.sep
+        if not any(rel == r or rel.startswith(r.rstrip("/\\") + os.sep) for r in roots):
             continue
         if rel not in seen and not os.path.isfile(os.path.join(REPO, rel)):
             findings.append(("review", "registered_artifact_missing",

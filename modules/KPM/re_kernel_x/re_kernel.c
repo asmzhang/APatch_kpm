@@ -348,7 +348,7 @@ static int start_rekernel_genl_server(void) {
   kfunc_lookup_name(genl_unregister_family);
   lookup_name(genl_rcv_msg);
   if ((!kfunc(genl_register_family) && !kfunc(__genl_register_family)) || !kfunc(genl_unregister_family)
-      || !kfunc(__alloc_skb) || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(skb_trim) || !kfunc(kfree_skb)
+      || !kfunc(__alloc_skb) || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(skb_trim) /* kfree_skb: 6.1 起改名，本模块未调用 */
       || !kfunc(netlink_broadcast) || !kvar(init_net))
     return -EOPNOTSUPP;
 
@@ -889,8 +889,13 @@ static long inline_hook_init(const char* args, const char* event, void* __user r
   kfunc_lookup_name(binder_alloc_copy_from_buffer);
   kfunc_lookup_name(kfree);
   kfunc_lookup_name(kmalloc);
-  kfunc_lookup_name(__kmalloc);
-  if (!kfunc(kfree) || (!kfunc(kmalloc) && !kfunc(__kmalloc)))
+  // KernelPatch 的 ksyms 未导出 kmalloc/__kmalloc（对应 kfunc_match 被注释），
+  // 但 binder 事件路径用 kmalloc 分配上下文，故按 kallsyms 兜底解析。
+  if (!kfunc(kmalloc))
+    kfunc(kmalloc) = (typeof(kfunc(kmalloc)))kallsyms_lookup_name("__kmalloc");
+  if (!kfunc(kmalloc))
+    kfunc(kmalloc) = (typeof(kfunc(kmalloc)))kallsyms_lookup_name("kmalloc");
+  if (!kfunc(kfree) || !kfunc(kmalloc))
     return -EOPNOTSUPP;
   kvar_lookup_name(binder_stats);
   kfunc_lookup_name(kvfree);

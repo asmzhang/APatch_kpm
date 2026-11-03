@@ -264,7 +264,7 @@ static int prepare_rekernel_genl_server(void) {
   genl_rcv_msg = (typeof(genl_rcv_msg))kallsyms_lookup_name("genl_rcv_msg");
   if ((!kfunc(genl_register_family) && !kfunc(__genl_register_family)) || !kfunc(genl_unregister_family)
       || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(netlink_broadcast) || !genl_rcv_msg || !kfunc(__alloc_skb)
-      || !kfunc(kfree_skb) || !kfunc(netlink_unicast) || !kvar(init_net))
+      || !kfunc(netlink_unicast) || !kvar(init_net)) /* kfree_skb: 6.1 起改名 kfree_skb_reason，本模块未调用 */
     return -EOPNOTSUPP;
   if (!rekernel_genl_sock())
     return -ENOTCONN;
@@ -805,7 +805,13 @@ static long inline_hook_init(const char* args, const char* event, void* __user r
   rc = prepare_rekernel_genl_server();
   if (rc)
     return rc;
-  if ((!kfunc(kmalloc) && !kfunc(__kmalloc)) || !kfunc(kfree) || !kfunc(memdup_user) || !kfunc(kvfree)
+  // KernelPatch 的 ksyms 未导出 kmalloc/__kmalloc（对应 kfunc_match 被注释），
+  // 但 start_rekernel_genl_server() 用 kmalloc 分配 family，故按 kallsyms 兜底解析。
+  if (!kfunc(kmalloc))
+    kfunc(kmalloc) = (typeof(kfunc(kmalloc)))kallsyms_lookup_name("__kmalloc");
+  if (!kfunc(kmalloc))
+    kfunc(kmalloc) = (typeof(kfunc(kmalloc)))kallsyms_lookup_name("kmalloc");
+  if (!kfunc(kmalloc) || !kfunc(kfree) || !kfunc(memdup_user) || !kfunc(kvfree)
       || !kfunc(_raw_spin_lock) || !kfunc(_raw_spin_unlock) || !kvar(binder_stats))
     return -EOPNOTSUPP;
   if (kfunc(tracepoint_probe_register) && kfunc(tracepoint_probe_unregister) && kvar(__tracepoint_binder_transaction)) {

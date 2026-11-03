@@ -45,6 +45,8 @@ void* kfunc_def(genlmsg_put)(struct sk_buff* skb, u32 portid, u32 seq, const str
 int kfunc_def(nla_put)(struct sk_buff* skb, int attrtype, int attrlen, const void* data);
 void kfunc_def(skb_trim)(struct sk_buff* skb, unsigned int len);
 void kfunc_def(kfree_skb)(struct sk_buff* skb);
+// AUD-104：不在 KPM 符号表里，按名字在 init 阶段解析。
+void (*re_kfree_skb_reason)(struct sk_buff* skb, int reason);
 int kfunc_def(netlink_broadcast)(struct sock* ssk, struct sk_buff* skb, u32 portid, u32 group, gfp_t allocation);
 // start_rekernel_genl_server
 int kfunc_def(genl_register_family)(struct genl_family* family);
@@ -348,7 +350,7 @@ static int start_rekernel_genl_server(void) {
   kfunc_lookup_name(genl_unregister_family);
   lookup_name(genl_rcv_msg);
   if ((!kfunc(genl_register_family) && !kfunc(__genl_register_family)) || !kfunc(genl_unregister_family)
-      || !kfunc(__alloc_skb) || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(skb_trim) /* kfree_skb: 6.1 起仅存 kfree_skb_reason，nlmsg_free 的错误路径会静默泄漏 skb（AUD-104，待按符号可用性解析） */
+      || !kfunc(__alloc_skb) || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(skb_trim) /* kfree_skb: 6.1 起仅存 kfree_skb_reason，已由 nlmsg_free 回退解析（AUD-104 已修）；原注记：nlmsg_free 的错误路径会静默泄漏 skb（AUD-104，待按符号可用性解析） */
       || !kfunc(netlink_broadcast) || !kvar(init_net))
     return -EOPNOTSUPP;
 
@@ -873,6 +875,8 @@ static long inline_hook_init(const char* args, const char* event, void* __user r
   kfunc_lookup_name(nla_put);
   kfunc_lookup_name(skb_trim);
   kfunc_lookup_name(kfree_skb);
+  re_kfree_skb_reason = (void*)kallsyms_lookup_name("kfree_skb_reason");
+  logkm("skb free path: %s\n", kf_kfree_skb ? "kfree_skb" : (re_kfree_skb_reason ? "kfree_skb_reason(fallback)" : "none"));
   kfunc_lookup_name(netlink_broadcast);
 
   kvar_lookup_name(init_net);

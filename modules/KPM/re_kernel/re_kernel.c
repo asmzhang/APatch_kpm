@@ -57,6 +57,8 @@ static bool (*cgroup_freezing)(struct task_struct* task);
 // send_netlink_message
 struct sk_buff* kfunc_def(__alloc_skb)(unsigned int size, gfp_t gfp_mask, int flags, int node);
 void kfunc_def(kfree_skb)(struct sk_buff* skb);
+// AUD-104：不在 KPM 符号表里，按名字在 init 阶段解析。
+void (*re_kfree_skb_reason)(struct sk_buff* skb, int reason);
 int kfunc_def(netlink_unicast)(struct sock* ssk, struct sk_buff* skb, u32 portid, int nonblock);
 static struct net kvar_def(init_net);
 // hook binder_proc_transaction
@@ -264,7 +266,7 @@ static int prepare_rekernel_genl_server(void) {
   genl_rcv_msg = (typeof(genl_rcv_msg))kallsyms_lookup_name("genl_rcv_msg");
   if ((!kfunc(genl_register_family) && !kfunc(__genl_register_family)) || !kfunc(genl_unregister_family)
       || !kfunc(genlmsg_put) || !kfunc(nla_put) || !kfunc(netlink_broadcast) || !genl_rcv_msg || !kfunc(__alloc_skb)
-      || !kfunc(netlink_unicast) || !kvar(init_net)) /* kfree_skb: 6.1 起仅存 kfree_skb_reason，nlmsg_free 的 5 处错误路径会静默泄漏 skb（AUD-104，待按符号可用性解析） */
+      || !kfunc(netlink_unicast) || !kvar(init_net)) /* kfree_skb: 6.1 起仅存 kfree_skb_reason，已由 nlmsg_free 回退解析（AUD-104 已修）；原注记：nlmsg_free 的 5 处错误路径会静默泄漏 skb（AUD-104，待按符号可用性解析） */
     return -EOPNOTSUPP;
   if (!rekernel_genl_sock())
     return -ENOTCONN;
@@ -750,6 +752,8 @@ static long inline_hook_init(const char* args, const char* event, void* __user r
 
   kfunc_lookup_name(__alloc_skb);
   kfunc_lookup_name(kfree_skb);
+  re_kfree_skb_reason = (void*)kallsyms_lookup_name("kfree_skb_reason");
+  logkm("skb free path: %s\n", kf_kfree_skb ? "kfree_skb" : (re_kfree_skb_reason ? "kfree_skb_reason(fallback)" : "none"));
   kfunc_lookup_name(netlink_unicast);
 
   kvar_lookup_name(init_net);

@@ -36,6 +36,7 @@ static bool registered;
 
 static int kfunc_def(crypto_has_alg)(const char* name, u32 type, u32 mask);
 static int kfunc_def(crypto_register_alg)(void* alg);
+static void kfunc_def(crypto_unregister_alg)(void* alg);
 static void* kfunc_def(vzalloc)(unsigned long size);
 static void kfunc_def(vfree)(const void* ptr);
 
@@ -135,6 +136,7 @@ static long zram_zstd_init(const char* args, const char* event, void* reserved) 
     return -EEXIST;
   }
   kfunc_lookup_name(crypto_register_alg);
+  kfunc_lookup_name(crypto_unregister_alg);
   kfunc_lookup_name(vzalloc);
   kfunc_lookup_name(vfree);
   if (!kfunc(crypto_register_alg) || !kfunc(vzalloc) || !kfunc(vfree))
@@ -174,8 +176,18 @@ static long zram_zstd_ctl0(const char* args, char __user* out_msg, int outlen) {
 }
 
 static long zram_zstd_exit(void* reserved) {
-  if (registered)
-    logkm("DO NOT UNLOAD: zram may retain codec callbacks\n");
+  if (!registered)
+    return 0;
+  // 1.0.1：必须把算法从内核列表里摘掉。否则算法项仍指向本模块的代码，
+  // 装载器随后释放镜像，列表里就是悬空指针：下一次 load 的 crypto_has_alg()
+  // 遍历列表时解引用它 → EL1 缺页 → panic（2026-11-03 Pixel 6 实测）。
+  if (kfunc(crypto_unregister_alg)) {
+    kfunc(crypto_unregister_alg)(zstd_alg);
+    registered = false;
+    logkm("unregistered zstd-kpm; do not unload while zram is using it\n");
+  } else {
+    logkm("DO NOT UNLOAD: zram may retain codec callbacks (no crypto_unregister_alg)\n");
+  }
   return 0;
 }
 

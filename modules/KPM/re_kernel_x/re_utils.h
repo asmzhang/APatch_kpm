@@ -90,7 +90,18 @@ static inline void nlmsg_trim(struct sk_buff* skb, const void* mark) {
 static inline void nlmsg_cancel(struct sk_buff* skb, struct nlmsghdr* nlh) { nlmsg_trim(skb, nlh); }
 
 extern void kfunc_def(kfree_skb)(struct sk_buff* skb);
-static inline void nlmsg_free(struct sk_buff* skb) { kfunc_call_void(kfree_skb, skb); }
+// 6.1 起内核不再导出 kfree_skb，只导出 kfree_skb_reason(skb, reason)。
+// KPM 的符号表里没有 kfree_skb_reason 这一项（用 kfunc_def 声明会在装载时报
+// unknown symbol），所以用普通函数指针在 init 阶段按名字解析（AUD-104）。
+// reason=0 只释放不记账，语义等于 kfree_skb。
+extern void (*re_kfree_skb_reason)(struct sk_buff* skb, int reason);
+static inline void nlmsg_free(struct sk_buff* skb) {
+  if (kf_kfree_skb) {
+    kf_kfree_skb(skb);
+  } else if (re_kfree_skb_reason) {
+    re_kfree_skb_reason(skb, 0);
+  }
+}
 
 static inline int genlmsg_msg_size(int payload) { return GENL_HDRLEN + payload; }
 static inline int genlmsg_total_size(int payload) { return NLMSG_ALIGN(genlmsg_msg_size(payload)); }

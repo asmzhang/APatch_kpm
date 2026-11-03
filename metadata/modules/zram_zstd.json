@@ -13317,14 +13317,23 @@
       "severity": "中",
       "frequency": "未知",
       "confidence": "已确认",
-      "status": "open",
+      "status": "closed",
       "owner": "维护者",
       "opened_by": "Auditor",
       "opened_at": "2026-11-03T06:48:31Z",
       "title": "流程与追溯：自关单、re_kernel_x 缺单、定级与 closure 缺失",
       "description": "复核指出的记录一致性问题（R7-R14 汇总）：AUD-104 曾 closed_by=Developer 自关（违反 docs/process/04-issue-ticket.md:84-87 修复者不能自关单）；metadata/modules/re_kernel_x.json issues 为空缺 AUD-104；AUD-105 severity 应为高；confidence=未验证 却 status=fixed；evidence 归因不实（kfunc_def、rc=-1）；AUD-106 归因/定级；验收记录仍写「AUD-104 待确认」；re_kernel.c:269 注释「5 处」按单模块不成立。",
       "evidence": "处置：AUD-104 已退回 fixing 并清 closed_by（本轮）；re_kernel_x.json 已补 AUD-104 侧单（本轮；因门禁 issue 编号全局唯一，登记为 AUD-110 并在 evidence 指回 re_kernel.json 主单）；AUD-105 已升「高」退 fixing（本轮）；AUD-106 已改为 AUD-107 现场证据（本轮）；re_kernel.c/re_kernel_x 注释已在前轮更正；验收记录 1.0.1 行已改为「部分」并补 §4.1（本轮）。剩余动作由维护者按 record 流程批量确认。",
-      "closure": "由维护者按 record 类问题流程逐项确认后关闭（closed_by != owner）；完成标志：本 evidence 列出的动作全部落地且门禁 0 失败。"
+      "closure": "由维护者按 record 类问题流程逐项确认后关闭（closed_by != owner）；完成标志：本 evidence 列出的动作全部落地且门禁 0 失败。2026-11-03 维护者确认 + Auditor 独立复核关单（REVIEW_REF：逐项核验 evidence 六项处置全部落地，报告归档 docs/records/2026-11-03-aud-108-close-review.md）：① AUD-104 退回 fixing 后经独立复核关单（closed/Auditor，commit 9bb89b1）；② re_kernel_x 补单因门禁编号全局唯一登记为 AUD-110 并指回主单；③ AUD-105 升「高」后经独立复核关单；④ AUD-106 已为 AUD-107 现场证据；⑤ R14 注释已在 c13fd07 更正并保留注记；⑥ R13 验收记录已改「部分」并补 §4.1；门禁 0 失败（2 存量警告）达成，工作树 HEAD=9bb89b1 后续提交干净。",
+      "closed_by": "Auditor",
+      "reviews": [
+        {
+          "reviewer": "Auditor",
+          "date": "2026-11-03",
+          "verdict": "可关单",
+          "basis": "独立复核（subagent 只读取证：git 历史逐提交 eb8e660→c13fd07→ae30a72→f36f438→9bb89b1 对照 + JSON 逐字段解析 + 源码/记录 grep）：AUD-108 evidence 六项处置全部落地，无未落地项；closed_by=Auditor ≠ owner=维护者，符合 docs/process/04-issue-ticket.md:87。报告归档 docs/records/2026-11-03-aud-108-close-review.md。"
+        }
+      ]
     },
     {
       "id": "AUD-109",

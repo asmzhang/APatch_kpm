@@ -414,10 +414,10 @@
       "id": "AUD-wx-11",
       "severity": "中",
       "owner": "Auditor",
-      "status": "open",
+    "status": "fixing",
       "title": "NX-2 LKM 形态权限门可被 userns root 绕过（全仓既有）",
-      "evidence": "KernelPatch/lkm/kpm/symbols.c:132-134 的 current_uid() 走 from_kuid(current_user_ns())",
-      "closure": "由 KernelPatch 侧统一修正或在本模块改用裸 kuid 读法，经两形态验证后关闭"
+    "evidence": "KernelPatch/lkm/kpm/symbols.c:132-134 用 from_kuid(current_user_ns()) 把 kuid 映射成 userns 视角 uid，kernel 形态 kernel/patch/common/utils.c:172-178 返回裸 kuid；fork asmzhang/KernelPatch 分支 fix/lkm-current-uid-raw-kuid 提交 f0c9e72 作为未验证提案保留。实测证不出：Pixel 6(6.1.99) 与 小米 13(5.10.149) 均 CONFIG_USER_NS not set、unshare -Ur 返回 EINVAL，from_kuid 在 init_user_ns 下恒等，两形态行为一致，本项目设备上不可复现。",
+    "closure": "等有开 CONFIG_USER_NS=y 的目标能复现「userns root 被放行」后，验证 f0c9e72 生效并提上游 PR，再按结果关闭或转为 wontfix。"
     },
     {
       "id": "AUD-wx-12",

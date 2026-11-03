@@ -282,3 +282,53 @@ ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation 
 - 未在 Pixel 6 上重跑「读原字节 + 执行补丁」端到端（该验证在 1.2.1 已做过；1.2.2 只改了刷 icache
   的方式与 drain 语义，未动映射/断点数据流）。
 - 1.2.1 的两次卸载重启仍无法复现，1.2.2 亦未宣称已修。
+
+## 权限门根治：KernelPatch fork f0c9e72 与两条设备事实（2026-11-03）
+
+### 根因（跨子模块）
+同一个符号 `current_uid` 在两种装载形态下语义不同：
+
+- kernel 形态：`KernelPatch/kernel/patch/common/utils.c:172-178` 直接读 `cred->uid`（裸 kuid）。
+- LKM 形态：`KernelPatch/lkm/kpm/symbols.c:132-134` 多一步 `from_kuid(current_user_ns(), current_uid())`，返回的是**调用者 user namespace 视角的 uid**。
+
+于是凡是以 `current_uid() == 0` 判权的代码（本模块 1.2.3 的权限门、stealth_hook、memcrc，以及 KP 自身任何消费这个符号的逻辑）在「unshare 出 userns 并把 uid 映射成 0」的进程里都会被放行。
+
+### 处置
+- fork：`asmzhang/KernelPatch`（`POST /repos/bmax121/KernelPatch/forks` 返回 202）。
+- 分支 `fix/lkm-current-uid-raw-kuid`，基线 `b51197a`，提交 **`f0c9e72`**「lkm: return raw kuid from the exported current_uid symbol」：`kp_kpm_current_uid()` 改为 `return current_uid();`，并加注释说明两形态语义必须一致。
+- 已推到 fork（`git push -u fork fix/lkm-current-uid-raw-kuid`）。
+- 本仓 `.gitmodules` 的 `KernelPatch` url 指向 fork，submodule 指针更新为 `f0c9e72`；上游合并后改回 `bmax121/KernelPatch`。
+
+### 设备事实：这个缺陷在两台机器上不可利用
+| 设备 | 内核 | 形态 | `CONFIG_USER_NS` |
+| --- | --- | --- | --- |
+| Pixel 6 | 6.1.99-android14 | kernel | **not set** |
+| 小米 13 | 5.10.149-android12-9 | APatch LKM | **not set** |
+
+两台都没有 user namespace，`from_kuid(current_user_ns(), x)` 在 `init_user_ns` 下是恒等映射，所以 1.2.3 及更早的权限门在这些设备上**没有被绕过**。这是潜伏缺陷（换了开着 userns 的内核才会显形），不是已经发生的绕过；`unshare -Ur` 在两台上都直接 `EINVAL`。
+
+### 模块侧重复实现：试过、失败、已回退
+在 wxshadow 1.2.4 里试过「不依赖 `current_uid`，从 `init_cred` 推导 `cred` 内 uid 偏移」：
+
+- 6.1 kernel 形态：推导出 `cred uid offset: 4`，与 KP 启动时自己打的 `KP uid offset: 4` 一致，`allow:10273` 后管理器身份设断点正常放行。
+- 5.10 LKM 形态：推导失败（dmesg `wxshadow: cred uid offset not found`），权限门 fail-closed 把管理器 uid 一起挡掉。
+- 判定：结构体推导在两种形态的 `init_cred` 上不自洽，模块里再实现一遍的风险（fail-closed 锁死维护入口）大于收益 → **已回退**，模块保持 1.2.3，根治只留在 KernelPatch 一处。证据脚本 `local/patch_wx_real_uid.py`、`local/patch_wx_real_uid2.py`。
+
+### 生效路径
+改动落在 LKM 运行时的符号表里，设备上跑的是预装的 `kernelpatch-lkm` 二进制 → 要等上游重新出 `.ko`（`.github/workflows/build-lkm.yml` 用 DDK 编 `android12-5.10` / `android13-5.10`）并安装才生效。本机没有 DDK 构建环境，未尝试重编与重装 LKM。
+
+### 验证结论：现有两台设备证不出这个问题，PR 暂缓
+
+按「先用测试证明问题存在，再考虑提 PR」的标准，本次实测结果是**证不出来**：
+
+| 步骤 | 命令 | 结果 |
+| --- | --- | --- |
+| 查内核配置 | `zcat /proc/config.gz \| grep CONFIG_USER_NS` | Pixel 6 / 小米 13 都是 `# CONFIG_USER_NS is not set` |
+| 造 userns | `unshare -Ur id -u`（root 与管理器 uid 都试过） | `unshare: Invalid argument`（EINVAL） |
+| 权限门行为 | `allow:10273` 后以 10273 设断点 | 放行；`deny:10273` 后 `prctl(SET_BP) → EPERM`，与 1.2.3 文档一致 |
+
+没有 user namespace 时 `from_kuid(current_user_ns(), x)` 就是恒等映射，LKM 形态与 kernel 形态的 `current_uid` 返回值完全一致，因此：
+
+- 这个缺陷在本项目的两台设备上**不可复现、不可利用**，只有换了开着 `CONFIG_USER_NS=y` 的内核才会显形；
+- fork 上的 `f0c9e72` 作为**未验证的提案**保留，`KernelPatch` submodule 指针仍钉在 `b51197a`（未采用），保证构建输入与既有交付一致；
+- 待有开 userns 的目标（设备或可加载 LKM 的内核）复现「userns root 被放行」之后再启用该提交并提 PR。

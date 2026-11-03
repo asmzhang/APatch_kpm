@@ -165,8 +165,22 @@ has_syscall_wrapper ? 1 : 5, prctl_before, NULL, NULL)`，两处 `unhook_syscall
 Magisk 环境下 `su -c 'kpmctl 10273 ...'` 会报 `setuid(10273) failed: Operation not permitted`，
 改用 **`su 10273 -c 'kpmctl 10273 ...'`**（先切 uid，内部 setuid 变空操作）即可。与模块无关。
 
+### 双形态复验（小米 13 / 5.10.149-android12-9 / APatch 11282 / LKM 形态）
+
+同一份产物 `wxshadow_1.2.1.kpm`（159,536 B，`sha256=069ce62815f9e890…`）在 LKM 形态下的实测：
+
+| 项 | 命令 | 结果 |
+| --- | --- | --- |
+| 加载 | `su 10270 -c 'kpmctl 10270 load /data/local/tmp/wxshadow_1.2.1.kpm'` | `load rc=0`，dmesg `kernelpatch-lkm: KPM [wxshadow] init returned 0` + `[wxshadow] succeed with []` |
+| 权限门（拒绝） | `su 10270 -c 'wxshadow_client -p <pid> -a 0x1000 -r x0=7'` | `prctl(SET_BP) failed: Operation not permitted (errno=1)`；dmesg `wxshadow: prctl denied for uid 10270` |
+| 权限门（放行） | `su -c 'wxshadow_client -p <pid> -a 0x556c6fc100 -r x0=7'` | `Breakpoint set at 0x556c6fc100` + `Register modification set: x0 = 0x7`；dmesg `bp at 556c6fc100 orig_pfn=9799c5 shadow_pfn=8a9640 once=0` |
+| 卸载 | `su 10270 -c 'kpmctl 10270 unload wxshadow'` | `unload rc=0`，`/proc/uptime` 75315 连续（重启前 75205），**未重启** |
+
+顺带确认 LKM 形态下 `GUP hiding ENABLED (follow_page_pte hooked)` 也打出来了，说明 `follow_page_pte` 钩子在 5.10 上挂成功。
+
+**发现的噪声问题（记录，未在本版修）**：init 末尾无条件调 `debug_print_tasks_list(10)`（`modules/KPM/wxshadow/wxshadow_scan.c:1240-1296`，调用点 `wxshadow.c:1664`），每次加载都往 dmesg 打10 行内核任务指针（`task=%px mm=%px`）与 `task_struct_offset` 三个偏移。是上游调试代码，无功能副作用，但属内核地址泄漏 + 日志噪声。**1.2.1 保持与上游一致不改**，留作下一版（1.2.2）用编译宏关掉，避免在一个已冻结的候选上再动源码。
 ### 未覆盖
 
 - WX-2 的超时中止分支没有真机触发条件（需要制造一个卡死的 handler），只做了静态验证与正常路径回归。
 - WX-4 未修（见上）。
-- 小米 13（5.10 LKM 形态）本轮只验加载，未复验 1.2.1 的功能与卸载。
+- 小米 13（5.10 LKM 形态）已补测加载/权限门/设断点/卸载（见下「双形态复验」），但**未测端到端双视图**（该机没有现成的自读靶子，且 LKM 形态下无法用 `kpmctl load` 反复重启靶子）。

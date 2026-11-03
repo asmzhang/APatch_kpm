@@ -56,10 +56,12 @@ prctl 接口（`wxshadow.h`）：`0x57580001` SET_BP / `0x57580002` SET_REG / `0
 
 ## 真机状态（2026-11-03）
 
-| 设备 | 形态 | 加载 | 说明 |
-| --- | --- | --- | --- |
-| Pixel 6 | 6.1.99-android14，kernel | `load rc=0` | dmesg `[wxshadow] succeed` |
-| 小米 13 | 5.10.149-android12-9，APatch LKM | `load rc=0` | 同上，**两形态符号面 0 缺失** |
+| 设备 | 形态 | 加载 | 权限门 | 卸载 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| Pixel 6 | 6.1.99-android14，kernel | `load rc=0` | 管理器 uid 被拒 / root 放行 | `unload rc=0`，不重启 | dmesg `[wxshadow] succeed`；端到端双视图已验 |
+| 小米 13 | 5.10.149-android12-9，APatch LKM | `load rc=0` | `prctl denied for uid 10270` / root 放行（`bp at 556c6fc100`） | `unload rc=0`，不重启 | **两形态同一份字节 0 缺失符号** |
+
+小米 13 上还确认了 `GUP hiding ENABLED (follow_page_pte hooked)` 打出（5.10 上该钩子挂成功）。
 
 页级切换在 Pixel 6 上确认在跑：`exec fault at 221d28 → shadow (--x)` /
 `read fault at 221c98 → switched to live original (r--)`。
@@ -79,6 +81,7 @@ prctl 通道修好之后，两个靶子都验过：
 提到了循环外（`llvm-objdump` 里循环体内没有 `bl`），于是「断点不触发、返回值恒 41」看起来像模块坏了。
 入参必须来自 `volatile`，并且要用 `llvm-objdump` 确认循环体内真的有 `bl target`。
 
+**日志噪声（已知，未修）**：init 末尾无条件调 `debug_print_tasks_list(10)`（`wxshadow_scan.c:1240-1296`，调用点 `wxshadow.c:1664`），每次加载往 dmesg 打 10 行内核任务指针（`task=%px mm=%px`）。是上游调试代码、无功能副作用，但属内核地址泄漏 + 噪声，等 1.2.2 用编译宏关掉。
 ## 已知问题（本移植未修，按「先移植、后修错」分开处理）
 
 1. ~~**prctl 通道不通**~~（**已修，本仓 1.2.0**）：原实现用 `hook_syscalln(__NR_prctl, 5, ...)`，

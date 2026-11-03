@@ -13270,14 +13270,14 @@
       "id": "AUD-105",
       "severity": "高",
       "owner": "Developer",
-      "status": "fixing",
+      "status": "closed",
       "title": "卸载后内核算法列表悬空（部分修：1.0.1 只摘算法，未摘 hook）",
       "evidence": "复核更正（2026-11-03 独立复核）：crypto_unregister_alg 摘除属实——zram_zstd.c:139 解析、:178-192 exit 调用；产物里 kf_crypto_unregister_alg 在 .bss+0x10 有 4 条 reloc、registered 在 .bss+0x480 有 5 条字节访问 reloc。但 1.0.1 未摘 start_zram_display() 装的两个 hook，该残余拆为 AUD-107（高）；AUD-105 本身降回 fixing，待 AUD-107 一并由发现方复核。1.0.0 现场根因（算法列表悬空 → crypto_has_alg() 遍历解引用 → EL1 缺页 panic）不变。",
-      "closure": "待独立复核 AUD-107 修复后一并复核本单（发现方复核关闭，closed_by != owner）。",
+      "closure": "待独立复核 AUD-107 修复后一并复核本单（发现方复核关闭，closed_by != owner）。 2026-11-03 Auditor 独立复核（只读取证，自解析 ELF64 reloc/symtab + sha256 双通道复算，报告归档 docs/records/2026-11-03-aud-104-105-107-close-review.md） 判定可关单：exit 摘算法 zram_zstd.c:188-194（:182 先摘 hook）；1.0.2 两件产物自解析复现 kf_crypto_unregister_alg .bss+0x10 4 条 reloc、registered .bss+0x480 5 条字节访问 reloc（base 2f44dff962fa1f704304cde9ab42ea0e6395262db261ef9dc0bf04a285b164d6 / baselines 1f12615d3ee8bb35325304dc8062da3541504e900f96a32fd82cc20a041248c0，source_commit ec40c7ce1cb1e86737be3b62a838148ec6c8d75b）；1.0.1 对照件两处 reloc 同在而 .bss 无 display_init_target/display_show_target，印证与 AUD-107 的拆分口径。",
       "class": "product",
       "frequency": "未知",
       "confidence": "已确认",
-      "closed_by": null
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-106",
@@ -13286,13 +13286,14 @@
       "severity": "高",
       "frequency": "低频",
       "confidence": "已确认",
-      "status": "fixed",
+      "status": "closed",
       "owner": "Developer",
       "opened_by": "Developer",
       "opened_at": "2026-11-03T06:30:00Z",
       "description": "同一台设备上 load → unload → load 的第二次加载会打印 module load hook unavailable / algorithm list hook failed: -4094，算法注册本身成功。复核定性：这不是独立缺陷，而是 AUD-107（卸载后 hook 悬空）的现场证据——-4094 == HOOK_DUPLICATED（KernelPatch/kernel/include/hook.h:18、hook.c:703），说明第一次的 hook 仍在原处。1.0.2 修复 AUD-107 后该现象消失。",
       "evidence": "Pixel 6 冻结件实测：第二次 load 后 dmesg 出现 module load hook unavailable / algorithm list hook failed: -4094；1.0.2 实测同一序列无 -4094、无 module load hook unavailable（见 AUD-107）。",
-      "closure": "作为 AUD-107 的现场证据记录（fixed）；随 AUD-107 一并由发现方（Auditor）独立复核后关闭。"
+      "closure": "作为 AUD-107 的现场证据记录（fixed）；随 AUD-107 一并由发现方（Auditor）独立复核后关闭。 2026-11-03 Auditor 独立复核（只读取证，自解析 ELF64 reloc/symtab + sha256 双通道复算，报告归档 docs/records/2026-11-03-aud-104-105-107-close-review.md） 判定随 AUD-107 一并关单：-4094（HOOK_DUPLICATED）复现条件已被 1.0.2 stop_zram_display 消除，本轮对 AUD-107 的二进制 reloc 流与真机反证核验同样覆盖本单现场证据。",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-107",
@@ -13300,14 +13301,15 @@
       "severity": "高",
       "frequency": "高频",
       "confidence": "已确认",
-      "status": "fixed",
+      "status": "closed",
       "owner": "Developer",
       "opened_by": "Auditor",
       "opened_at": "2026-11-03T06:48:31Z",
       "title": "1.0.1 卸载不摘 display hooks，镜像回收后 hook 悬空（UAF / panic，非特权可触发）",
       "description": "zs_display.c 的 hook_wrap(zcomp_available_show)（:55）与 hook_wrap(do_init_module)（:86）在 zram_zstd_exit() 从未摘除；unload_module() 全文没有 hook 清理，kp_free_exec() 只是 TLSF 块回收（不清零、不 unmap）。卸载之后任何一次 LKM 加载（do_init_module）或读 /sys/block/zram0/comp_algorithm（zcomp_available_show）都会跳进已回收、可能已被复用的镜像块 → UAF / panic，且非特权可触发。-4094 == HOOK_DUPLICATED 是 hook 仍在原处的铁证（AUD-106 现场）。",
       "evidence": "修复：zs_display.c 记住 display_show_target / display_init_target，新增 stop_zram_display() 用 hook_unwrap_remove(target, NULL, fn, 1) 摘除并复位 display_installed（API：KernelPatch/kernel/include/hook.h:319）；zram_zstd_exit() 第一步调用（先摘 hook、再摘算法）。Pixel 6 反证：1.0.2 load rc=0 → unload rc=0 → load rc=0，无 -4094、无 module load hook unavailable；卸载后加载 re_kernel load/unload rc=0，uptime 连续 12346.67→12418.43、设备不重启（1.0.1 在该路径会跳进已回收块）。",
-      "closure": "fixed-in-1.0.2；关单由发现方（Auditor）独立复核后执行，closed_by 留空。"
+      "closure": "fixed-in-1.0.2；关单由发现方（Auditor）独立复核后执行，closed_by 留空。 2026-11-03 Auditor 独立复核（只读取证，自解析 ELF64 reloc/symtab + sha256 双通道复算，报告归档 docs/records/2026-11-03-aud-104-105-107-close-review.md） 判定可关单：修复 commit ae30a7245182058bbde866e43b9650ca68d89d76，冻结构建 ec40c7ce1cb1e86737be3b62a838148ec6c8d75b；产物核验（.rela.text 函数体重定位流重建）：.rela.kpm.exit 唯一 ABS32 addend=0xcec → zram_zstd_exit@.text+0xcec（188B），exit 体内 reloc 按序 bss+0x4d8(display_init_target)→hook_unwrap_remove→bss+0x4e8(display_show_target)→hook_unwrap_remove→bss+0x4e0(display_installed)→bss+0x480(registered)→bss+0x10(kf_crypto_unregister_alg)——「先摘两 hook、再摘算法」顺序在二进制层完整可见（stop_zram_display 已内联）；真机反证三连（load rc=0→unload rc=0→load rc=0、无 -4094，uptime 12346.67→12418.43）与 device_tests/acceptances/builds[] 逐字一致。",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-108",
@@ -13330,14 +13332,15 @@
       "severity": "中低",
       "frequency": "未知",
       "confidence": "推断",
-      "status": "fixed",
+      "status": "closed",
       "owner": "Developer",
       "opened_by": "Auditor",
       "opened_at": "2026-11-03T06:48:31Z",
       "title": "措辞与类型：reason=0 语义、kfunc_def 归因、rc=-1 表述、crypto_unregister_alg 返回类型",
       "description": "复核建议新开：re_kernel 的 kfree_skb 回退用 reason=0——6.1 的 kfree_skb() 用 SKB_DROP_REASON_NOT_SPECIFIED≠0，0 是 SKB_NOT_DROPPED_YET，会被 DEBUG_NET_WARN_ON_ONCE 盯（仓库无内核源码/config，列未验证）；evidence 曾把失败归因 kfunc_def（实际是 extern 无定义 → SHN_UNDEF → KP 白名单查不到 → -ENOENT，KernelPatch/kernel/patch/module/module.c:222-234）；load rc=-1 实为 -ENOENT(-2)（module.c:496/522，上层归一成 -1）；crypto_unregister_alg 返回类型曾写 void（内核为 int）。",
       "evidence": "处置：crypto_unregister_alg 已改 static int kfunc_def(crypto_unregister_alg)(void*)（1.0.2，本轮）；reason=0 语义存疑已在 AUD-104 evidence 标注；kfunc_def 归因与 rc 表述已按复核口径在 AUD-104 evidence 更正（本轮）。",
-      "closure": "fixed-in-1.0.2；reason=0 语义与 SKB_DROP_REASON 归类维持「未验证/推断」，由发现方（Auditor）独立复核后关闭。"
+      "closure": "fixed-in-1.0.2；reason=0 语义与 SKB_DROP_REASON 归类维持「未验证/推断」，由发现方（Auditor）独立复核后关闭。 2026-11-03 Auditor 独立复核（只读取证，自解析 ELF64 reloc/symtab + sha256 双通道复算，报告归档 docs/records/2026-11-03-aud-104-105-107-close-review.md） 判定随 AUD-107 一并关单：zram_zstd.c:39 已改 static int kfunc_def(crypto_unregister_alg)(void*)，两件 1.0.2 产物 .symtab 均有 kf_crypto_unregister_alg@bss+0x10；kfunc_def 归因与 rc=-1 表述已按复核口径更正（AUD-104）。注记：reason=0 语义与 SKB_DROP_REASON 归类维持「未验证/推断」，不影响本单 int 化修复的核验。",
+      "closed_by": "Auditor"
     }
   ],
   "acceptances": [

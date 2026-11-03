@@ -2254,14 +2254,14 @@
    "id": "AUD-104",
    "severity": "中低",
    "owner": "Developer",
-   "status": "fixing",
+   "status": "closed",
    "title": "kfree_skb 在 6.1 上解析为空，nlmsg_free 的 5 条错误路径静默泄漏 skb",
    "evidence": "复核更正（2026-11-03 独立复核）：代码修复本身成立——5 处调用点全覆盖、解析时机早于 prepare/start、二进制 reloc 28/28 与实算一致。但暂不可关单：closed_by=Developer 与 owner 同人违反 docs/process/04-issue-ticket.md:84-87；evidence 两处不实——(1) 失败归因应为「extern 无定义 → SHN_UNDEF → KP 白名单查不到 → -ENOENT」（KernelPatch/kernel/patch/module/module.c:222-234），TU 内写 void kfunc_def(x)(...) 本就是本地指针对象，与 kfunc_def 机制无关；(2) load rc=-1 实为 -ENOENT(-2)（module.c:496/522，上层归一成 -1）。另 reason=0 语义存疑：6.1 的 kfree_skb() 用 SKB_DROP_REASON_NOT_SPECIFIED≠0，0 是 SKB_NOT_DROPPED_YET，会被 DEBUG_NET_WARN_ON_ONCE 盯（仓库无内核源码/config，未验证）。实测现象（dmesg skb free path: kfree_skb_reason(fallback)、load rc=0）不变。",
-   "closure": "退回 fixing；关单由发现方（Auditor）独立复核后执行。",
+   "closure": "退回 fixing；关单由发现方（Auditor）独立复核后执行。2026-11-03 Auditor 独立复核关单（REVIEW_REF：只读取证，自解析 ELF64 reloc/symtab + sha256 双通道复算，报告归档 docs/records/2026-11-03-aud-104-105-107-close-review.md）：修复 commit c13fd073276b0927ee3b34d682285e2ee8b75450；自解析 base re_kernel-11.7-20261010+gc99ad7e63248.r22362e92.kpb51197a.ndk26.1.10909125#1（68e45f4406148ac6a30c545f4977d482e7dcbfe1c88e762ca95cdd937393a696）与 baselines r035c8402#1（0b5054b4dfaeffb128aaba9eefe350ad131bb73a14a3414d51269c20e688fc6d）named 回退 reloc 13 条、SHN_UNDEF 无 kfree_skb*；解析先于 prepare/start（re_kernel.c:754-756 → :809/:835）；evidence 与 module.c:221-233/496/522 一致。",
    "class": "product",
    "frequency": "低频",
    "confidence": "已确认",
-   "closed_by": null
+   "closed_by": "Auditor"
   }
  ],
  "acceptances": [

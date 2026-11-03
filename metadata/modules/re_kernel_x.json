@@ -1643,14 +1643,14 @@
       "severity": "中低",
       "frequency": "低频",
       "confidence": "已确认",
-      "status": "fixing",
+      "status": "closed",
       "owner": "Developer",
       "opened_by": "Auditor",
       "opened_at": "2026-11-03T06:48:31Z",
       "title": "AUD-104（re_kernel.json 主单）侧单：kfree_skb 在 6.1 上解析为空，nlmsg_free 的 5 条错误路径静默泄漏 skb",
-      "closed_by": null,
+      "closed_by": "Auditor",
       "evidence": "本模块侧单：同一缺陷在本模块的镜像（re_kernel 与 re_kernel_x 共享 kfree_skb 解析与 nlmsg_free 回退修复）。主单 AUD-104 登记在 metadata/modules/re_kernel.json；2026-11-03 复核要求 re_kernel_x 补单，但门禁对 issue 编号做全局唯一查重（tools/check_repository.py:320,352-354），同号两单无法同时入库，故登记为 AUD-110 并指回主单。修复与证据口径以主单 AUD-104 为准：代码修复成立，暂不可关单（closed_by=Developer 自关违反 docs/process/04-issue-ticket.md:84-87；失败归因 extern 无定义 → SHN_UNDEF → KP 白名单查不到 → -ENOENT（KernelPatch/kernel/patch/module/module.c:222-234）；load rc=-1 实为 -ENOENT(-2)（module.c:496/522）；reason=0 语义存疑）。关单由发现方（Auditor）独立复核后执行。",
-      "closure": "退回 fixing；随主单 AUD-104 一并由发现方（Auditor）独立复核后关闭。"
+      "closure": "退回 fixing；随主单 AUD-104 一并由发现方（Auditor）独立复核后关闭。 2026-11-03 Auditor 独立复核（只读取证，自解析 ELF64 reloc/symtab + sha256 双通道复算，报告归档 docs/records/2026-11-03-aud-104-105-107-close-review.md） 判定随主单 AUD-104 一并关单：侧单登记核验通过；re_kernel_x 修复批次产物（base instance re_kernel_x-1.6-20261010+g662b53c9e4e6.r83096135.kpb51197a.ndk26.1.10909125#1，re_kernel_x_1.6-20261010.kpm sha256 d939f0a6e88ddcc4b05812ce706295c096bababc3794ac2187b1db175a23f5c8，baselines f1ceed950d4b9723ab1c707daa81a27f6c32e92d9cdc2dac8daa19428e4b69e3）自解析：回退 named reloc 21 条、SHN_UNDEF 无 kfree_skb*；修复前对照件（6d0698e7 批次 faf968cd…df8）无 re_kfree_skb_reason，前后差异实锤。"
     }
   ],
   "acceptances": [

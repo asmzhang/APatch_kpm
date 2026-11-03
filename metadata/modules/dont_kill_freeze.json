@@ -197,7 +197,21 @@
     }
   ],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "dont_kill_freeze-1.0.2+g7d2c1915cf6b.rf20eca31.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+      "fingerprint_sha256": "f20eca312821c7ece61c47b5baf413e37679f66e264c509c70196040c64c4bd3",
+      "artifacts": {
+        "dont_kill_freeze_1.0.2.kpm": "bb21053fddc6c4abd23a44a1a9e5314045c7b585b4198cc84a13bf890a3a9298"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T06:10:00Z",
+      "report": "docs/records/2026-11-03-remaining-modules-acceptance.md",
+      "scope": "release 变体（base）；Pixel 6 load rc=0 / unload rc=0。debug 变体未上机。",
+      "audit": "Auditor/reports/2026-11-03-remaining-modules-batch-review.md"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:09Z",
   "updated_by": "developer:r5"

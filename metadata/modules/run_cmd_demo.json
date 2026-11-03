@@ -259,7 +259,21 @@
     }
   ],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "run_cmd_demo-1.3.0+g181293fd8e23.r8ec384f3.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+      "fingerprint_sha256": "8ec384f3924e345f5728ede2b259e68d58c030c5fa7a0bfcc0ac09994bbbbb10",
+      "artifacts": {
+        "run_cmd_demo_1.3.0.kpm": "49feb59a79c5768bad063854902732fb3bbbeddc25c44e30afa1659c669c31b9"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T06:10:00Z",
+      "report": "docs/records/2026-11-03-remaining-modules-acceptance.md",
+      "scope": "release 变体（base）；Pixel 6 load rc=0，模块自警「do not unload this module; reboot to remove it」，未卸载。",
+      "audit": "Auditor/reports/2026-11-03-remaining-modules-batch-review.md"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:11Z",
   "updated_by": "developer:r5"

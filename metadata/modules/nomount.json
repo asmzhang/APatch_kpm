@@ -1751,7 +1751,21 @@
     }
   ],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "nomount-2.1.1-20261014+gb87f65b2c5a5.r31fd3cff.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+      "fingerprint_sha256": "31fd3cff0a19c333bc3ffa5ad16db50fa19f016c57da57589d11b49d41b4e214",
+      "artifacts": {
+        "NoMount_2.1.1-20261014.kpm": "448af4ded5cbcf49b8ae044230a7845b82c4ba4aab641aa737f473557becbe67"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T06:10:00Z",
+      "report": "docs/records/2026-11-03-remaining-modules-acceptance.md",
+      "scope": "release 变体（base）；Pixel 6 load rc=0，按设计常驻、只加载不卸载。",
+      "audit": "Auditor/reports/2026-11-03-remaining-modules-batch-review.md"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:10Z",
   "updated_by": "developer:r5"

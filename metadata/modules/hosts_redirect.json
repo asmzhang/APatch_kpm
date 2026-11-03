@@ -433,7 +433,34 @@
       "closed_by": "Auditor"
     }
   ],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "hosts_redirect-2.0.0+gd76c5c81cbd8.rb77f026d.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "411d011f9a638685248d6600e4f64f1be8ba4301",
+      "fingerprint_sha256": "b77f026d407ec53be83a6eebe970533590ab219a24a50f575d457d4afa8ad9b0",
+      "artifacts": {
+        "hosts_redirect_2.0.0.kpm": "de45aba56677b072931966b49cdb34739c5501368aaa8239c5770fe9b0a33e15"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T06:10:00Z",
+      "report": "docs/records/2026-11-03-remaining-modules-acceptance.md",
+      "scope": "release 变体（base）；Pixel 6 load rc=0 / unload rc=0。",
+      "audit": "Auditor/reports/2026-11-03-remaining-modules-batch-review.md"
+    },
+    {
+      "instance_id": "hosts_redirect-2.0.0_debug+gd76c5c81cbd8.r94f4b146.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "411d011f9a638685248d6600e4f64f1be8ba4301",
+      "fingerprint_sha256": "94f4b146bd8fd3596e7206dd72bb10b5958243347351174703b474754b68cf5a",
+      "artifacts": {
+        "hosts_redirect_2.0.0_debug.kpm": "382f11e42fabb165968274fe40df43f917315e930fd083fbdcd6bd138a51f746"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T06:10:00Z",
+      "report": "docs/records/2026-11-03-remaining-modules-acceptance.md",
+      "scope": "debug 变体；Pixel 6 load rc=0 / unload rc=0；修复 debug 复用 base 对象后首次真正带 -DCONFIG_DEBUG（产物含 8 条 base 没有的 printk 串）。",
+      "audit": "Auditor/reports/2026-11-03-remaining-modules-batch-review.md"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-03T05:39:01Z",
   "updated_by": "developer:r5"

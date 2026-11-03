@@ -1094,7 +1094,21 @@
     }
   ],
   "issues": [],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "re_kernel_x-1.6-20261010+g6d0698e7dee2.r59f08e39.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "3a9dcfc740751313a31346172dcd6a3edc26f337",
+      "fingerprint_sha256": "59f08e39082407da5fc69bb0eba459841ad58a89252428146f33e9b3cae60bbd",
+      "artifacts": {
+        "re_kernel_x_1.6-20261010.kpm": "faf968cd02766786bdc34e21a88b3e9f7352a162e4ef0068e3aca9e4be847df8"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T06:10:00Z",
+      "report": "docs/records/2026-11-03-remaining-modules-acceptance.md",
+      "scope": "release 变体（base）；Pixel 6 load rc=0 / unload rc=0。其余三个变体仅做构建与身份校验，未上机。",
+      "audit": "Auditor/reports/2026-11-03-remaining-modules-batch-review.md"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:11Z",
   "updated_by": "developer:r5"

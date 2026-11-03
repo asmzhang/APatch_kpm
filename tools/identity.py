@@ -56,7 +56,7 @@ REPO = Path(__file__).resolve().parent.parent
 BUILD_INPUT_EXT = (".c", ".h", ".hpp", ".S", ".s", ".ld", ".lds", ".mk", ".py", ".sh", ".json", ".yml", ".yaml")
 BUILD_INPUT_NAMES = ("Makefile", "makefile", "Kbuild", "CMakeLists.txt")
 IGNORED_DIRS = {".git", "__pycache__", ".vscode", "node_modules", "target", "artifacts", "local", "out"}
-IGNORED_SUFFIX = (".kpm", ".o", ".i64", ".bak", ".pyc")
+IGNORED_SUFFIX = (".kpm", ".kpm.json", ".o", ".i64", ".bak", ".pyc")
 VARIANT_SUFFIX = {"base": "", "network": "_n", "debug": "_d", "network_debug": "_nd",
                   "static": "", "dynamic": "", "static_debug": "_d", "dynamic_debug": "_d",
                   "baselines": "", "baselines_debug": "_d", "legacy": "", "legacy_debug": "_d"}

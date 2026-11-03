@@ -406,11 +406,12 @@ fi",
 }
 
 static long inline_hook_init(const char* args, const char* event, void* __user reserved) {
-  // 有 cgroup_freeze_write 函数说明本身就支持cgroupv2 freezer
-  void (*kf_cgroup_freeze_write)(void);
-  kf_cgroup_freeze_write = (typeof(kf_cgroup_freeze_write))kallsyms_lookup_name("cgroup_freeze_write");
-  if (kf_cgroup_freeze_write)
-    return -24;
+  // 有 cgroup_freeze_write 函数说明本身就支持cgroupv2 freezer，本模块不再插手。
+  // 返回 -EOPNOTSUPP 表示“目标已具备该能力、本模块不适用”，不要用 -ENFILE 之类的 errno。
+  void (*cgroup_freeze_write_fn)(void);
+  cgroup_freeze_write_fn = (typeof(cgroup_freeze_write_fn))kallsyms_lookup_name("cgroup_freeze_write");
+  if (cgroup_freeze_write_fn)
+    return -EOPNOTSUPP;
 
   lookup_name(do_filp_open);
   lookup_name(proc_pid_wchan);

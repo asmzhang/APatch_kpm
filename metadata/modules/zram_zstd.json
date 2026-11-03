@@ -2207,7 +2207,7 @@
       "instance_id": "zram_zstd-1.0.0+g59eff1a2d83a.rbccad354.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:12Z",
-      "handoff_manifest": "local/handoff-rest/zram_zstd.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/zram_zstd.json"
     },
     {
       "module": "zram_zstd",
@@ -4409,7 +4409,7 @@
       "instance_id": "zram_zstd-1.0.0_baselines+g59eff1a2d83a.rbbe36907.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:12Z",
-      "handoff_manifest": "local/handoff-rest/zram_zstd.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/zram_zstd.json"
     }
   ],
   "audits": [],
@@ -4428,7 +4428,20 @@
       }
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "id": "AUD-105",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "open",
+      "title": "加载冻结件触发设备重启，归因未闭环",
+      "evidence": "Pixel 6 上加载 zram_zstd_1.0.0.kpm（sha256 9c41f8c4…）瞬间 adb 掉线、设备重启，回来 /proc/uptime 8.71s，pstore 无新记录；此前探索构建阶段该模块曾在保留加载状态下被 unload，而模块自身警告 DO NOT UNLOAD: zram may retain codec callbacks —— 两种解释无法区分。",
+      "closure": "待办：在可丢弃设备上用主机侧 cat /dev/kmsg 流式抓取复现一次；或先在干净启动（从未 unload 过）的设备上加载冻结件做对照",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "未验证"
+    }
+  ],
   "acceptances": [],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:12Z",

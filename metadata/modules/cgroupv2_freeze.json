@@ -101,7 +101,7 @@
       "instance_id": "cgroupv2_freeze-1.0.12+g991d303577f5.r0e1d4859.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:08Z",
-      "handoff_manifest": "local/handoff-rest/cgroupv2_freeze.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/cgroupv2_freeze.json"
     },
     {
       "module": "cgroupv2_freeze",
@@ -197,7 +197,7 @@
       "instance_id": "cgroupv2_freeze-1.0.12_debug+g991d303577f5.rdc352e34.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:08Z",
-      "handoff_manifest": "local/handoff-rest/cgroupv2_freeze.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/cgroupv2_freeze.json"
     }
   ],
   "audits": [],
@@ -216,7 +216,21 @@
       }
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "id": "AUD-102",
+      "severity": "低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "设计内拒绝使用 -24（EMFILE），errno 语义误导",
+      "evidence": "modules/KPM/cgroupv2_freeze/cgroupv2_freeze.c 的 inline_hook_init 在发现 cgroup_freeze_write 存在时返回 -24，用户侧显示为“打开文件过多”。",
+      "closure": "改回 -EOPNOTSUPP 并把本地变量改名 cgroup_freeze_write_fn；重建后真机 load 仍按设计被拒绝",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "已确认",
+      "closed_by": "Auditor"
+    }
+  ],
   "acceptances": [],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:08Z",

@@ -90,7 +90,7 @@
       "instance_id": "lmkd_dont_kill-1.0.0+gbe5b5897aa86.r8db087f3.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:39:53Z",
-      "handoff_manifest": "local/handoff-rest/lmkd_dont_kill.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/lmkd_dont_kill.json"
     },
     {
       "module": "lmkd_dont_kill",
@@ -176,7 +176,7 @@
       "instance_id": "lmkd_dont_kill-1.0.0_debug+gbe5b5897aa86.r79e542e8.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:39:53Z",
-      "handoff_manifest": "local/handoff-rest/lmkd_dont_kill.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/lmkd_dont_kill.json"
     }
   ],
   "audits": [],

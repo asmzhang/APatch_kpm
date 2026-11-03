@@ -35,6 +35,7 @@ INCLUDE_DIRS := . include patch/include linux/include linux/arch/arm64/include l
 INCLUDE_FLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(KP_DIR)/kernel/$(dir))
 
 objs := hosts_redirect.o
+dbg_objs := hosts_redirect_debug.o
 
 all: hosts_redirect_$(MYKPM_VERSION).kpm
 
@@ -45,8 +46,11 @@ debug: hosts_redirect_$(MYKPM_VERSION)_debug.kpm
 hosts_redirect_$(MYKPM_VERSION).kpm: ${objs}
 	${CC} -r -o $@ $^
 
-hosts_redirect_$(MYKPM_VERSION)_debug.kpm: ${objs}
+hosts_redirect_$(MYKPM_VERSION)_debug.kpm: ${dbg_objs}
 	${CC} -r -o $@ $^
+
+hosts_redirect_debug.o: hosts_redirect.c
+	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<
 
 %.o: %.c
 	${CC} $(CFLAGS) $(INCLUDE_FLAGS) -c -o $@ $<

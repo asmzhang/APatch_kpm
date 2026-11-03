@@ -369,22 +369,35 @@ def check_metadata_schema(rep):
         artifacts_of = {b.get("instance_id"): {a.get("name"): a.get("sha256") for a in b.get("artifacts", [])}
                         for b in record.get("builds", [])}
         for test in record.get("device_tests", []) or []:
-            if "retest" not in str(test.get("kind", "")):
+            kind = str(test.get("kind", ""))
+            is_retest = "retest" in kind
+            tested = test.get("tested_bytes") or {}
+            # 判据（2026-11-03 收紧）：凡是登记了 tested_bytes.sha256 的设备测试，都必须绑定在册字节；
+            # 之前只校验 retest 一种 kind，导致 device-test 条目可以写 16 位前缀而无人发现。
+            if not is_retest and not tested.get("sha256"):
                 continue
             iid = test.get("instance_id")
-            tested = test.get("tested_bytes") or {}
             if iid not in artifacts_of:
-                problems.append(f"{name}: 复测条目指向不存在的实例 {iid}")
-            elif tested.get("in_registry_match") is not True or tested.get("registered") is not True:
+                problems.append(f"{name}: 设备测试条目指向不存在的实例 {iid}")
+                continue
+            if is_retest and (tested.get("in_registry_match") is not True or tested.get("registered") is not True):
                 problems.append(f"{name}: 复测条目 {iid} 未声明 tested_bytes 与在册字节一致")
-            else:
-                # 允许两种绑定：① 实例自身的产物字节；② 由该实例派生的二进制变换件（binary_ports，含 base 绑定）
-                allowed = set(artifacts_of[iid].values())
-                allowed |= {port.get("derived", {}).get("sha256") for port in record.get("binary_ports", []) or []
-                            if port.get("base_instance_id") == iid}
-                if tested.get("sha256") not in allowed:
-                    problems.append(f"{name}: 复测条目 {iid} 的实测哈希 {str(tested.get('sha256'))[:12]} "
-                                    "既不是该实例产物，也不是其登记的派生件")
+                continue
+            sha = tested.get("sha256")
+            if not sha:
+                problems.append(f"{name}: 设备测试条目 {iid} 缺少 tested_bytes.sha256")
+                continue
+            if len(str(sha)) != 64:
+                problems.append(f"{name}: 设备测试条目 {iid} 的 tested_bytes.sha256 不是完整 64 位"
+                                f"（当前 {len(str(sha))} 位）")
+                continue
+            # 允许两种绑定：① 实例自身的产物字节；② 由该实例派生的二进制变换件（binary_ports，含 base 绑定）
+            allowed = set(artifacts_of[iid].values())
+            allowed |= {port.get("derived", {}).get("sha256") for port in record.get("binary_ports", []) or []
+                        if port.get("base_instance_id") == iid}
+            if sha not in allowed:
+                problems.append(f"{name}: 设备测试条目 {iid} 的实测哈希 {str(sha)[:12]} "
+                                "既不是该实例产物，也不是其登记的派生件")
     token_problems, tokens = identity_token_problems()
     problems.extend(token_problems)
     detail = "; ".join(problems) if problems else \

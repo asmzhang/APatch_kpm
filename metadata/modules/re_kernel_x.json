@@ -137,7 +137,7 @@
       "instance_id": "re_kernel_x-1.6-20261010+g6d0698e7dee2.r59f08e39.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x-2.json"
     },
     {
       "module": "re_kernel_x",
@@ -269,7 +269,7 @@
       "instance_id": "re_kernel_x-1.6-20261010_baselines+g6d0698e7dee2.r46c35911.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x-2.json"
     },
     {
       "module": "re_kernel_x",
@@ -401,7 +401,7 @@
       "instance_id": "re_kernel_x-1.6-20261010_baselines_debug+g6d0698e7dee2.r877bd96a.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x-2.json"
     },
     {
       "module": "re_kernel_x",
@@ -533,7 +533,7 @@
       "instance_id": "re_kernel_x-1.6-20261010_debug+g6d0698e7dee2.r9f20ceb8.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x-2.json"
     },
     {
       "module": "re_kernel_x",
@@ -665,7 +665,7 @@
       "instance_id": "re_kernel_x-1.6-20261010+g55327160ee88.r5d45d730.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
     },
     {
       "module": "re_kernel_x",
@@ -797,7 +797,7 @@
       "instance_id": "re_kernel_x-1.6-20261010_baselines+g55327160ee88.r4a31afd8.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
     },
     {
       "module": "re_kernel_x",
@@ -929,7 +929,7 @@
       "instance_id": "re_kernel_x-1.6-20261010_baselines_debug+g55327160ee88.r76a42781.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
     },
     {
       "module": "re_kernel_x",
@@ -1061,7 +1061,7 @@
       "instance_id": "re_kernel_x-1.6-20261010_debug+g55327160ee88.rd9d2f9ad.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
     }
   ],
   "audits": [],
@@ -1088,7 +1088,7 @@
       "report": "Developer/reports/2026-11-03-remaining-modules-batch.md",
       "notes": "同上：修复前构建，load rc=-1、error -95；已被 3a9dcfc 的冻结取代。",
       "tested_bytes": {
-        "sha256": "93ff5eac2a2b1ac4",
+        "sha256": "93ff5eac2a2b1ac42a8970f1ea72d3e88428a388dd32c7a87333c5d2d7d9e244",
         "registered": true
       }
     }

@@ -248,6 +248,15 @@ def _path_variants(path):
     return {v for v in variants if v}
 
 
+def _looks_like_path(value):
+    """判断一个 env 值是不是路径，只有路径才值得按变量名打标签。"""
+    if not value or len(value) < 3:
+        return False
+    if value.isdigit():
+        return False
+    return ("/" in value) or ("\\" in value) or (":" in value)
+
+
 def sanitize(text, extra_pairs=None):
     """去掉本机绝对路径再落盘/入哈希（公开文件不写本机信息）。
 
@@ -264,7 +273,9 @@ def sanitize(text, extra_pairs=None):
     # 调用方（如 build_candidate 的 --env）传进来的路径也要按变量名打标签，
     # 否则 NDK 自带的绝对路径只能落到兜底的 <abs>，丢信息但不丢卫生。
     for key, value in (extra_pairs or {}).items():
-        if value:
+        # 只对「路径形态」的值打标签：--env 里还可能有 PYTHONUTF8=1 这类短值，
+        # 直接当子串替换会把配方里的字面 `1` 全部变成 <PYTHONUTF8>（AUD-03）。
+        if value and _looks_like_path(value):
             pairs.append((value, f"<{key}>"))
     # 长路径先替换，避免 <home> 之类的前缀把更长的路径截断
     expanded = []

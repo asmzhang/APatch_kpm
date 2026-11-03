@@ -187,7 +187,7 @@
       "instance_id": "re_kernel-11.7-20261010+g758bfb26fb59.ra6cd1a34.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel-2.json"
     },
     {
       "module": "re_kernel",
@@ -369,7 +369,7 @@
       "instance_id": "re_kernel-11.7-20261010_baselines+g758bfb26fb59.re3a4aca6.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel-2.json"
     },
     {
       "module": "re_kernel",
@@ -551,7 +551,7 @@
       "instance_id": "re_kernel-11.7-20261010_baselines_debug+g758bfb26fb59.rc06fd75d.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel-2.json"
     },
     {
       "module": "re_kernel",
@@ -733,7 +733,7 @@
       "instance_id": "re_kernel-11.7-20261010_debug+g758bfb26fb59.r15be2e44.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel-2.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel-2.json"
     },
     {
       "module": "re_kernel",
@@ -915,7 +915,7 @@
       "instance_id": "re_kernel-11.7-20261010+gec20c71d2c7e.r21bdd7d3.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel.json"
     },
     {
       "module": "re_kernel",
@@ -1097,7 +1097,7 @@
       "instance_id": "re_kernel-11.7-20261010_baselines+gec20c71d2c7e.r9a7bc885.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel.json"
     },
     {
       "module": "re_kernel",
@@ -1279,7 +1279,7 @@
       "instance_id": "re_kernel-11.7-20261010_baselines_debug+gec20c71d2c7e.ra4dbd00d.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel.json"
     },
     {
       "module": "re_kernel",
@@ -1461,7 +1461,7 @@
       "instance_id": "re_kernel-11.7-20261010_debug+gec20c71d2c7e.r0d765058.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:10Z",
-      "handoff_manifest": "local/handoff-rest/re_kernel.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel.json"
     }
   ],
   "audits": [],
@@ -1488,12 +1488,38 @@
       "report": "Developer/reports/2026-11-03-remaining-modules-batch.md",
       "notes": "该冻结件在符号修复（3a9dcfc）之前构建：Pixel 6 上 load rc=-1、dmesg error -95（genl 可用性判定要求 kfunc(kfree_skb)/kfunc(kmalloc) 非空）。已被 3a9dcfc 的冻结取代，产物保留为历史记录。",
       "tested_bytes": {
-        "sha256": "e17d928a655d87a9",
+        "sha256": "e17d928a655d87a9d4cdb677bdd4fb8ce564ab1257504afaa97eb9656f81bd10",
         "registered": true
       }
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "id": "AUD-103",
+      "severity": "中",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "3a9dcfc 的失败归因错误：真正拦截项只有 kfree_skb，kmalloc 判定在失败点之后才执行",
+      "evidence": "旧判定在 prepare_rekernel_genl_server() 之前的可用性检查里包含 kfree_skb；6.1 无该符号，因此 prepare 阶段返回 -EOPNOTSUPP。kmalloc 判定在 prepare 成功之后才执行，未参与本次失败；且 __kmalloc 经 kallsyms_lookup_name_by_suffix 的精确首轮即可命中，旧判据本就为假。",
+      "closure": "更正提交说明、metadata notes 与报告根因表述；kmalloc 兜底保留（fail-closed、无害）但不再作为修复理由",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "已确认",
+      "closed_by": "Auditor"
+    },
+    {
+      "id": "AUD-104",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "open",
+      "title": "kfree_skb 在 6.1 上解析为空，nlmsg_free 的 5 条错误路径静默泄漏 skb",
+      "evidence": "modules/KPM/re_kernel/re_utils.h:41 的 nlmsg_free 即 kfunc_call_void(kfree_skb, skb)，调用点 re_kernel.c:181、re_kernel_x/re_utils.h:110/116、re_kernel_x/re_kernel.c:399/460；6.1 内核只有 kfree_skb_reason，by_suffix 的后缀匹配不会命中，kf_kfree_skb 恒 NULL；kfunc_call_void 有 NULL 保护，不崩但 skb 不释放（仅错误路径，单次量小）。",
+      "closure": "待办：在目标 kallsyms 上确认 kfree_skb_reason 存在后按符号可用性二选一解析（不得按版本号猜）；同时把注释里“本模块未调用”的表述改掉",
+      "class": "product",
+      "frequency": "低频",
+      "confidence": "已确认"
+    }
+  ],
   "acceptances": [],
   "deliveries": [],
   "updated_at": "2026-11-03T04:55:10Z",

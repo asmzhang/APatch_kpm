@@ -3,7 +3,7 @@
 - 报告日期：2026-11-03
 - 范围：`modules/KPM/` 下 9 个此前无冻结构建记录的模块
 - 角色：Developer（自检，不是结论）
-- 结论摘要：9 个模块全部完成冻结构建（共 22 个变体实例）；7 个真机通过、1 个设计内拒绝（cgroupv2_freeze）、1 个未通过（zram_zstd 触发设备重启）
+- 结论摘要：9 个模块全部完成冻结构建（`builds[]` 共 30 条记录；其中 22 条是本次候选，另 8 条是 36f0197 修复前的失败记录，仍为 candidate、未标 superseded）；真机共 11 条记录（pass 7 / unsupported 1 / fail 3）：7 个模块通过、`cgroupv2_freeze` 设计内拒绝、`zram_zstd` 未通过（加载触发设备重启）
 
 ## 1. 为什么之前没有冻结构建
 
@@ -26,10 +26,12 @@
 
 - 现象：Pixel 6（6.1.99-android14）上 `load rc=-1`，dmesg 只有 BTF 偏移打印 + `load_module_ex: [re_kernel] failed with [(null)] error: -95`。
 - 定位：在 `prepare_rekernel_genl_server()` 前后插桩，逐项打印可用性判定的 11 个符号结果，得到 `kfree_skb=0`、`__reg=0`（`kfunc(kmalloc)` 为空）。
+  **归因更正（独立复核 AUD-103）**：真正拦截本次加载的只有 `kfree_skb` —— 可用性检查在 `prepare_rekernel_genl_server()` 之前，而 `kmalloc` 判定在其成功之后才执行，未参与本次失败；`__kmalloc` 经 `kallsyms_lookup_name_by_suffix` 精确首轮即可命中，旧判据本就为假。`KernelPatch/kernel/patch/ksyms/misc.c:333-334` 注释掉 `kfunc_match` 只影响 KP 内部表，与模块 `kfunc()` 无关。
 - 根因：
   1. `KernelPatch/kernel/patch/ksyms/misc.c` 把 `kfunc_match(kmalloc)` 注释掉了，`kfunc(kmalloc)` 恒为 NULL，而 genl server 用 `kmalloc(...)` 分配；
   2. 6.1 起内核不再导出 `kfree_skb`（只有 `kfree_skb_reason`），而判定要求它非空。
-- 修法（提交 `3a9dcfc`）：`kmalloc` 先走 kfunc，失败再 `kallsyms_lookup_name("__kmalloc")` → `("kmalloc")` 兜底，并纳入判定；`kfree_skb` 本模块从未调用，从判定中移出并注明改名事实。
+- 修法（提交 `3a9dcfc`）：把 `kfree_skb` 从可用性判定中移出（6.1 起改名为 `kfree_skb_reason`，后缀匹配不会命中）；`kmalloc` 加 `kallsyms_lookup_name("__kmalloc")` → `("kmalloc")` 兜底并纳入判定（fail-closed，非本次病因）。
+- **另一处事实更正（独立复核 AUD-104）**：`kfree_skb` 并非「从未调用」—— `modules/KPM/re_kernel/re_utils.h:41` 的 `nlmsg_free` 就是 `kfunc_call_void(kfree_skb, skb)`，调用点在 `re_kernel.c:181`、`re_kernel_x/re_utils.h:110`/`:116`、`re_kernel_x/re_kernel.c:399`/`:460`；6.1 上该指针恒 NULL，错误路径因此静默泄漏 skb（有 NULL 保护，不崩）。已登记 `AUD-104`（open）。
 - 验证：修复后 `re_kernel`、`re_kernel_x` 在 Pixel 6 上 `load rc=0` / `unload rc=0`，uptime 连续。
 
 > 说明：两个模块各有一批**修复前**的冻结件（`source_commit=36f0197`），在设备上实测 `load rc=-1`（error -95）。这批记录保留在 `builds[]` 里作为历史，`device_tests[]` 记为 fail；可用的是 `source_commit=3a9dcfc` 的那一批。
@@ -54,7 +56,7 @@
 
 `lmkd_dont_kill` 原缺 `metadata/modules/lmkd_dont_kill.json`，本轮按 `cgroupv2_freeze` 的模板补建。
 
-`hosts_redirect` 的 `debug` 目标只改版本串、不加 `-D`，因此 base 与 debug 字节完全相同（同一 SHA-256），真机只测一个变体。
+`hosts_redirect` 的 base/debug 曾字节完全相同（`de45aba56677b072`）——这**不是设计**：`Makefile` 的两个目标依赖同一个 `hosts_redirect.o`，`make all debug` 单次调用时该对象已是最新，`-DCONFIG_DEBUG` 从未进入任何一次编译（独立复核 A-01 / `AUD-101`，已修）。修复后 debug 变体走独立对象 `hosts_redirect_debug.o`，需要重建与复测；本文档表格中的同哈希记录对应修复前的旧构建。
 
 ## 4. 真机验证（Pixel 6 / 6.1.99-android14 / APatch 11282 / kernel 形态）
 
@@ -93,7 +95,7 @@ python tools/build_candidate.py <mod> --toolchain ndk26.1.10909125 --target "all
 ```
 
 - 交接清单已复制到 `Developer/reports/handoffs/2026-11-03-remaining-modules/<mod>.json`，并由 `tools/identity.py import-manifest` 导入 `metadata/modules/<mod>.json` 的 `builds[]`。
-- 每个 `builds[]` 记录含 11 个源文件的双哈希、`source_commit`、`source_dirty=false`、recipe（`cc`/`excerpt` 已归一为 `<NDK>`/`<repo>`）。
+- 每个 `builds[]` 记录含该模块源文件的双哈希（`sources[]` 条目数 6~429，视模块规模而定，不是固定值）、`source_commit`、`source_dirty=false`、recipe（`cc`/`excerpt` 已归一：NDK 路径 → `<ANDROID_NDK_LATEST_HOME>`，仓库路径 → `<repo>`；两者都是占位符，不含本机绝对路径）。
 
 ## 6. 未覆盖与风险
 
@@ -102,3 +104,28 @@ python tools/build_candidate.py <mod> --toolchain ndk26.1.10909125 --target "all
 3. **cgroupv2_freeze 只在 6.1.99 上验过「被拒绝」**：其真正可用的场景（内核没有 `cgroup_freeze_write` 的旧内核）本机没有设备，未覆盖。
 4. **只测一个变体**：除 `re_kernel`/`re_kernel_x` 的 base 外，其余模块的 baselines/debug 变体没有上真机；按仓库规则「真机只测一个变体」，验收需由审计确认变体差异仅为日志/断言，或补测。
 5. **re_kernel / re_kernel_x 的 4 个变体只测了 base**：静态基线（`_baselines`）依赖目标 BTF 的偏移推导，未在真机上验证其偏移正确性。
+
+## 9. 两路独立复核回执与处置（2026-11-03）
+
+复核方式：两个独立 agent 只读取证，禁止调用 `tools/identity.py`、`tools/build_candidate.py`、`make`、`tools/check_repository.py`。
+两路都确认主链是硬的：30/30 产物 sha256+size 与磁盘一致、30/30 instance_id 可复算、source_tree 双哈希 108 条全一致、
+1578 条 blob_sha256 对 git 对象 0 不符、`source_commit` 均为 HEAD 祖先、本次提交未改 `tools/` 判据。问题集中在「记录自证性」与「事实断言」。
+
+| 编号 | 严重度 | 内容 | 处置 |
+| --- | --- | --- | --- |
+| A-01 / AUD-101 | 中 | `hosts_redirect` debug 变体复用 base 的 `.o`，`-DCONFIG_DEBUG` 从未生效 | 已修 `Makefile`（独立对象），待重建复测 |
+| A-02 / AUD-103 | 中 | `3a9dcfc` 把失败归因给了 `kmalloc`，实际拦截项只有 `kfree_skb` | 已更正本文与提交说明 |
+| A-04 / AUD-104 | 中低 | `kfree_skb` 有 5 处真实调用，6.1 上静默泄漏 skb | 登记 open，待按符号可用性二选一解析 |
+| A-03 | 中 | `sanitize()` 对 `--env` 值做纯子串替换，`PYTHONUTF8=1` 把字面 `1` 变成 `<PYTHONUTF8>`，污染 recipe/instance 身份 | 已修 `tools/identity.py`（只把像路径的值当替换目标） |
+| A-05 / AUD-02 | 中低 | 两条 `tested_bytes.sha256` 只有 16 hex，门禁只校验 `retest` 形态故漏过 | 已补全 64 hex；门禁收紧为「任何登记了 tested_bytes.sha256 的条目都必须 64 位且命中在册产物」 |
+| A-10 / AUD-102 | 低 | `cgroupv2_freeze` 用 `-24`（EMFILE）表达设计内拒绝 | 已改 `-EOPNOTSUPP`，待重建复测 |
+| A-12 | 低 | `builds[].handoff_manifest` 指向被 gitignore 的 `local/handoff-rest/` | 已改指 `Developer/reports/handoffs/2026-11-03-remaining-modules/`（30 条） |
+| A-06 | 中低 | baselines 的 `<name>.kpm.json` 偏移表被 gitignore、未进 `artifacts[]`；`patch_offsets.py` 不在 `sources[]` | open（涉及产物清单口径，需维护者定） |
+| A-07 / AUD-07 | 中低 | 实例绑定的 `source_tree_sha256` 依赖工作树 EOL（本仓 536 条 CRLF / 1042 条 LF） | open（仓库级设计问题，需统一 `.gitattributes`） |
+| A-08 | 中低 | 8 条 36f0197 之前的失败构建仍 `candidate`、无 `superseded_by` | open（历史记录只追加，不改写） |
+| A-09 / AUD-08 | 低 | 报告数字口径（22 vs 30、11 个源文件、占位符名字） | 已更正 |
+| A-11 | 低 | 宿主标签只归一 `mingw64_nt-*`，MSYS2/Cygwin 的 `MSYS_NT-*`/`CYGWIN_NT-*` 不匹配 | open（改 Makefile 会让 9 个模块的冻结树失效，留待下一轮统一） |
+| A-13 | 低 | `device_fingerprint` 形如 `sha256:433ab88276ec`，只 12 hex 却标 `sha256:` | open（口径修正，涉及 11 条记录） |
+| A-14 / AUD-105 | 低 | `zram_zstd` 重启归因未闭环（前次 unload 残留 vs 冻结件） | 登记 open，标为未验证风险 |
+| AUD-06 | 低 | `kmalloc` 兜底是死代码（全模块无 `kfunc(kmalloc)(` 调用） | 记入 AUD-103 说明，不单开单 |
+| AUD-11 | 低 | `IGNORED_SUFFIX` 潜在静默排除、构建日志 `errors="replace"` 吞非法字节 | open（工具级，留待下一轮门禁整理） |

@@ -91,7 +91,7 @@
       "instance_id": "dont_kill_freeze-1.0.2+g7d2c1915cf6b.rf20eca31.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:09Z",
-      "handoff_manifest": "local/handoff-rest/dont_kill_freeze.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/dont_kill_freeze.json"
     },
     {
       "module": "dont_kill_freeze",
@@ -177,7 +177,7 @@
       "instance_id": "dont_kill_freeze-1.0.2_debug+g7d2c1915cf6b.rcc15d9da.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:09Z",
-      "handoff_manifest": "local/handoff-rest/dont_kill_freeze.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/dont_kill_freeze.json"
     }
   ],
   "audits": [],

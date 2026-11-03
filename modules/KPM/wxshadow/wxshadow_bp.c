@@ -1316,12 +1316,14 @@ void prctl_before(hook_fargs4_t *args, void *udata)
      * ★WX-1（1.2.1）：权限门。
      * 上游对这条 prctl 通道不做任何身份校验，任何用户态进程只要知道魔数就能
      * 对任意 pid 打补丁 / 设断点，等价任意代码注入原语。这里与同仓
-     * stealth_hook / memcrc 保持一致：只允许 uid 0（root）与 2000（shell）。
+     * stealth_hook / memcrc 保持一致：默认只允许 uid 0（root）与 2000（shell）。
+     * ★1.2.3（AUD-wx-10）：名单不再硬编码，改由 ctl0 的 allow:<uid> / deny:<uid>
+     * 维护（见 wxshadow.c 的 wx_uid_allowed）；root 恒放行且不可 deny。
      * 检查放在 WX_HANDLER_ENTER() 之前，不计入 in-flight。
      */
     {
         uid_t wx_caller = current_uid();
-        if (wx_caller != 0 && wx_caller != 2000) {
+        if (!wx_uid_allowed(wx_caller)) {
             pr_warn("wxshadow: prctl denied for uid %d\n", (int)wx_caller);
             args->ret = -1;  /* -EPERM */
             args->skip_origin = 1;

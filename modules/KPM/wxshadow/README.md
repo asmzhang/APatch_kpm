@@ -27,7 +27,7 @@
 ```bash
 cd modules/KPM/wxshadow
 export ANDROID_NDK_LATEST_HOME=/path/to/ndk
-make            # 产出 wxshadow_1.2.2.kpm
+make            # 产出 wxshadow_1.2.3.kpm
 make clean
 ```
 
@@ -53,6 +53,28 @@ make            # 产出 wxshadow_client（aarch64 静态可执行）
 
 prctl 接口（`wxshadow.h`）：`0x57580001` SET_BP / `0x57580002` SET_REG / `0x57580003` DEL_BP /
 `0x57580004` SET_TLB_MODE / `0x57580005` GET_TLB_MODE / `0x57580006` PATCH / `0x57580008` RELEASE。
+
+## 权限门与 ctl0 维护通道（1.2.3 起）
+
+`prctl` 通道的身份门默认只放行 `uid 0`（root）与 `2000`（shell），名单可用 ctl0 在运行期增删，
+与 `modules/KPM/stealth_hook` 的命令行一致：
+
+```bash
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow status'      # wxshadow v1.2.3 uids: 0 2000
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow allow:10273' # allow 10273 rc=0
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow allowlist'   # allowlist: 0 2000 10273
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow deny:10273'  # deny 10273 rc=0
+```
+
+| 命令 | 行为 |
+| --- | --- |
+| `status` | 打版本与当前名单 |
+| `allowlist` | 只打名单 |
+| `allow:<uid>` | 加入名单（幂等；满 8 个返回 `rc=-1`；超 32 位或非数字返回 `bad uid`） |
+| `deny:<uid>` | 移出名单（`uid 0` 恒不可移除，返回 `rc=-1`；不在表里也 `rc=-1`） |
+| 其它 | 返回 `-1`（`kpmctl` 打印 `ctl rc=-1 errno=1`） |
+
+ctl0 自身仍受 KernelPatch 的受信管理器身份约束（`kpmctl <mgr_uid> ctl …`，root 直接调会被 `-EPERM` 挡）。
 
 ## 真机状态（2026-11-03）
 
@@ -81,7 +103,7 @@ prctl 通道修好之后，两个靶子都验过：
 提到了循环外（`llvm-objdump` 里循环体内没有 `bl`），于是「断点不触发、返回值恒 41」看起来像模块坏了。
 入参必须来自 `volatile`，并且要用 `llvm-objdump` 确认循环体内真的有 `bl target`。
 
-**日志噪声（已知，未修）**：init 末尾无条件调 `debug_print_tasks_list(10)`（`wxshadow_scan.c:1240-1296`，调用点 `wxshadow.c:1664`），每次加载往 dmesg 打 10 行内核任务指针（`task=%px mm=%px`）。是上游调试代码、无功能副作用，但属内核地址泄漏 + 噪声，等 1.2.2 用编译宏关掉。
+**日志噪声**（**已修，本仓 1.2.2**）：init 末尾曾无条件调 `debug_print_tasks_list(10)`（`wxshadow_scan.c:1240-1296`，调用点 `wxshadow.c:1664`），每次加载往 dmesg 打 10 行内核任务指针（`task=%px mm=%px`）——上游调试代码，属内核地址泄漏 + 噪声。1.2.2 起包进 `#ifdef WXSHADOW_DEBUG_TASKS`，默认不编译。
 ## 已知问题（本移植未修，按「先移植、后修错」分开处理）
 
 1. ~~**prctl 通道不通**~~（**已修，本仓 1.2.0**）：原实现用 `hook_syscalln(__NR_prctl, 5, ...)`，
@@ -121,6 +143,12 @@ prctl 通道修好之后，两个靶子都验过：
    不 fault（刷的是错的物理行，但没报错）。修法见 1.2.2：按影子页的内核 VA 刷。
 
 ## 更新记录
+
+- **1.2.3（2026-11-03）**：补 ctl0 维护通道（**AUD-wx-10 / NX-3**）。1.2.1/1.2.2 的 prctl 权限门把
+  `{0, 2000}` 硬编码在 `wxshadow_bp.c` 里，想要别的身份（例如管理器 uid）只能改代码重编。现在改成
+  `wx_uid_allowed()` 查 ctl0 维护的名单，命令与 `modules/KPM/stealth_hook` 的
+  `allow:` / `deny:` / `allowlist` / `status` 同形；`uid 0` 恒放行且不可 deny。双机实测见
+  `Developer/reports/2026-11-03-wxshadow-port.md`。产物 163,760 B。
 
 - **1.2.2（2026-11-03）**：修 **WX-9**——设断点路径用**目标用户 VA** 调
   `__flush_icache_range()`，在跨进程场景（该 VA 不在调用者 mm 里）触发 EL1 translation

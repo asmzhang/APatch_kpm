@@ -10,6 +10,7 @@
  */
 
 #include "wxshadow_internal.h"
+#include <linux/kernel.h>   /* ★1.2.3：kfunc_def(snprintf) → kf_snprintf，ctl0 回显要用 */
 
 /* prctl syscall number */
 #ifndef __NR_prctl
@@ -1848,11 +1849,161 @@ long wxshadow_exit(void *__user reserved)
     return 0;
 }
 
+/* ============================================================
+ * 权限门（★1.2.3 / AUD-wx-10 / NX-3）
+ *
+ * 1.2.1/1.2.2 把 prctl 通道的调用者身份硬编码成 {0, 2000}，没有维护入口：
+ * 想要别的身份（例如管理器 uid）只能用就改代码重编。这里补上与
+ * modules/KPM/stealth_hook/stealth_hook.c 的 allow:/deny:/allowlist 同形的通道。
+ * ============================================================ */
+
+#define WX_ALLOW_MAX 8
+
+static uid_t wx_allow_uids[WX_ALLOW_MAX] = { 0, 2000 };
+static int wx_allow_count = 2;
+
+bool wx_uid_allowed(uid_t uid)
+{
+    int i;
+
+    if (uid == 0)
+        return true;
+    for (i = 0; i < wx_allow_count; i++) {
+        if (wx_allow_uids[i] == uid)
+            return true;
+    }
+    return false;
+}
+
+static int wx_allow_uid(uid_t uid)
+{
+    if (wx_uid_allowed(uid))
+        return 0;              /* 已在表里（含 root），幂等 */
+    if (wx_allow_count >= WX_ALLOW_MAX)
+        return -1;             /* 满 */
+    wx_allow_uids[wx_allow_count++] = uid;
+    return 0;
+}
+
+static int wx_deny_uid(uid_t uid)
+{
+    int i;
+
+    if (uid == 0)
+        return -1;             /* root 不可移除 */
+    for (i = 0; i < wx_allow_count; i++) {
+        if (wx_allow_uids[i] == uid) {
+            wx_allow_uids[i] = wx_allow_uids[--wx_allow_count];
+            return 0;
+        }
+    }
+    return -1;                 /* 不在表里 */
+}
+
+/* 有界解析：只接受 1~10 位十进制数字，遇到非数字立刻失败（不做前缀匹配） */
+static bool wx_parse_uid(const char *s, uid_t *out)
+{
+    unsigned long acc = 0;
+    int digits = 0;
+
+    if (!s)
+        return false;
+    while (*s == ' ' || *s == '\t')
+        s++;
+    while (*s >= '0' && *s <= '9') {
+        if (++digits > 10)
+            return false;
+        acc = acc * 10 + (unsigned long)(*s - '0');
+        if (acc > 0xffffffffUL)  /* uid_t 是 32 位 */
+            return false;
+        s++;
+    }
+    while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+        s++;
+    if (digits == 0 || *s != '\0')
+        return false;
+    *out = (uid_t)acc;
+    return true;
+}
+
+static bool wx_is_word(const char *args, const char *word)
+{
+    int i = 0;
+
+    while (word[i]) {
+        if (args[i] != word[i])
+            return false;
+        i++;
+    }
+    return args[i] == '\0' || args[i] == ' ' || args[i] == '\t' ||
+           args[i] == '\n' || args[i] == '\r';
+}
+
+static int wx_dump_allow(char *out, unsigned long out_size)
+{
+    int i;
+    int n = 0;
+
+    n += kf_snprintf(out + n, out_size - n, " 0");
+    for (i = 0; i < wx_allow_count && n < (int)out_size; i++) {
+        if (wx_allow_uids[i] == 0)
+            continue;          /* root 单独打在第一项 */
+        n += kf_snprintf(out + n, out_size - n, " %u", (unsigned int)wx_allow_uids[i]);
+    }
+    return n;
+}
+
 long wxshadow_control(const char *args, char *__user out_msg, int outlen)
 {
-    pr_info("wxshadow: control called with args: %s\n", args ? args : "(null)");
-    (void)out_msg;
-    (void)outlen;
+    char buf[192];
+    int n = 0;
+    bool handled = false;
+
+    if (!args)
+        return -1;
+
+    if (strncmp(args, "allow:", 6) == 0) {
+        uid_t uid = 0;
+
+        if (wx_parse_uid(args + 6, &uid))
+            n += kf_snprintf(buf + n, sizeof(buf) - n, "allow %u rc=%d",
+                             (unsigned int)uid, wx_allow_uid(uid));
+        else
+            n += kf_snprintf(buf + n, sizeof(buf) - n, "allow: bad uid");
+        handled = true;
+    } else if (strncmp(args, "deny:", 5) == 0) {
+        uid_t uid = 0;
+
+        if (wx_parse_uid(args + 5, &uid))
+            n += kf_snprintf(buf + n, sizeof(buf) - n, "deny %u rc=%d",
+                             (unsigned int)uid, wx_deny_uid(uid));
+        else
+            n += kf_snprintf(buf + n, sizeof(buf) - n, "deny: bad uid");
+        handled = true;
+    } else if (wx_is_word(args, "allowlist")) {
+        n += kf_snprintf(buf + n, sizeof(buf) - n, "allowlist:");
+        n += wx_dump_allow(buf + n, sizeof(buf) - n);
+        handled = true;
+    } else if (wx_is_word(args, "status")) {
+        n += kf_snprintf(buf + n, sizeof(buf) - n, "wxshadow v%s uids:",
+                         MYKPM_VERSION);
+        n += wx_dump_allow(buf + n, sizeof(buf) - n);
+        handled = true;
+    }
+
+    if (!handled) {
+        pr_info("wxshadow: control: unknown command\n");
+        return -1;
+    }
+
+    if (out_msg && outlen > 0) {
+        int len = n < outlen - 1 ? n : outlen - 1;
+
+        if (len < 0)
+            len = 0;
+        compat_copy_to_user(out_msg, buf, (unsigned long)len);
+        compat_copy_to_user(out_msg + len, "\0", 1);
+    }
     return 0;
 }
 

@@ -1,9 +1,9 @@
 {
   "module": "wxshadow",
   "status": "candidate",
-  "version_declared": "1.2.2",
+  "version_declared": "1.2.3",
   "version_sources": {
-    "makefile": "1.2.2",
+    "makefile": "1.2.3",
     "upstream": "1.2.0-k66"
   },
   "builds": [
@@ -291,10 +291,13 @@
       "id": "AUD-wx-10",
       "severity": "低",
       "owner": "Auditor",
-      "status": "open",
+      "status": "fixed",
       "title": "NX-3 权限门硬编码 0/2000，无 runtime ALLOW/DENY 维护入口",
-      "evidence": "wxshadow_bp.c:1324；对比 stealth_hook.c:43 与 memcrc/control/control.c:29 均有 ctl0 维护通道",
-      "closure": "决定是否新增 ctl0 命令或按现状接受风险并记档后关闭"
+      "evidence": [
+        "modules/KPM/wxshadow/wxshadow.c（wx_uid_allowed / wxshadow_control）",
+        "modules/KPM/wxshadow/wxshadow_bp.c（权限门调用点）"
+      ],
+      "closure": "1.2.3 已把权限门改成查 ctl0 维护的 allowlist（allow:/deny:/allowlist/status，默认 {0,2000}，root 恒放行不可 deny，上限 8）；Pixel 6 与小米 13 双形态实测 status/allow/deny/deny:0 全部符合预期，deny 后管理器身份重新收到 EPERM。"
     },
     {
       "id": "AUD-wx-11",

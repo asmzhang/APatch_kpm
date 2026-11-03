@@ -239,7 +239,46 @@ ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation 
 | 释放 | `Modification released at 0x6042f50100` | — |
 | 卸载（页在场） | `unload rc=0`，七阶段全过 + `cleaned 0 pages` | `unload rc=0`，七阶段全过 + `cleaned 1 pages` |
 
+### 1.2.3：ctl0 权限门维护通道（AUD-wx-10 / NX-3）
+
+### 改动
+
+- `modules/KPM/wxshadow/wxshadow.c`：新增 `wx_allow_uids[WX_ALLOW_MAX]`（默认 `{0, 2000}`，上限 8）、
+  `wx_uid_allowed()`、`wx_allow_uid()`、`wx_deny_uid()`、有界解析 `wx_parse_uid()`（1~10 位十进制、
+  超 32 位即失败、末尾只允许空白）、`wx_is_word()`、`wx_dump_allow()`；把上游的 ctl0 桩
+  `long wxshadow_control(...) { pr_info(...); return 0; }` 换成 `status` / `allowlist` /
+  `allow:<uid>` / `deny:<uid>` 四个命令，回显走 `compat_copy_to_user`（两次，含 NUL）。
+- `modules/KPM/wxshadow/wxshadow_internal.h`：导出 `bool wx_uid_allowed(uid_t uid);`。
+- `modules/KPM/wxshadow/wxshadow_bp.c`：权限门由 `wx_caller != 0 && wx_caller != 2000` 改成
+  `!wx_uid_allowed(wx_caller)`，注释同步说明名单来源。
+- `modules/KPM/wxshadow/wxshadow.c` 加 `#include <linux/kernel.h>`：ctl0 回显用
+  `kfunc_def(snprintf)` 展开出来的 `kf_snprintf`，不引这个头会报 `call to undeclared function`。
+- `Makefile`：`MYKPM_VERSION := 1.2.3`。
+
+### 真机（两条形态各一台）
+
+| 用例 | Pixel 6（6.1.99 / kernel 形态） | 小米 13（5.10.149 / APatch LKM） |
+| --- | --- | --- |
+| `status` | `wxshadow v1.2.3 uids: 0 2000` | 同 |
+| `allow:<管理器 uid>` | `allow 10273 rc=0` → `allowlist: 0 2000 10273` | `allow 10270 rc=0` → `allowlist: 0 2000 10270` |
+| 管理器身份设断点（allow 后） | `Breakpoint set at 0x5e557a7100` + `Register modification set: x0 = 0x7`（1.2.2 之前是 `EPERM`） | 未测 |
+| `deny:<管理器 uid>` 后再设 | `prctl(SET_BP) failed: Operation not permitted (errno=1)` + dmesg `prctl denied for uid 10273` | `deny 10270 rc=0` |
+| `deny:0` | `deny 0 rc=-1`（root 不可移除） | `deny 0 rc=-1` |
+| `allow:99999` / `allow:abc` | `allow 99999 rc=0` / `allow: bad uid` | 未测 |
+| 未知命令 | `ctl rc=-1 errno=1` | 未测 |
+| 默认身份 uid 2000 | `Breakpoint set at …` + `x0 = 0x9`（放行） | 未测 |
+| 卸载 | `unload rc=0`，七阶段全过、`cleaned 0 pages`、`uptime` 连续 | `unload rc=0`、`uptime` 76966→76975 连续 |
+
+同时确认 **WX-8 噪声已消失**：加载 1.2.3 后 dmesg 里不再有 `task=%px mm=%px` 那 10 行。
+
 ### 未覆盖
+
+- 小米 13 上「allowlist 放行后由管理器身份真正设断点」没有跑（该机 client 需要 root 且要有合法可执行地址，
+  名单通道本身已验证）。
+- `WX_ALLOW_MAX = 8` 的溢出分支（第 9 个 uid 返回 `rc=-1`）只在代码里检查，未在真机打满验证。
+- `AUD-wx-4`（`copy_from_user_via_pte` 无 `mmap_lock`）仍 open。
+
+## 未覆盖
 - 未在 Pixel 6 上重跑「读原字节 + 执行补丁」端到端（该验证在 1.2.1 已做过；1.2.2 只改了刷 icache
   的方式与 drain 语义，未动映射/断点数据流）。
 - 1.2.1 的两次卸载重启仍无法复现，1.2.2 亦未宣称已修。

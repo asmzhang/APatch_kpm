@@ -528,6 +528,14 @@ static inline void wxshadow_flush_icache_kva(unsigned long kva)
     wxshadow_flush_icache_range(base, base + PAGE_SIZE);
 }
 
+/*
+ * ★1.2.3（AUD-wx-10 / NX-3）：权限门不再硬编码 {0, 2000}，改由 ctl0 维护的
+ * allowlist 决定，命令行与 modules/KPM/stealth_hook 对齐：
+ *   status / allowlist / allow:<uid> / deny:<uid>
+ * 默认值仍是 {0, 2000}；root 恒放行且不可 deny。
+ */
+bool wx_uid_allowed(uid_t uid);
+
 /* ========== Page table helpers ========== */
 
 /* NOTE: mm_page_table_lock helper removed - lockless operation */

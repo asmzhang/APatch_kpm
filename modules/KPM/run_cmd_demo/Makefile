@@ -10,6 +10,9 @@ HOST_TAG = $(OS_NAME)-$(MACHINE)
 ifeq ($(HOST_TAG), darwin-arm64)
     HOST_TAG = darwin-x86_64
 endif
+ifeq ($(patsubst mingw64_nt-10.0-%-x86_64,windows-x86_64,$(HOST_TAG)),windows-x86_64)
+    HOST_TAG = windows-x86_64
+endif
 NDK_BIN_DIR := toolchains/llvm/prebuilt/$(HOST_TAG)/bin
 ifdef ANDROID_NDK_LATEST_HOME
     NDK_PATH ?= $(ANDROID_NDK_LATEST_HOME)/$(NDK_BIN_DIR)

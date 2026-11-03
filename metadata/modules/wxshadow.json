@@ -234,58 +234,85 @@
   "device_tests": [],
   "issues": [
     {
-      "id": "WX-1",
-      "severity": "high",
+      "id": "AUD-wx-1",
+      "severity": "高",
+      "owner": "Auditor",
       "status": "fixed",
-      "summary": "prctl_before 无权限校验（1.2.1 修：只放行 uid 0/2000）"
+      "title": "WX-1 prctl_before 无权限校验（任意进程可跨进程打补丁）",
+      "evidence": "modules/KPM/wxshadow/wxshadow_bp.c:1322-1330 权限门仅放行 uid 0/2000；小米 13 上 su 10270 被拒（dmesg prctl denied for uid 10270），root 放行",
+      "closure": "复审确认权限门仍覆盖 0x57580001-08 全部命令且无第二入口后关闭"
     },
     {
-      "id": "WX-2",
-      "severity": "high",
-      "status": "superseded",
-      "summary": "drain 超时早退（1.2.2 按 NX-1 撤回：mod_exit 返回值无生命周期语义，早退会留下指向已释放代码的钩子）"
-    },
-    {
-      "id": "WX-3",
-      "severity": "low",
+      "id": "AUD-wx-2",
+      "severity": "高",
+      "owner": "Auditor",
       "status": "fixed",
-      "summary": "长度检查可整型回绕（1.2.1/1.2.2 改为 len > PAGE_SIZE - off）"
+      "title": "WX-2/NX-1 drain 超时早退会留下指向已释放代码的钩子",
+      "evidence": "1.2.2 撤回早退，改为只记录超时、始终走完七个 phase；依据 KernelPatch/kernel/patch/module/module.c:540-547 不采纳 mod_exit 返回值",
+      "closure": "复审确认 wx_drain_checked 恒返回 0 且八处调用点均已去掉 return -16 后关闭"
     },
     {
-      "id": "WX-4",
-      "severity": "low",
+      "id": "AUD-wx-3",
+      "severity": "低",
+      "owner": "Auditor",
+      "status": "fixed",
+      "title": "WX-3 长度检查可整型回绕（offset+len>PAGE_SIZE）",
+      "evidence": "1.2.1/1.2.2 改为 len > PAGE_SIZE - off；wxshadow.c 两处、wxshadow_bp.c 两处",
+      "closure": "复审确认四处均已改写后关闭"
+    },
+    {
+      "id": "AUD-wx-4",
+      "severity": "低",
+      "owner": "Auditor",
       "status": "open",
-      "summary": "copy_from_user_via_pte 无 mmap_lock/pin（读错页或旧数据，非提权；未修）"
+      "title": "WX-4 copy_from_user_via_pte 无 mmap_lock/pin，未校验 pfn_valid",
+      "evidence": "wxshadow_bp.c:1086-1135 在 PTE walk 与 memcpy 之间页可被换出/迁移/CoW，读到旧页（非提权）",
+      "closure": "补 mmap_lock 或 pin_user_pages + pfn_valid 校验，并经真机回归后关闭"
     },
     {
-      "id": "WX-8",
-      "severity": "low",
+      "id": "AUD-wx-8",
+      "severity": "低",
+      "owner": "Auditor",
       "status": "fixed",
-      "summary": "init 无条件打印任务表泄漏内核地址（1.2.2 用 WXSHADOW_DEBUG_TASKS 关闭）"
+      "title": "WX-8 init 无条件 debug_print_tasks_list(10) 泄漏内核地址",
+      "evidence": "1.2.2 用 WXSHADOW_DEBUG_TASKS 宏关闭；默认加载 dmesg 不再出现 task=/mm= 十行",
+      "closure": "复审确认宏默认未定义且加载日志无任务表后关闭"
     },
     {
-      "id": "WX-9",
-      "severity": "critical",
+      "id": "AUD-wx-9",
+      "severity": "高",
+      "owner": "Auditor",
       "status": "fixed",
-      "summary": "跨进程设断点用目标用户 VA 刷 icache，触发 EL1 translation fault → panic 重启（1.2.2 改按影子页内核 VA 刷）"
+      "title": "WX-9 跨进程设断点用目标用户 VA 刷 icache，触发 EL1 translation fault → panic 重启",
+      "evidence": "Pixel 6 4/4 重启；主机侧 kmsg 抓到 ESR=0x96000145 EC=0x25 FSC=0x05 at 0x6042f50000；1.2.2 改按影子页内核 VA 刷后同一场景不再重启",
+      "closure": "复审确认 11 处调用点均改为 wxshadow_flush_icache_kva 后关闭"
     },
     {
-      "id": "NX-1",
-      "severity": "high",
-      "status": "fixed",
-      "summary": "unload_module 不采纳 mod_exit 返回值，早退即留下已释放代码上的钩子（1.2.2 改为走完七阶段）"
-    },
-    {
-      "id": "NX-3",
-      "severity": "low",
+      "id": "AUD-wx-10",
+      "severity": "低",
+      "owner": "Auditor",
       "status": "open",
-      "summary": "权限门硬编码 0/2000，无 runtime ALLOW/DENY 维护入口（接受风险）"
+      "title": "NX-3 权限门硬编码 0/2000，无 runtime ALLOW/DENY 维护入口",
+      "evidence": "wxshadow_bp.c:1324；对比 stealth_hook.c:43 与 memcrc/control/control.c:29 均有 ctl0 维护通道",
+      "closure": "决定是否新增 ctl0 命令或按现状接受风险并记档后关闭"
     },
     {
-      "id": "NX-6",
-      "severity": "info",
-      "status": "fixed",
-      "summary": "另三处 offset+len>PAGE_SIZE 回绕写法（1.2.2 改 len > PAGE_SIZE - off）"
+      "id": "AUD-wx-11",
+      "severity": "中",
+      "owner": "Auditor",
+      "status": "open",
+      "title": "NX-2 LKM 形态权限门可被 userns root 绕过（全仓既有）",
+      "evidence": "KernelPatch/lkm/kpm/symbols.c:132-134 的 current_uid() 走 from_kuid(current_user_ns())",
+      "closure": "由 KernelPatch 侧统一修正或在本模块改用裸 kuid 读法，经两形态验证后关闭"
+    },
+    {
+      "id": "AUD-wx-12",
+      "severity": "低",
+      "owner": "Auditor",
+      "status": "open",
+      "title": "R1 归档产物 MANIFEST.json 仍含本机绝对路径（与既往所有 handoff 同模式）",
+      "evidence": "artifacts/wxshadow-1.2.2+.../MANIFEST.json 的 recipe.cc/excerpt 由 build_candidate 原样写入",
+      "closure": "由维护者决定是否在 build_candidate 侧归一（属维护方工具判据）后关闭"
     }
   ],
   "acceptances": [],

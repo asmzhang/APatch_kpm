@@ -13233,7 +13233,8 @@
       "tested_bytes": {
         "sha256": "9c41f8c48180a6690850fddd3f14580605542a65fb4c15b924167b73345378c6",
         "registered": true
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     },
     {
       "instance_id": "zram_zstd-1.0.1+g1fd533e14ac9.rbc4a0401.kpb51197a.ndk26.1.10909125#1",
@@ -13248,7 +13249,8 @@
         "sha256": "b29f9b307b82ca6b06d9a1d64a12cd9d7c65671bcc1f6f738c2402ccf1dd7566"
       },
       "report": "Developer/reports/2026-11-03-remaining-modules-batch.md",
-      "tested_at": "2026-11-03T06:28:00Z"
+      "tested_at": "2026-11-03T06:28:00Z",
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     },
     {
       "kind": "device-test",
@@ -13262,7 +13264,8 @@
         "sha256": "2f44dff962fa1f704304cde9ab42ea0e6395262db261ef9dc0bf04a285b164d6",
         "registered": true
       },
-      "tested_at": "2026-11-03T06:48:31Z"
+      "tested_at": "2026-11-03T06:48:31Z",
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     }
   ],
   "issues": [

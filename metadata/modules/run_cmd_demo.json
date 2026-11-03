@@ -255,7 +255,8 @@
       "tested_bytes": {
         "sha256": "49feb59a79c5768bad063854902732fb3bbbeddc25c44e30afa1659c669c31b9",
         "registered": true
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     }
   ],
   "issues": [],

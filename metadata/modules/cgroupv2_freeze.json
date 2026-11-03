@@ -405,7 +405,8 @@
       "tested_bytes": {
         "sha256": "3623b2bb422f38fe0b35d8475a69155371f98703ddd613f4cd068f00857e70eb",
         "registered": true
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     },
     {
       "kind": "device-test",
@@ -420,7 +421,8 @@
         "registered": true,
         "in_registry_match": true,
         "artifact": "cgroupv2_freeze_1.0.12.kpm"
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     }
   ],
   "issues": [

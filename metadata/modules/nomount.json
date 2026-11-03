@@ -1747,7 +1747,8 @@
       "tested_bytes": {
         "sha256": "448af4ded5cbcf49b8ae044230a7845b82c4ba4aab641aa737f473557becbe67",
         "registered": true
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     }
   ],
   "issues": [],

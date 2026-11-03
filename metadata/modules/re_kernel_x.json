@@ -665,7 +665,9 @@
       "instance_id": "re_kernel_x-1.6-20261010+g55327160ee88.r5d45d730.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json",
+      "superseded_by": "re_kernel_x-1.6-20261010+g6d0698e7dee2.r59f08e39.kpb51197a.ndk26.1.10909125#1",
+      "note": "历史候选：36f0197（构建输入未排除生成的 .kpm.json）修复前构建，设备实测 load rc=-1（error -95），已由 3a9dcfc 修复批重建取代（见批次报告 §37）；登记保留为历史，不作为交付对象"
     },
     {
       "module": "re_kernel_x",
@@ -797,7 +799,9 @@
       "instance_id": "re_kernel_x-1.6-20261010_baselines+g55327160ee88.r4a31afd8.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json",
+      "superseded_by": "re_kernel_x-1.6-20261010_baselines+g6d0698e7dee2.r46c35911.kpb51197a.ndk26.1.10909125#1",
+      "note": "历史候选：36f0197（构建输入未排除生成的 .kpm.json）修复前构建，设备实测 load rc=-1（error -95），已由 3a9dcfc 修复批重建取代（见批次报告 §37）；登记保留为历史，不作为交付对象"
     },
     {
       "module": "re_kernel_x",
@@ -929,7 +933,9 @@
       "instance_id": "re_kernel_x-1.6-20261010_baselines_debug+g55327160ee88.r76a42781.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json",
+      "superseded_by": "re_kernel_x-1.6-20261010_baselines_debug+g6d0698e7dee2.r877bd96a.kpb51197a.ndk26.1.10909125#1",
+      "note": "历史候选：36f0197（构建输入未排除生成的 .kpm.json）修复前构建，设备实测 load rc=-1（error -95），已由 3a9dcfc 修复批重建取代（见批次报告 §37）；登记保留为历史，不作为交付对象"
     },
     {
       "module": "re_kernel_x",
@@ -1061,7 +1067,9 @@
       "instance_id": "re_kernel_x-1.6-20261010_debug+g55327160ee88.rd9d2f9ad.kpb51197a.ndk26.1.10909125#1",
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T04:55:11Z",
-      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json"
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-remaining-modules/re_kernel_x.json",
+      "superseded_by": "re_kernel_x-1.6-20261010_debug+g6d0698e7dee2.r9f20ceb8.kpb51197a.ndk26.1.10909125#1",
+      "note": "历史候选：36f0197（构建输入未排除生成的 .kpm.json）修复前构建，设备实测 load rc=-1（error -95），已由 3a9dcfc 修复批重建取代（见批次报告 §37）；登记保留为历史，不作为交付对象"
     },
     {
       "module": "re_kernel_x",
@@ -1605,7 +1613,8 @@
       "tested_bytes": {
         "sha256": "faf968cd02766786bdc34e21a88b3e9f7352a162e4ef0068e3aca9e4be847df8",
         "registered": true
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     },
     {
       "kind": "device-test",
@@ -1618,7 +1627,8 @@
       "tested_bytes": {
         "sha256": "93ff5eac2a2b1ac42a8970f1ea72d3e88428a388dd32c7a87333c5d2d7d9e244",
         "registered": true
-      }
+      },
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     },
     {
       "instance_id": "re_kernel_x-1.6-20261010+g662b53c9e4e6.r83096135.kpb51197a.ndk26.1.10909125#1",
@@ -1633,7 +1643,8 @@
         "sha256": "d939f0a6e88ddcc4b05812ce706295c096bababc3794ac2187b1db175a23f5c8"
       },
       "report": "Developer/reports/2026-11-03-remaining-modules-batch.md",
-      "tested_at": "2026-11-03T06:28:00Z"
+      "tested_at": "2026-11-03T06:28:00Z",
+      "fingerprint_scope": "sha256(serial) 前 12 hex 截断（脱敏防碰撞，非完整摘要；preflight 现行为 [:8]，历史记录 12 hex）"
     }
   ],
   "issues": [

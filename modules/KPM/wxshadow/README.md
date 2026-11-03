@@ -27,7 +27,7 @@
 ```bash
 cd modules/KPM/wxshadow
 export ANDROID_NDK_LATEST_HOME=/path/to/ndk
-make            # 产出 wxshadow_1.2.3.kpm
+make            # 产出 wxshadow_1.2.5.kpm
 make clean
 ```
 
@@ -60,7 +60,7 @@ prctl 接口（`wxshadow.h`）：`0x57580001` SET_BP / `0x57580002` SET_REG / `0
 与 `modules/KPM/stealth_hook` 的命令行一致：
 
 ```bash
-su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow status'      # wxshadow v1.2.3 uids: 0 2000
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow status'      # wxshadow v1.2.5 uids: 0 2000
 su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow allow:10273' # allow 10273 rc=0
 su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow allowlist'   # allowlist: 0 2000 10273
 su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow deny:10273'  # deny 10273 rc=0
@@ -142,7 +142,37 @@ prctl 通道修好之后，两个靶子都验过：
    静态靶子不崩是因为 `0x221000` 恰好也映射在静态链接的客户端进程里，`dc cvau` / `ic ivau`
    不 fault（刷的是错的物理行，但没报错）。修法见 1.2.2：按影子页的内核 VA 刷。
 
+## 1.2.5：独立复核问题单修复（代码侧）
+
+1.2.3 送独立复核（代码路 + 文档/身份路，均判「暂不可关单」），本条版本处理代码侧问题单。
+
+| 问题单 | 级别 | 处理 |
+| --- | --- | --- |
+| AUD-wx-4 | 中 | **读用户 buffer 不再拆大页**：`copy_from_user_via_pte()` 改走新的 `wxshadow_read_user()`（`wxshadow_pgtable.c` 末尾）——2 MB block 用块内偏移算术定位 pfn；PTE 要过 `PTE_VALID` / `PTE_TYPE_PAGE` / `PTE_AF` 三关；`pfn_to_kaddr()` 前用 `pfn_valid` 校验；6.1 有 `mmap_read_lock` 符号时加读锁。写路径的 `__split_huge_pmd()`（`prepare_shadow_target()`）在有锁时补 `mmap_read_lock` |
+| WI-1 | 低 | allow 名单加 `spin_lock(&wx_allow_lock)`（**不能用 `spin_lock_irqsave`**：KP 的 KPM 加载器不导出 `kf__raw_spin_lock_irqsave`，实测 `unknown symbol` 导致 load rc=-1），读侧 `wx_uid_allowed()` 同锁 |
+| WI-2 | 低 | ctl0 回显检查 `compat_copy_to_user()` 返回值，失败返回 `-EFAULT`——supercmd 路径把内核栈 `buffer[4096]` 当 out_msg 时不再「静默 rc=0 空输出」 |
+| WI-3 | 信息 | `wait_for_handlers_drain()` / `wx_drain_checked()` 改 `void`，注释与 1.2.2 的「超时只记录、继续卸载」语义对齐 |
+| WI-4 | 信息 | 删除死函数 `wxshadow_flush_icache_page()`（AUD-wx-9 的根因载体，已无调用点） |
+| WI-5 | 信息 | `write_shadow_bytes()` 的 `offset + len > PAGE_SIZE` 改减法式并补 `offset >= PAGE_SIZE` |
+| WI-6 | 信息 | `wx_dump_allow()` 每次写前判剩余长度，去掉 `out_size - n` 无符号下溢与 `(int)` 截断 |
+| AUD-wx-13 | 中 | **拆掉 `register_user_*_hook` 回落**：direct hook 拿不到就 `return -1` 拒绝加载。回落路径把钩子挂进内核全局 debug 链表，卸载时只能 `list_del_rcu()`（KP 在 `rcu_read_lock` 里调 `mod_exit`，不能 `synchronize_rcu`），RCU 宽限期内的读者会走进即将被 `kp_free_exec()` 释放的模块内存——这是 1.2.0/1.2.1 两次卸载重启的同族风险 |
+| AUD-wx-14 | 信息 | **pin_user_pages 修法经评估不适用**：`wxshadow_read_user()` 唯一调用点是 prctl 钩子（direct hook），那里不能缺页，而 pin/gup 慢路径会取 `mmap_lock`、可能触发缺页。保留「无缺页页表走查 + `pfn_valid` + 能拿到 `mmap_read_lock` 时加锁」（复核意见的 ①+②），代码里写了原因 |
+| WI-7 | 信息 | `debug_print_tasks_list()` 的定义与声明一并包进 `#ifdef WXSHADOW_DEBUG_TASKS`，release 产物内不再存在该符号 |
+
+### 双机复验（1.2.4）
+
+| 项 | Pixel 6（6.1.99 / kernel 形态 / uid 10273） | 小米 13（5.10.149 / LKM / uid 10270） |
+| --- | --- | --- |
+| 加载 | `load rc=0`，dmesg `wxshadow: mm helpers: pfn_valid=1 mmap_read_lock=1` | `load rc=0`，`mm helpers: pfn_valid=1 mmap_read_lock=0`（5.10 无该符号，按设计降级为无锁 + pfn 校验） |
+| ctl0 | `status`/`allow:10273`/`allowlist`/`deny:10273`/`deny:0`（`rc=-1`）全部符合预期 | `status` 正常 |
+| 断点（写路径） | `wx_t` 靶子：`-a 0x221cf4 -r x0=7` → `ret=7` 连续命中 | 同样 `ret=7` 命中 |
+| 补丁（读路径） | `-a 0x221cec --patch 20018052c0035fd6` → `ret=9` 连续命中（说明新读路径取到了用户 buffer） | 同样 `ret=9` |
+| 卸载 | `unload rc=0`，`/proc/uptime` 连续 | `unload rc=0`，uptime 连续 |
+
 ## 更新记录
+
+- **1.2.5（2026-11-03）**：按 1.2.3 独立复核问题单修代码项（**AUD-wx-4**、**AUD-wx-13**、
+  **WI-1…WI-7**），并记录 **AUD-wx-14**（pin 修法为何不采用），见上节。产物 `wxshadow_1.2.5.kpm`。
 
 - **1.2.3（2026-11-03）**：补 ctl0 维护通道（**AUD-wx-10 / NX-3**）。1.2.1/1.2.2 的 prctl 权限门把
   `{0, 2000}` 硬编码在 `wxshadow_bp.c` 里，想要别的身份（例如管理器 uid）只能改代码重编。现在改成

@@ -1020,3 +1020,158 @@ int wxshadow_page_restore_child_original_locked(struct wxshadow_page *page,
                                           entry,
                                           false);
 }
+
+/* ========== 1.2.4（AUD-wx-4）：mm 辅助符号 + 用户态读取 ========== */
+
+bool (*wx_kfunc_pfn_valid)(unsigned long pfn);
+
+void (*wx_kfunc_mmap_read_lock)(void *mm);
+void (*wx_kfunc_mmap_read_unlock)(void *mm);
+
+void wxshadow_resolve_mm_helpers(void)
+{
+    if (!wx_kfunc_pfn_valid) {
+        wx_kfunc_pfn_valid = (bool (*)(unsigned long))kallsyms_lookup_name("pfn_valid");
+        if (!wx_kfunc_pfn_valid) {
+            /* gcc 内建兜底：没有 pfn_valid 符号时至少排除 pfn=0 */
+            pr_warn("wxshadow: mm helpers: pfn_valid not found, "
+                    "falling back to pfn != 0 check\n");
+        }
+    }
+    if (!wx_kfunc_mmap_read_lock) {
+        wx_kfunc_mmap_read_lock =
+            (void (*)(void *))kallsyms_lookup_name("mmap_read_lock");
+        wx_kfunc_mmap_read_unlock =
+            (void (*)(void *))kallsyms_lookup_name("mmap_read_unlock");
+        /* 两者必须成对出现，否则不加锁 */
+        if (!wx_kfunc_mmap_read_lock || !wx_kfunc_mmap_read_unlock) {
+            wx_kfunc_mmap_read_lock = NULL;
+            wx_kfunc_mmap_read_unlock = NULL;
+            pr_warn("wxshadow: mm helpers: mmap_read_lock not found (5.10 inline), "
+                    "page-table walk runs lockless with pfn validation\n");
+        }
+    }
+    /*
+     * 1.2.5：AUD-wx-4 的「pin_user_pages_fast + kmap」彻底修法经评估**不适用**——
+     * 本函数唯一的调用点是 prctl 钩子（hook_wrap 的 direct hook），那里不能缺页，
+     * 而 pin/gup 的慢路径会切走 mmap_lock 甚至触发缺页，属于在原子上下文里做会睡眠的事。
+     * 因此保留「无缺页的页表走查 + pfn_valid 校验 + 能拿到 mmap_read_lock 时加锁」，
+     * 即复核意见里的 ①+② 方案（1.2.4 已实现）。
+     */
+    pr_info("wxshadow: mm helpers: pfn_valid=%d mmap_read_lock=%d\n",
+            wx_kfunc_pfn_valid ? 1 : 0, wx_kfunc_mmap_read_lock ? 1 : 0);
+}
+
+bool wx_pfn_is_valid(unsigned long pfn)
+{
+    if (!pfn)
+        return false;
+    if (wx_kfunc_pfn_valid)
+        return wx_kfunc_pfn_valid(pfn);
+    /* 无符号兜底：pfn 必须落在内核线性映射可表示的范围内 */
+    return pfn < (1UL << 32);
+}
+
+bool wx_mmap_lock_begin(void *mm)
+{
+    if (!mm || !wx_kfunc_mmap_read_lock)
+        return false;
+    wx_kfunc_mmap_read_lock(mm);
+    return true;
+}
+
+void wx_mmap_lock_end(void *mm)
+{
+    if (mm && wx_kfunc_mmap_read_unlock)
+        wx_kfunc_mmap_read_unlock(mm);
+}
+
+/*
+ * wxshadow_read_user - 读目标 mm 里的一页内用户内存。
+ *
+ * ★1.2.4（AUD-wx-4）：上一版先 wxshadow_try_split_pmd()（写页表 + mmu_notifier +
+ * THP refcount，且无 mmap_lock），再 get_user_pte() 裸解引用、pfn_to_kaddr() 前
+ * 不校验 pfn。这里改成：不拆大页（2MB block 用算术定位 pfn）+ 校验 leaf 类型与
+ * pfn 合法性 + 有 mmap_read_lock 符号时加锁。返回 0 成功，负值失败。
+ */
+int wxshadow_read_user(void *mm, unsigned long uaddr, void *dst, unsigned long len)
+{
+    unsigned long off = uaddr & ~PAGE_MASK;
+    unsigned long base = uaddr & PAGE_MASK;
+    unsigned long pfn;
+    void *pgd, *pud, *pmd, *kaddr;
+    u64 pgd_val, pud_val, pmd_val, pte_val = 0;
+    u64 *pte;
+    bool locked;
+
+    if (!mm || !dst)
+        return -22;
+    if (len == 0 || len > PAGE_SIZE - off)
+        return -22;
+
+    locked = wx_mmap_lock_begin(mm);
+
+    pgd = wxshadow_pgd_offset(mm, base);
+    if (!pgd || !is_kva((unsigned long)pgd))
+        goto fail;
+    if (!safe_read_u64((unsigned long)pgd, &pgd_val) || !pgd_val)
+        goto fail;
+
+    if (wx_page_level == 4) {
+        pud = wxshadow_pud_offset(pgd, base);
+        if (!pud || !is_kva((unsigned long)pud))
+            goto fail;
+        if (!safe_read_u64((unsigned long)pud, &pud_val) || !pud_val)
+            goto fail;
+        pmd = wxshadow_pmd_offset(pud, base);
+    } else {
+        pmd = wxshadow_pmd_offset(pgd, base);
+    }
+    if (!pmd || !is_kva((unsigned long)pmd))
+        goto fail;
+    if (!safe_read_u64((unsigned long)pmd, &pmd_val) || !pmd_val)
+        goto fail;
+
+    if (pmd_sect(pmd_val)) {
+        /* 2MB block：不拆页，按块内偏移算 pfn（拆页要写页表且需 mmap_lock） */
+        int pxd_bits = wx_page_shift - 3;
+        unsigned long block_shift = wx_page_shift + pxd_bits;
+
+        pfn = ((pmd_val >> PAGE_SHIFT) & 0xFFFFFFFFFUL) +
+              ((base & ((1UL << block_shift) - 1)) >> PAGE_SHIFT);
+    } else if (pmd_table(pmd_val)) {
+        pte = pte_offset_kernel_local(pmd, base);
+        if (!pte || !is_kva((unsigned long)pte))
+            goto fail;
+        if (!safe_read_u64((unsigned long)pte, &pte_val))
+            goto fail;
+        if (!(pte_val & PTE_VALID))
+            goto fail;
+        if ((pte_val & PTE_TYPE_MASK) != PTE_TYPE_PAGE)
+            goto fail;
+        if (!(pte_val & PTE_AF))
+            goto fail;
+        pfn = (pte_val >> PAGE_SHIFT) & 0xFFFFFFFFFUL;
+    } else {
+        goto fail;
+    }
+
+    if (!wx_pfn_is_valid(pfn)) {
+        pr_err("wxshadow: read user %lx: bogus pfn %lx\n", uaddr, pfn);
+        goto fail;
+    }
+
+    kaddr = pfn_to_kaddr(pfn);
+    if (!is_kva((unsigned long)kaddr))
+        goto fail;
+
+    memcpy(dst, (char *)kaddr + off, len);
+    if (locked)
+        wx_mmap_lock_end(mm);
+    return 0;
+
+fail:
+    if (locked)
+        wx_mmap_lock_end(mm);
+    return -14;  /* EFAULT */
+}

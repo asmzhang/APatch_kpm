@@ -56,6 +56,7 @@ static int prepare_shadow_target(void *mm, unsigned long addr,
 {
     void *vma;
     int ret;
+    bool locked;
 
     vma = kfunc_find_vma(mm, addr);
     if (!vma || vma_start(vma) > addr) {
@@ -63,7 +64,16 @@ static int prepare_shadow_target(void *mm, unsigned long addr,
         return -1;
     }
 
+    /*
+     * ★1.2.4（AUD-wx-4）：__split_huge_pmd() 是页表写入 + mmu_notifier 回调 +
+     * THP refcount 变更，内核 in-tree 调用者都持 mmap_lock。这里是 prctl 上下文
+     * （不持锁），有 mmap_read_lock 符号时补一把读锁；5.10 无该符号时退化为
+     * 无锁调用（已在加载时告警），此时只对确实落在 2MB block 里的地址生效。
+     */
+    locked = wx_mmap_lock_begin(mm);
     ret = wxshadow_try_split_pmd(mm, vma, page_addr);
+    if (locked)
+        wx_mmap_lock_end(mm);
     if (ret < 0) {
         pr_err("wxshadow: [%s] PMD split failed for %lx: %d\n",
                op, page_addr, ret);
@@ -476,7 +486,7 @@ static int write_shadow_bytes(struct wxshadow_page *page_info,
     unsigned long shadow_vaddr;
 
     if (!page_info || !page_info->shadow_page || !src || len == 0 ||
-        offset + len > PAGE_SIZE)
+        offset >= PAGE_SIZE || len > PAGE_SIZE - offset)  /* 1.2.4 WI-5: 减法式防回绕 */
         return -22;  /* EINVAL */
 
     shadow_vaddr = (unsigned long)page_info->shadow_page;
@@ -1085,43 +1095,14 @@ int wxshadow_do_set_reg(void *mm, unsigned long addr,
  */
 static void *copy_from_user_via_pte(void __user *ubuf, unsigned long len)
 {
-    void *caller_mm;
-    unsigned long uaddr = (unsigned long)ubuf;
-    unsigned long buf_page = uaddr & PAGE_MASK;
-    unsigned long buf_off = uaddr & ~PAGE_MASK;
-    u64 *buf_pte;
-    unsigned long buf_pfn;
-    void *buf_kaddr, *kbuf;
+    void *caller_mm, *kbuf;
 
-    if (len == 0 || len > PAGE_SIZE - buf_off) {  /* WX-3: 防整型回绕 */
-        pr_err("wxshadow: user buffer %lx+%lu crosses page boundary\n", uaddr, len);
+    if (len == 0 || len > PAGE_SIZE)
         return NULL;
-    }
 
     caller_mm = kfunc_get_task_mm(current);
     if (!caller_mm)
         return NULL;
-
-    /* Split PMD block if user buffer is in THP */
-    {
-        void *buf_vma = kfunc_find_vma(caller_mm, uaddr);
-        if (buf_vma && vma_start(buf_vma) <= uaddr)
-            wxshadow_try_split_pmd(caller_mm, buf_vma, buf_page);
-    }
-
-    buf_pte = get_user_pte(caller_mm, buf_page, NULL);
-    if (!buf_pte || !(*buf_pte & PTE_VALID)) {
-        pr_err("wxshadow: no PTE for user buffer %lx\n", uaddr);
-        kfunc_mmput(caller_mm);
-        return NULL;
-    }
-
-    buf_pfn = (*buf_pte >> PAGE_SHIFT) & 0xFFFFFFFFFUL;
-    buf_kaddr = pfn_to_kaddr(buf_pfn);
-    if (!is_kva((unsigned long)buf_kaddr)) {
-        kfunc_mmput(caller_mm);
-        return NULL;
-    }
 
     kbuf = kfunc_kzalloc(len, 0xcc0);
     if (!kbuf) {
@@ -1129,7 +1110,20 @@ static void *copy_from_user_via_pte(void __user *ubuf, unsigned long len)
         return NULL;
     }
 
-    memcpy(kbuf, (char *)buf_kaddr + buf_off, len);
+    /*
+     * ★1.2.4（AUD-wx-4）：交给 wxshadow_read_user 统一处理：
+     * - 不再为读用户 buffer 去拆 2MB 大页（原实现无 mmap_lock 调
+     *   __split_huge_pmd，属页表写入 + mmu_notifier + THP refcount 变更）；
+     * - 校验 leaf 类型（PTE_TYPE_PAGE）、AF、以及 pfn 合法性后再 pfn_to_kaddr；
+     * - 有 mmap_read_lock 符号时加读锁（6.1）；5.10 无该符号则加锁降级并已在
+     *   加载时告警。
+     */
+    if (wxshadow_read_user(caller_mm, (unsigned long)ubuf, kbuf, len) < 0) {
+        kfunc_kfree(kbuf);
+        kfunc_mmput(caller_mm);
+        return NULL;
+    }
+
     kfunc_mmput(caller_mm);
     return kbuf;
 }

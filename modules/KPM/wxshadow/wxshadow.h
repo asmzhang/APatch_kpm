@@ -152,7 +152,7 @@ struct wxshadow_page {
 enum wx_hook_method {
     WX_HOOK_METHOD_NONE = 0,
     WX_HOOK_METHOD_DIRECT,      /* Direct hook (preferred) */
-    WX_HOOK_METHOD_REGISTER,    /* register_user_*_hook API (fallback) */
+    WX_HOOK_METHOD_REGISTER,    /* 1.2.5 起不再使用：回落路径已删除（卸载期 RCU 风险），保留枚举只为记录 */
 };
 
 /*

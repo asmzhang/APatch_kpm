@@ -238,14 +238,38 @@ def signature_status(sha):
     return False, (detail[0] if detail else "git verify-commit 未通过")
 
 
+def _path_variants(path):
+    """同一路径在 make 输出里可能是反斜杠、正斜杠或转义反斜杠三种写法。"""
+    raw = str(path)
+    variants = {raw, raw.replace("\\", "/")}
+    if os.sep == "\\":
+        # Windows 路径在 Makefile 里还可能被写成转义形式
+        variants.add(raw.replace("\\", "\\\\"))
+    return {v for v in variants if v}
+
+
 def sanitize(text):
-    """去掉本机绝对路径再落盘/入哈希（公开文件不写本机信息）。"""
-    for prefix, tag in ((str(REPO), "<repo>"), (str(Path.home()), "<home>")):
-        text = text.replace(prefix, tag)
+    """去掉本机绝对路径再落盘/入哈希（公开文件不写本机信息）。
+
+    AUD-024：早期实现只替换 `str(REPO)` 这一种写法，而 Windows 上 REPO 是
+    `D:\\work\\...`、make 配方里却是 `D:/work/...`，于是归档的 MANIFEST 里留下了
+    本机绝对路径。这里改成「同一路径的多种分隔符写法一起替换」，并补一条兜底：
+    仍然漏出来的盘符绝对路径整段替换为 <abs>。
+    """
+    pairs = [(REPO, "<repo>"), (Path.home(), "<home>")]
     for var in ("ANDROID_NDK_LATEST_HOME", "ANDROID_NDK", "ANDROID_NDK_HOME"):
         value = os.environ.get(var)
         if value:
-            text = text.replace(value, f"<{var}>")
+            pairs.append((value, f"<{var}>"))
+    # 长路径先替换，避免 <home> 之类的前缀把更长的路径截断
+    expanded = []
+    for path, tag in pairs:
+        for variant in _path_variants(path):
+            expanded.append((variant, tag))
+    for variant, tag in sorted(expanded, key=lambda item: len(item[0]), reverse=True):
+        text = text.replace(variant, tag)
+    # 兜底：其它盘符绝对路径（例如工具链装在别处）也不再原样落盘
+    text = re.sub(r"[A-Za-z]:[/\\][^\s\"'`()]*", "<abs>", text)
     return text
 
 

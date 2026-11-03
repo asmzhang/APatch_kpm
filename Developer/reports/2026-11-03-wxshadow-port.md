@@ -2,7 +2,8 @@
 
 ## 身份
 
-- 模块：`wxshadow`，版本 `1.2.1`（产物名）／`MYKPM_VERSION`（1.2.1 起源码不再写死上游串）。
+- 模块：`wxshadow`，版本 `1.2.5`（产物名）／`MYKPM_VERSION`（1.2.1 起源码不再写死上游串，
+  `KPM_VERSION(MYKPM_VERSION)` + `-DMYKPM_VERSION` 注入）。
 - 上游：`mkpms-stealth` 的 `kpms/wxshadow/`，CHANGELOG 最新条目 `[1.2.0-k66] - 2026-07-24`。
 - 产物（移植时，上游源码原样）：`modules/KPM/wxshadow/wxshadow_1.2.0.kpm`，157,904 B，
   `sha256=c254e1231f5c1655e1365060deee3fb8002c8c8a01c297a326e1e6e0e6f41a1c`。
@@ -11,7 +12,24 @@
 - 产物（含复核问题单修复，1.2.1，当前源码）：`wxshadow_1.2.1.kpm` 159,536 B，
   `sha256=069ce62815f9e89022d8846e069746001ebf1a115ad9fdd8918ab5459ab4f3eb`（探索构建值，
   冻结构建以 `metadata` 的 instance 为准）。
+- 后续版本（每版都在下文有对应章节）：
+  - 1.2.2：`wxshadow_1.2.2.kpm` 159,864 B，
+    `sha256=7bf2ac5abbaa5a2d…`；instance `wxshadow-1.2.2+g1497a6db4e55.r0ac889dd.kpb51197a.ndk26.1.10909125#1`。
+  - 1.2.3：`wxshadow_1.2.3.kpm` 163,760 B，
+    `sha256=06ddb4d98d3c94a01340dcfce42dbbb573ef6696eef78508f1ffed02d30c4dfe`；instance
+    `wxshadow-1.2.3+ge1e4f2897c5f.r5a259d01.kpb51197a.ndk26.1.10909125#1`；`source_commit` 见下一节。
+  - 1.2.4：产物 `wxshadow_1.2.4.kpm`，构建/实例号见本节末尾与 `metadata/modules/wxshadow.json`。
 - 客户端：`Developer/tools/wxshadow_client/wxshadow_client`，3,517,920 B（aarch64 静态）。
+
+### 字节身份的行尾口径（AUD-025）
+
+本仓 `core.autocrlf=true`、无 `.gitattributes`，模块源码在工作树里是 CRLF，在提交里是 LF。
+因此 `metadata` 每条 source 同时记两份哈希：
+
+- `blob_sha256`：**提交里的字节**（LF），按 `git show <commit>:<path>` 复算；
+- `sha256`：**工作树里的字节**（CRLF），也就是编译器的实际输入。
+
+核验时不要拿 `git cat-file` 的字节去对 `sha256`，那一定「假失败」；按上面的口径分别核对。
 
 ## 变更点（相对上游）
 
@@ -228,7 +246,7 @@ ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation 
 | --- | --- |
 | NX-1 / WX-2 | **撤回** 1.2.1 的 `-EBUSY` 早退。`unload_module()` 是先 `list_del`、再调 `mod->exit`、随后无条件 `kp_free_exec(mod->start)`，返回值没有生命周期语义；早退会让六组钩子指向已释放代码且无法再清理。改为只记录超时、始终走完七个 phase。 |
 | WX-8 | `debug_print_tasks_list(10)` 用 `WXSHADOW_DEBUG_TASKS` 宏关掉，默认不再往 dmesg 打 10 行 `task=/mm=` 内核地址。 |
-| NX-6 | `wxshadow.c` 两处、`wxshadow_bp.c` 一处 `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`。 |
+| NX-6 | 可回绕的加法式判定统一改减法式。1.2.2 改了 5 处（`wxshadow.c:349`/`:368`、`wxshadow_bp.c:589`/`1096`/`1150`，其中两处是 clamp），1.2.3 复核又发现 `wxshadow_bp.c:479`（`write_shadow_bytes`，当时不可达）未改，1.2.4 补上一并加 `offset >= PAGE_SIZE` 上界（见下文 1.2.4 节 WI-5）。 |
 | NX-5 / R3 | `metadata` 的 `version_declared` 与 `version_sources.makefile` 同步到 1.2.2，并把 WX-*/NX-*/R* 登记进 `issues[]`。 |
 
 ### 真机复验（1.2.2）
@@ -297,7 +315,9 @@ ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation 
 - fork：`asmzhang/KernelPatch`（`POST /repos/bmax121/KernelPatch/forks` 返回 202）。
 - 分支 `fix/lkm-current-uid-raw-kuid`，基线 `b51197a`，提交 **`f0c9e72`**「lkm: return raw kuid from the exported current_uid symbol」：`kp_kpm_current_uid()` 改为 `return current_uid();`，并加注释说明两形态语义必须一致。
 - 已推到 fork（`git push -u fork fix/lkm-current-uid-raw-kuid`）。
-- 本仓 `.gitmodules` 的 `KernelPatch` url 指向 fork，submodule 指针更新为 `f0c9e72`；上游合并后改回 `bmax121/KernelPatch`。
+- fork 只用于保存提案：`asmzhang/KernelPatch` 的 `fix/lkm-current-uid-raw-kuid` 分支上放着 `f0c9e72`。
+  **本仓 `.gitmodules` 的 url 仍是 `https://github.com/bmax121/KernelPatch/`，submodule 指针仍钉在
+  `b51197a`**（与下文「未采用」一致；曾短暂指向 fork，已回退）。
 
 ### 设备事实：这个缺陷在两台机器上不可利用
 | 设备 | 内核 | 形态 | `CONFIG_USER_NS` |
@@ -332,3 +352,44 @@ ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation 
 - 这个缺陷在本项目的两台设备上**不可复现、不可利用**，只有换了开着 `CONFIG_USER_NS=y` 的内核才会显形；
 - fork 上的 `f0c9e72` 作为**未验证的提案**保留，`KernelPatch` submodule 指针仍钉在 `b51197a`（未采用），保证构建输入与既有交付一致；
 - 待有开 userns 的目标（设备或可加载 LKM 的内核）复现「userns root 被放行」之后再启用该提交并提 PR。
+
+## 1.2.5：拆掉 register 回落 + 工具归一（2026-11-03）
+
+1.2.4 的那批（AUD-wx-4 / WI-1…WI-7）与本节一起发版，避免「一个版本号塞两批不相干事」。
+
+### 代码
+
+- **AUD-wx-13（中）**：删除 `register_user_*_hook` 回落。`wxshadow.c` 的 init 现在只接受 direct hook
+  （`hook_wrap3(brk_handler)` + `hook_wrap3(single_step_handler)`），两个符号任一缺失即
+  `return -1` 拒绝加载；`wxshadow_scan.c` 的可用性判定同步收紧。连带删除
+  `wxshadow_break_hook` / `wxshadow_step_hook` 两个实例、两个桥接回调和
+  `wx_unregister_brk_step_hooks()`（RCU 风险的载体）。
+  理由：回落路径把钩子挂进内核全局 debug 链表，卸载时只能 `list_del_rcu()`，
+  而 `unload_module()` 随后无条件 `kp_free_exec(mod->start)`——RCU 宽限期内的读者会走进已释放内存。
+- **AUD-wx-14（信息）**：`pin_user_pages_fast + kmap` 这条彻底修法**经评估不适用**：
+  `wxshadow_read_user()` 唯一调用点是 prctl 钩子，钩子上下文不允许缺页，而 gup 慢路径会
+  取 `mmap_lock`、可能触发缺页。故保留复核意见的 ①+②（无缺页走查 + `pfn_valid` +
+  有符号时加 `mmap_read_lock`）。代码注释与本节都写明，避免下一个人重复尝试。
+
+### 工具（AUD-024）
+
+`tools/identity.py` 的 `sanitize()` 只替换 `str(REPO)` 一种写法，而 Windows 上 REPO 是
+`D:\\work\\...`、make 配方里是 `D:/work/...`，于是归档的 MANIFEST 里留了本机路径。
+改为「同一路径的多种分隔符写法一起替换」+ 兜底正则把其它盘符绝对路径换成 `<abs>`，
+并用 NDK 环境变量名做标签。**历史 1.2.0–1.2.3 的 MANIFEST 保留原样**（产物不可覆盖），
+1.2.5 起新归档的清单不再含本机路径。
+
+### 双机复验（1.2.5）
+
+| 项 | Pixel 6（6.1.99 / kernel） | 小米 13（5.10.149 / LKM） |
+| --- | --- | --- |
+| 加载 | `load rc=0`，`method=1`（direct），`mm helpers: pfn_valid=1 mmap_read_lock=1` | `load rc=0`，`method=1`，`mmap_read_lock=0`（5.10 无该符号，按设计降级） |
+| 断点 + 改寄存器 | `-a 0x221cf4 -r x0=7` → `ret=7` | 同样 `ret=7` |
+| 补丁（读路径） | `--patch 20018052c0035fd6` → `ret=9` | 未复跑（与 1.2.4 同一段代码，1.2.4 已验） |
+| 卸载 | `unload rc=0`，`cleaned 1 pages`，`/proc/uptime` 5529.73 → 5531.84 连续 | `unload rc=0`，uptime 81493.65 → 81495.69 连续 |
+
+### 未覆盖
+
+- 「direct hook 拿不到时拒绝加载」这条分支在两台设备上都**无法触发**（两台都拿得到
+  `brk_handler`/`single_step_handler`），只有代码审查覆盖；
+- AUD-024 只对新归档生效，历史四份 MANIFEST 仍含旧路径（已在问题单记明）。

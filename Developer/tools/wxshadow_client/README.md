@@ -46,16 +46,27 @@ make clean
 | `--release` | 释放影子页（不带 `-a` 释放全部） |
 | `--once` | 一次性断点，命中一次后自动解除 |
 
-## 当前状态（2026-11-03，模块 1.2.1）
+## 当前状态（对应模块 1.2.4）
 
-prctl 通道已打通：模块侧改成自己解析 `__arm64_sys_prctl` 再 `hook_wrap(...)`，实测
-`-m` 能列出可执行映射、`-a <addr> -r x0=7` 能设断点并改写寄存器（靶子返回值从 41 变 7），
-`--patch` / `--release` 同样可用。
+prctl 通道已打通，命令都可用：
 
-**必须以 root 运行**。1.2.1 起模块在 `prctl_before` 加了权限门（独立复核问题单 WX-1）：
-只有 uid 0（root）与 2000（shell）能下发命令，其他身份（含管理器 uid 10273）一律
-`Operation not permitted (errno=1)`。这是有意的：这条通道能对任意 pid 打补丁，等价代码注入。
+- `-m` 列出目标进程的可执行映射；
+- `-a <addr> -r x0=7` 设断点并改寄存器（命中时回显到 dmesg：`Breakpoint Hit` / `modifying x0`）；
+- `-a <addr> --patch <hex>` 写影子页（读侧仍返回原字节）；
+- `--release` 释放该进程全部影子页。
 
-卸载：1.2.1 起 `wait_for_handlers_drain()` 超时会**中止卸载**（`mod_exit` 返回 `EBUSY`），
-不再带着未排空的 handler 去释放模块代码。实测空闲卸载、挂过断点后卸载都是 `unload rc=0`
-且设备不重启；早期两次「卸载即重启」在当前产物上复现不出来，详见模块 README 已知问题 2。
+**权限（1.2.3 起可维护，不再是硬编码）**：`prctl_before()` 只放行 `wx_uid_allowed()` 里的 uid，
+默认 `{0, 2000}`，可用 ctl0 增删：
+
+```
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow allow:10273'   # 允许管理器 uid
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow deny:10273'    # 收回
+su 10273 -c '/data/local/tmp/kpmctl 10273 ctl wxshadow allowlist'     # 查看
+```
+
+uid 0 恒放行且不可 deny；表满（8 项）时 `allow:` 返回 `rc=-1`。
+注意：ctl0 本身仍要求「受信管理器 uid」，所以给别的身份放行要用管理器的上下文执行。
+
+**卸载（1.2.2 起语义变了）**：`wait_for_handlers_drain()` 等 in-flight handler 超时后**只记录
+并继续卸载**（`mod_exit` 的返回值在 KP 里没有生命周期语义，见模块 README「已知问题 2」），
+不再返回 `-EBUSY` 中止。

@@ -401,10 +401,14 @@ int resolve_symbols(void)
     kptr_debug_hook_lock = (spinlock_t *)lookup_name_safe("debug_hook_lock");
     pr_info("wxshadow: debug_hook_lock = %px\n", kptr_debug_hook_lock);
 
-    /* Check if at least one method is available */
-    if (!(kfunc_brk_handler && kfunc_single_step_handler) &&
-        !(kfunc_register_user_break_hook && kfunc_register_user_step_hook)) {
-        pr_err("wxshadow: neither direct hook nor register API available\n");
+    /*
+     * 1.2.5：只接受 direct hook。register_user_*_hook 回落已在 init 里删除，
+     * 这里的可用性判定同步收紧——没有 brk_handler/single_step_handler 就拒绝加载。
+     */
+    if (!(kfunc_brk_handler && kfunc_single_step_handler)) {
+        pr_err("wxshadow: direct hook symbols unavailable (brk_handler=%px single_step_handler=%px)\n",
+               kfunc_brk_handler, kfunc_single_step_handler);
+        pr_err("wxshadow: refusing to load without direct hook (register fallback removed in 1.2.5)\n");
         return -1;
     }
     pr_info("wxshadow: [9/12] done\n");
@@ -1239,6 +1243,11 @@ int try_scan_mm_context_id_offset(void)
 
 /* ========== Debug: print tasks list ========== */
 
+/*
+ * ★1.2.4（WI-7）：函数本体也随宏一起关掉。只把调用点包进 #ifdef（WX-8）
+ * 会让 release 产物里仍带一个会打印内核地址的函数，任何一次误加调用就复发。
+ */
+#ifdef WXSHADOW_DEBUG_TASKS
 void debug_print_tasks_list(int max_count)
 {
     struct task_struct *p;
@@ -1294,3 +1303,4 @@ void debug_print_tasks_list(int max_count)
 
     pr_info("wxshadow: === END tasks list (%d processes printed) ===\n", count);
 }
+#endif /* WXSHADOW_DEBUG_TASKS */

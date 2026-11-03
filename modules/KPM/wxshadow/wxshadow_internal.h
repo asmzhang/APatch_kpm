@@ -499,10 +499,23 @@ static inline void wxshadow_flush_icache_range(unsigned long start, unsigned lon
     asm volatile("isb" : : : "memory");
 }
 
-static inline void wxshadow_flush_icache_page(unsigned long addr)
-{
-    wxshadow_flush_icache_range(addr & PAGE_MASK, (addr & PAGE_MASK) + PAGE_SIZE);
-}
+/*
+ * ★1.2.4（AUD-wx-4）：用户态内存读取与页表操作的内核辅助符号。
+ *
+ * 两形态差异：6.1 的 mmap_read_lock / mmap_read_unlock / pfn_valid 都是独立符号，
+ * 可用 kallsyms 解析到；5.10 的 mmap_read_lock 是 static inline（无符号），解析不到。
+ * 解析不到时退化为「不加 mmap 读锁，但仍做 pfn 合法性与 leaf 类型校验」，
+ * 并在加载时打印一次告警（wxshadow: mm helpers: ...）。
+ */
+extern bool (*wx_kfunc_pfn_valid)(unsigned long pfn);
+
+extern void (*wx_kfunc_mmap_read_lock)(void *mm);
+extern void (*wx_kfunc_mmap_read_unlock)(void *mm);
+void wxshadow_resolve_mm_helpers(void);
+bool wx_pfn_is_valid(unsigned long pfn);
+bool wx_mmap_lock_begin(void *mm);
+void wx_mmap_lock_end(void *mm);
+int wxshadow_read_user(void *mm, unsigned long uaddr, void *dst, unsigned long len);
 
 /*
  * wxshadow_flush_icache_kva - flush icache using the KERNEL VA of the shadow page.
@@ -646,6 +659,8 @@ int scan_mm_struct_offsets(void);
 int scan_vma_struct_offsets(void);
 int detect_task_struct_offsets(void);
 int try_scan_mm_context_id_offset(void);
+#ifdef WXSHADOW_DEBUG_TASKS
 void debug_print_tasks_list(int max_count);
+#endif
 
 #endif /* _KPM_WXSHADOW_INTERNAL_H_ */

@@ -153,21 +153,6 @@ atomic_t wx_in_flight = ATOMIC_INIT(0);
 /* Current hook method */
 enum wx_hook_method hook_method = WX_HOOK_METHOD_NONE;
 
-/* Forward declaration for hook callbacks */
-static int wxshadow_brk_hook_fn(struct pt_regs *regs, unsigned int esr);
-static int wxshadow_step_hook_fn(struct pt_regs *regs, unsigned int esr);
-
-/* Hook instances for register_user_*_hook API */
-static struct wx_break_hook wxshadow_break_hook = {
-    .fn = wxshadow_brk_hook_fn,
-    .imm = WXSHADOW_BRK_IMM,
-    .mask = 0,
-};
-
-static struct wx_step_hook wxshadow_step_hook = {
-    .fn = wxshadow_step_hook_fn,
-};
-
 /* NOTE: mmap lock wrappers removed - lockless operation */
 
 /* ========== Reference counting helpers ========== */
@@ -1307,43 +1292,11 @@ int wxshadow_handle_write_fault(void *mm, unsigned long addr)
  * Called by kernel's brk_handler when our BRK imm matches.
  * Note: Unlike direct hook, we don't need to check imm here - kernel already matched it.
  */
-static int wxshadow_brk_hook_fn(struct pt_regs *regs, unsigned int esr)
-{
-    return wxshadow_brk_handler(regs, esr);
-}
-
 /*
- * Step hook callback for register_user_step_hook
- * Called by kernel's single_step_handler for user-mode single-step exceptions.
+ * 1.2.5：register_user_*_hook 的桥接回调与 wx_unregister_brk_step_hooks() 已随回落
+ * 路径一起删除（见 init 里的说明）。direct 路径的入口是 brk_handler_before /
+ * single_step_handler_before，由 hook_wrap3 托管。
  */
-static int wxshadow_step_hook_fn(struct pt_regs *regs, unsigned int esr)
-{
-    return wxshadow_step_handler(regs, esr);
-}
-
-/* ========== Unload helpers ========== */
-
-/*
- * wx_unregister_brk_step_hooks - remove break/step hooks from kernel's
- * debug hook lists under debug_hook_lock.  Safe to call from both the
- * init failure path and wxshadow_exit().
- * NOTE: caller must NOT call synchronize_rcu() — KP holds rcu_read_lock
- * while invoking module exit, which would deadlock.
- */
-static void wx_unregister_brk_step_hooks(void)
-{
-    if (kptr_debug_hook_lock) {
-        spin_lock(kptr_debug_hook_lock);
-    } else {
-        pr_warn("wxshadow: debug_hook_lock not found, unsafe unregister\n");
-    }
-    list_del_rcu(&wxshadow_step_hook.node);
-    list_del_rcu(&wxshadow_break_hook.node);
-    if (kptr_debug_hook_lock)
-        spin_unlock(kptr_debug_hook_lock);
-    INIT_LIST_HEAD(&wxshadow_step_hook.node);
-    INIT_LIST_HEAD(&wxshadow_break_hook.node);
-}
 
 /* ========== Module init/exit ========== */
 
@@ -1452,6 +1405,9 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
         return ret;
     }
     pr_info("wxshadow: stage1 resolve_symbols ok\n");
+
+    /* ★1.2.4（AUD-wx-4）：pfn_valid / mmap_read_lock 两形态可选解析 */
+    wxshadow_resolve_mm_helpers();
     if (stage <= 1)
         return 0;
 
@@ -1515,23 +1471,20 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
         pr_info("wxshadow: hooked single_step_handler\n");
 
         hook_method = WX_HOOK_METHOD_DIRECT;
-    } else if (kfunc_register_user_break_hook && kfunc_register_user_step_hook) {
-        pr_info("wxshadow: using register_user_*_hook API\n");
-
-        INIT_LIST_HEAD(&wxshadow_break_hook.node);
-        INIT_LIST_HEAD(&wxshadow_step_hook.node);
-
-        pr_info("wxshadow: registering break hook (imm=0x%x)...\n", wxshadow_break_hook.imm);
-        kfunc_register_user_break_hook(&wxshadow_break_hook);
-        pr_info("wxshadow: registered break hook\n");
-
-        pr_info("wxshadow: registering step hook...\n");
-        kfunc_register_user_step_hook(&wxshadow_step_hook);
-        pr_info("wxshadow: registered step hook\n");
-
-        hook_method = WX_HOOK_METHOD_REGISTER;
     } else {
-        pr_err("wxshadow: no hook method available\n");
+        /*
+         * 1.2.5：不再回落到 register_user_*_hook。
+         *
+         * 回落路径把钩子挂进内核的全局 debug hook 链表，卸载时只能
+         * list_del_rcu()（KP 在 rcu_read_lock 里调 mod_exit，不能 synchronize_rcu），
+         * 于是 RCU 宽限期内的读者仍可能走进本模块内存，而 unload_module()
+         * 随后无条件 kp_free_exec(mod->start) —— 这正是 1.2.0/1.2.1 那两次
+         * 卸载重启的同族风险。direct hook 由 KP 的 hook_wrap3 管理生命周期，
+         * 拿不到就拒绝加载，把问题留在加载期而不是卸载期。
+         */
+        pr_err("wxshadow: direct hook unavailable (brk_handler=%px single_step_handler=%px);\n",
+               kfunc_brk_handler, kfunc_single_step_handler);
+        pr_err("wxshadow: register_user_*_hook fallback removed in 1.2.5 (unload-time RCU hazard)\n");
         return -1;
     }
     pr_info("wxshadow: stage3 brk/step hooks ok (method=%d)\n", (int)hook_method);
@@ -1550,12 +1503,10 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
     }
     if (ret != HOOK_NO_ERR) {
         pr_err("wxshadow: failed to hook prctl: %d\n", ret);
-        /* Cleanup based on hook method */
+        /* Cleanup（1.2.5 起只有 direct 一种钩法） */
         if (hook_method == WX_HOOK_METHOD_DIRECT) {
             hook_unwrap(kfunc_single_step_handler, single_step_handler_before, NULL);
             hook_unwrap(kfunc_brk_handler, brk_handler_before, NULL);
-        } else if (hook_method == WX_HOOK_METHOD_REGISTER) {
-            wx_unregister_brk_step_hooks();
         }
         hook_method = WX_HOOK_METHOD_NONE;
         return -1;
@@ -1591,8 +1542,6 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
         if (hook_method == WX_HOOK_METHOD_DIRECT) {
             hook_unwrap(kfunc_single_step_handler, single_step_handler_before, NULL);
             hook_unwrap(kfunc_brk_handler, brk_handler_before, NULL);
-        } else if (hook_method == WX_HOOK_METHOD_REGISTER) {
-            wx_unregister_brk_step_hooks();
         }
         hook_method = WX_HOOK_METHOD_NONE;
         return -1;
@@ -1687,7 +1636,7 @@ long wxshadow_init(const char *args, const char *event, void *__user reserved)
  *     returned from the module function).
  *  3. Up to ~1 s timeout with a warning if something is stuck.
  */
-static int wait_for_handlers_drain(const char *phase)
+static void wait_for_handlers_drain(const char *phase)
 {
     int i, iters = 0;
 
@@ -1701,7 +1650,7 @@ static int wait_for_handlers_drain(const char *phase)
         if (++iters > 10000000) {
             pr_err("wxshadow: [%s] timeout waiting for in-flight handlers "
                    "(in_flight=%d)\n", phase, atomic_read(&wx_in_flight));
-            return -1;  /* WX-2: 不许带着未排空的 handler 继续卸载 */
+            return;     /* 1.2.4 WI-3：超时不阻断卸载，语义见 wx_drain_checked */
         }
     }
 
@@ -1709,34 +1658,25 @@ static int wait_for_handlers_drain(const char *phase)
         pr_info("wxshadow: [%s] drained in-flight handlers (%d iters)\n",
                 phase, iters);
 
-    return 0;
+    return;
 }
 
 /*
- * ★WX-2（1.2.1）：超时就不能继续卸载。
- * KP 在 mod_exit 返回 0 后立即 kp_free_exec(mod->start)；若此时还有 handler
- * 卡在模块代码里，执行流会落到已释放页。因此这里把超时变成
- * “中止卸载”（返回 -EBUSY），宁可模块停在已加载状态也不释放代码。
+ * ★WX-2 / NX-1 / WI-3（1.2.4）：超时只记录，然后继续卸载。
+ *
+ * unload_module() 是「先 list_del、再调 mod->exit、随后无条件
+ * kp_free_exec(mod->start)」，mod_exit 的返回值没有任何生命周期语义
+ * （KernelPatch/kernel/patch/module/module.c:540-547，LKM 同构
+ * KernelPatch/lkm/kpm/module.c:865-880）。1.2.1 曾在此返回 -EBUSY 期望
+ * 「宁可停在已加载状态」，实际后果相反：模块已不在册、代码已释放，而
+ * dup_mmap / uprobe_dup_mmap / brk+step / do_page_fault / follow_page_pte /
+ * exit_mmap 六组钩子仍指向已释放代码，用户态也再没有通道清掉断点。
+ * 所以只能把每个钩子都摘干净；残余风险（in-flight handler 在代码释放后短暂运行）
+ * 记录在 README 已知问题 2。
  */
-static int wx_drain_checked(const char *phase)
+static void wx_drain_checked(const char *phase)
 {
-    if (wait_for_handlers_drain(phase) != 0)
-        pr_err("wxshadow: [%s] in-flight handlers did not drain in time; "
-               "continuing unload anyway\n", phase);
-
-    /*
-     * ★WX-2 / NX-1（1.2.2）：这里必须继续走完全部 phase，不能提前返回。
-     * unload_module() 是「先 list_del、再调 mod->exit、随后无条件
-     * kp_free_exec(mod->start)」，mod_exit 的返回值没有任何生命周期语义
-     * （KernelPatch/kernel/patch/module/module.c:540-547，LKM 同构
-     * KernelPatch/lkm/kpm/module.c:865-880）。1.2.1 在这里返回 -EBUSY 的后果是：
-     * prctl 钩子已摘、模块已不在册、代码已释放，而 dup_mmap / uprobe_dup_mmap /
-     * brk+step / do_page_fault / follow_page_pte / exit_mmap 六组钩子仍指向
-     * 已释放代码，用户态也再没有任何通道能清掉断点。
-     * 所以：超时只记录，继续把每个钩子都摘干净；风险是 handler 可能在代码
-     * 释放后短暂运行（记录在 README 已知问题 2）。
-     */
-    return 0;
+    wait_for_handlers_drain(phase);
 }
 
 long wxshadow_exit(void *__user reserved)
@@ -1798,19 +1738,11 @@ long wxshadow_exit(void *__user reserved)
 
         /* Wait for any in-flight direct-hook handler to complete */
         wx_drain_checked("phase3-direct");
-
-    } else if (hook_method == WX_HOOK_METHOD_REGISTER) {
-        /*
-         * Manual unregister via list_del_rcu under debug_hook_lock.
-         * Cannot call synchronize_rcu() — KP's unload_module() holds
-         * rcu_read_lock() while calling our exit, so synchronize_rcu()
-         * would deadlock.
-         */
-        pr_info("wxshadow: unregistering hooks (manual, phase 3)...\n");
-        wx_unregister_brk_step_hooks();
-        wx_drain_checked("phase3-register");
-        pr_info("wxshadow: unregistered break/step hooks (register API, phase 3)\n");
     }
+    /*
+     * 1.2.5：register_user_*_hook 分支已删除——那条路卸载时只能 list_del_rcu()，
+     * RCU 宽限期内的读者会走进即将被 kp_free_exec() 释放的模块内存。
+     */
     hook_method = WX_HOOK_METHOD_NONE;
 
     /*
@@ -1862,7 +1794,16 @@ long wxshadow_exit(void *__user reserved)
 static uid_t wx_allow_uids[WX_ALLOW_MAX] = { 0, 2000 };
 static int wx_allow_count = 2;
 
-bool wx_uid_allowed(uid_t uid)
+/*
+ * ★1.2.4（WI-1）：名单必须加锁。module_control0() 不串行化 ctl0 调用
+ * （KernelPatch/kernel/patch/module/module.c:616-655 只在 rcu_read_lock 内复制参数），
+ * 所以并发 allow:/deny: 会丢失或留下重复项（等于权限门被削弱），prctl 读侧
+ * 也能看到半更新状态。两个调用路径都在进程上下文，且不睡眠，用 spinlock 即可。
+ */
+static DEFINE_SPINLOCK(wx_allow_lock);
+
+/* 无锁核心：调用者必须持 wx_allow_lock */
+static bool wx_uid_in_list(uid_t uid)
 {
     int i;
 
@@ -1875,29 +1816,47 @@ bool wx_uid_allowed(uid_t uid)
     return false;
 }
 
+bool wx_uid_allowed(uid_t uid)
+{
+    bool ok;
+
+    spin_lock(&wx_allow_lock);
+    ok = wx_uid_in_list(uid);
+    spin_unlock(&wx_allow_lock);
+    return ok;
+}
+
 static int wx_allow_uid(uid_t uid)
 {
-    if (wx_uid_allowed(uid))
-        return 0;              /* 已在表里（含 root），幂等 */
-    if (wx_allow_count >= WX_ALLOW_MAX)
-        return -1;             /* 满 */
-    wx_allow_uids[wx_allow_count++] = uid;
-    return 0;
+    int ret = 0;
+
+    spin_lock(&wx_allow_lock);
+    if (!wx_uid_in_list(uid)) {
+        if (wx_allow_count >= WX_ALLOW_MAX)
+            ret = -1;          /* 满 */
+        else
+            wx_allow_uids[wx_allow_count++] = uid;
+    }
+    spin_unlock(&wx_allow_lock);
+    return ret;
 }
 
 static int wx_deny_uid(uid_t uid)
 {
-    int i;
+    int i, ret = -1;
 
     if (uid == 0)
         return -1;             /* root 不可移除 */
+    spin_lock(&wx_allow_lock);
     for (i = 0; i < wx_allow_count; i++) {
         if (wx_allow_uids[i] == uid) {
             wx_allow_uids[i] = wx_allow_uids[--wx_allow_count];
-            return 0;
+            ret = 0;
+            break;
         }
     }
-    return -1;                 /* 不在表里 */
+    spin_unlock(&wx_allow_lock);
+    return ret;
 }
 
 /* 有界解析：只接受 1~10 位十进制数字，遇到非数字立刻失败（不做前缀匹配） */
@@ -1939,18 +1898,44 @@ static bool wx_is_word(const char *args, const char *word)
            args[i] == '\n' || args[i] == '\r';
 }
 
+/*
+ * ★1.2.4（WI-6）：度量上界修正。旧版 out_size - n 在 n > out_size 时无符号下溢成巨大值，
+ * 且 n < (int)out_size 会把 unsigned long 截断；现在每次写之前先判剩余长度。
+ * 名单读取也纳入 wx_allow_lock。
+ */
 static int wx_dump_allow(char *out, unsigned long out_size)
 {
-    int i;
-    int n = 0;
+    unsigned long used = 0;
+    int i, n = 0;
 
-    n += kf_snprintf(out + n, out_size - n, " 0");
-    for (i = 0; i < wx_allow_count && n < (int)out_size; i++) {
+    if (!out || out_size == 0)
+        return 0;
+
+    spin_lock(&wx_allow_lock);
+    n = kf_snprintf(out, out_size, " 0");
+    if (n < 0 || (unsigned long)n >= out_size) {
+        used = out_size - 1;
+        out[used] = '\0';
+        spin_unlock(&wx_allow_lock);
+        return (int)used;
+    }
+    used = (unsigned long)n;
+    for (i = 0; i < wx_allow_count && used + 1 < out_size; i++) {
         if (wx_allow_uids[i] == 0)
             continue;          /* root 单独打在第一项 */
-        n += kf_snprintf(out + n, out_size - n, " %u", (unsigned int)wx_allow_uids[i]);
+        n = kf_snprintf(out + used, out_size - used, " %u",
+                        (unsigned int)wx_allow_uids[i]);
+        if (n < 0)
+            break;
+        used += (unsigned long)n;
+        if (used >= out_size) {
+            used = out_size - 1;
+            out[used] = '\0';
+            break;
+        }
     }
-    return n;
+    spin_unlock(&wx_allow_lock);
+    return (int)used;
 }
 
 long wxshadow_control(const char *args, char *__user out_msg, int outlen)
@@ -1998,11 +1983,26 @@ long wxshadow_control(const char *args, char *__user out_msg, int outlen)
 
     if (out_msg && outlen > 0) {
         int len = n < outlen - 1 ? n : outlen - 1;
+        int rc1 = 1, rc2 = 1;
 
         if (len < 0)
             len = 0;
-        compat_copy_to_user(out_msg, buf, (unsigned long)len);
-        compat_copy_to_user(out_msg + len, "\0", 1);
+        if (len > 0)
+            rc1 = compat_copy_to_user(out_msg, buf, (unsigned long)len);
+        rc2 = compat_copy_to_user(out_msg + len, "\0", 1);
+        /*
+         * ★1.2.4（WI-2）：compat_copy_to_user 成功返回 >0、失败返回 0
+         * （KernelPatch/kernel/patch/common/utils.c:74-86）。旧版丢弃返回值，于是
+         * supercmd 路径（把内核栈 buffer[4096] 当 out_msg，
+         * KernelPatch/kernel/patch/common/supercmd.c:290-299）下 status/allowlist
+         * 永远拿不到内容却回 rc=0。这里把它变成 EFAULT，
+         * 让工具侧能区分「命令执行了」与「回显失败了」。
+         */
+        if (rc1 <= 0 || rc2 <= 0) {
+            pr_warn("wxshadow: control: copy_to_user failed (rc=%d/%d, len=%d)\n",
+                    rc1, rc2, len);
+            return -14;  /* EFAULT */
+        }
     }
     return 0;
 }

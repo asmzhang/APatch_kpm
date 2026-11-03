@@ -18,12 +18,16 @@
   - 1.2.3：`wxshadow_1.2.3.kpm` 163,760 B，
     `sha256=06ddb4d98d3c94a01340dcfce42dbbb573ef6696eef78508f1ffed02d30c4dfe`；instance
     `wxshadow-1.2.3+ge1e4f2897c5f.r5a259d01.kpb51197a.ndk26.1.10909125#1`；`source_commit` 见下一节。
-  - 1.2.4：产物 `wxshadow_1.2.4.kpm`，构建/实例号见本节末尾与 `metadata/modules/wxshadow.json`。
+  - 1.2.4：`wxshadow_1.2.4.kpm` 165,400 B，`sha256=0c0f99dea6816b7b7585ec3175a38b265a1e8b9a6717b37182fe2316ce2df83d`；
+    **未单独冻结构建**（探索构建，双机验过后直接并入 1.2.5），故 `metadata.builds[]` 中没有 1.2.4 记录，本行哈希取自探索构建。
+  - 1.2.5：`wxshadow_1.2.5.kpm` 162,584 B，
+    `sha256=fa24d9d017c416dd777e2046f10f2c2590a89a91804058afd5d9cdb95f10d4aa`；instance
+    `wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125#1`；`source_commit=340729b19c57ae01991a4c4781b7630a4913d19c`。
 - 客户端：`Developer/tools/wxshadow_client/wxshadow_client`，3,517,920 B（aarch64 静态）。
 
 ### 字节身份的行尾口径（AUD-025）
 
-本仓 `core.autocrlf=true`、无 `.gitattributes`，模块源码在工作树里是 CRLF，在提交里是 LF。
+本仓 `core.autocrlf=true`；模块源码在工作树里是 CRLF、在提交里是 LF。本报告自身在 `.gitattributes` 里按 `-text` 豁免（工作树字节 = 入库字节），以便 `report_versions` 直接复算。
 因此 `metadata` 每条 source 同时记两份哈希：
 
 - `blob_sha256`：**提交里的字节**（LF），按 `git show <commit>:<path>` 复算；
@@ -246,7 +250,7 @@ ESR = 0x96000145  EC = 0x25: DABT (current EL)  FSC = 0x05: level 1 translation 
 | --- | --- |
 | NX-1 / WX-2 | **撤回** 1.2.1 的 `-EBUSY` 早退。`unload_module()` 是先 `list_del`、再调 `mod->exit`、随后无条件 `kp_free_exec(mod->start)`，返回值没有生命周期语义；早退会让六组钩子指向已释放代码且无法再清理。改为只记录超时、始终走完七个 phase。 |
 | WX-8 | `debug_print_tasks_list(10)` 用 `WXSHADOW_DEBUG_TASKS` 宏关掉，默认不再往 dmesg 打 10 行 `task=/mm=` 内核地址。 |
-| NX-6 | 可回绕的加法式判定统一改减法式。1.2.2 改了 5 处（`wxshadow.c:349`/`:368`、`wxshadow_bp.c:589`/`1096`/`1150`，其中两处是 clamp），1.2.3 复核又发现 `wxshadow_bp.c:479`（`write_shadow_bytes`，当时不可达）未改，1.2.4 补上一并加 `offset >= PAGE_SIZE` 上界（见下文 1.2.4 节 WI-5）。 |
+| NX-6 | 可回绕的加法式判定统一改减法式，**最终 3 个文件共 6 处**：`wxshadow.c:337`/`:356`、`wxshadow_bp.c:489`/`:599`/`:1144`、`wxshadow_pgtable.c:1109`（均为 `len > PAGE_SIZE - offset`，`wxshadow_bp.c:489` 另加 `offset >= PAGE_SIZE` 上界）。1.2.2 改其中 5 处，1.2.4 补上 `wxshadow_bp.c:599`/`:1144` 与 `wxshadow_pgtable.c:1109`（AUD-021 统一口径）。 |
 | NX-5 / R3 | `metadata` 的 `version_declared` 与 `version_sources.makefile` 同步到 1.2.2，并把 WX-*/NX-*/R* 登记进 `issues[]`。 |
 
 ### 真机复验（1.2.2）

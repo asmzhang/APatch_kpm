@@ -453,84 +453,117 @@
     }
   ],
   "audits": [],
-  "device_tests": [],
+  "device_tests": [
+    {
+      "kind": "device-test",
+      "instance_id": "wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125#1",
+      "device": "Pixel 6 (6.1.99-android14, APatch 11282, kernel 形态)",
+      "result": "pass",
+      "report": "Developer/reports/2026-11-03-wxshadow-port.md",
+      "notes": "load rc=0；status v1.2.5 uids 0 2000；set_bp ret=7、patch ret=9；unload rc=0 cleaned 1 pages 且 uptime 连续",
+      "tested_bytes": {
+        "sha256": "fa24d9d017c416dd777e2046f10f2c2590a89a91804058afd5d9cdb95f10d4aa",
+        "registered": true,
+        "in_registry_match": true
+      }
+    },
+    {
+      "kind": "device-test",
+      "instance_id": "wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125#1",
+      "device": "小米 13 (5.10.149-android12, APatch LKM 形态)",
+      "result": "pass",
+      "report": "Developer/reports/2026-11-03-wxshadow-port.md",
+      "notes": "load rc=0；mm helpers pfn_valid=1 mmap_read_lock=0（5.10 无该符号，按设计降级）；set_bp/patch ret=7/9；unload rc=0 uptime 连续",
+      "tested_bytes": {
+        "sha256": "fa24d9d017c416dd777e2046f10f2c2590a89a91804058afd5d9cdb95f10d4aa",
+        "registered": true,
+        "in_registry_match": true
+      }
+    }
+  ],
   "issues": [
     {
       "id": "AUD-wx-1",
       "severity": "高",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "WX-1 prctl_before 无权限校验（任意进程可跨进程打补丁）",
       "evidence": "modules/KPM/wxshadow/wxshadow_bp.c:1322-1330 权限门仅放行 uid 0/2000；小米 13 上 su 10270 被拒（dmesg prctl denied for uid 10270），root 放行",
       "closure": "复审确认权限门仍覆盖 0x57580001-08 全部命令且无第二入口后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-2",
       "severity": "高",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "WX-2/NX-1 drain 超时早退会留下指向已释放代码的钩子",
       "evidence": "1.2.2 撤回早退，改为只记录超时、始终走完七个 phase；依据 KernelPatch/kernel/patch/module/module.c:540-547 不采纳 mod_exit 返回值",
       "closure": "复审确认 wx_drain_checked 恒返回 0 且八处调用点均已去掉 return -16 后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-3",
       "severity": "低",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "WX-3 长度检查可整型回绕（offset+len>PAGE_SIZE）",
       "evidence": "1.2.1/1.2.2 改为 len > PAGE_SIZE - off；wxshadow.c 两处、wxshadow_bp.c 两处",
       "closure": "复审确认四处均已改写后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-4",
       "severity": "中",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "WX-4 copy_from_user_via_pte 无 mmap_lock/pin，未校验 pfn_valid",
       "evidence": "1.2.4 改写 modules/KPM/wxshadow/wxshadow_bp.c 的 copy_from_user_via_pte()：不再调用 __split_huge_pmd()，改走 wxshadow_pgtable.c 的 wxshadow_read_user()——2MB block 用块内偏移算 pfn，pte 路径校验 PTE_VALID/PTE_TYPE_PAGE/PTE_AF，pfn_to_kaddr() 前用 pfn_valid；6.1 解析到 mmap_read_lock 时加读锁（dmesg: mm helpers: pfn_valid=1 mmap_read_lock=1）；写路径的 __split_huge_pmd() 同样加锁。1.2.5 双机复验：Pixel 6 --patch 命中 ret=9，小米 13 ret=7/9 正常",
       "closure": "读路径不再有「lockless get_user_pte 裸解引用 + 无 pin + 未校验 pfn」这三件事；彻底修法 pin_user_pages 见 AUD-wx-14 的评估结论。由 Auditor 复核 1.2.5 关闭。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-8",
       "severity": "低",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "WX-8 init 无条件 debug_print_tasks_list(10) 泄漏内核地址",
       "evidence": "1.2.2 用 WXSHADOW_DEBUG_TASKS 宏关闭；默认加载 dmesg 不再出现 task=/mm= 十行",
       "closure": "复审确认宏默认未定义且加载日志无任务表后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-9",
       "severity": "高",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "WX-9 跨进程设断点用目标用户 VA 刷 icache，触发 EL1 translation fault → panic 重启",
       "evidence": "Pixel 6 4/4 重启；主机侧 kmsg 抓到 ESR=0x96000145 EC=0x25 FSC=0x05 at 0x6042f50000；1.2.2 改按影子页内核 VA 刷后同一场景不再重启",
       "closure": "复审确认 11 处调用点均改为 wxshadow_flush_icache_kva 后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-10",
       "severity": "低",
-      "owner": "Auditor",
+      "owner": "Developer",
       "status": "fixed",
       "title": "NX-3 权限门硬编码 0/2000，无 runtime ALLOW/DENY 维护入口",
       "evidence": [
@@ -540,7 +573,8 @@
       "closure": "1.2.3 已把权限门改成查 ctl0 维护的 allowlist（allow:/deny:/allowlist/status，默认 {0,2000}，root 恒放行不可 deny，上限 8）；Pixel 6 与小米 13 双形态实测 status/allow/deny/deny:0 全部符合预期，deny 后管理器身份重新收到 EPERM。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-11",
@@ -576,7 +610,8 @@
       "closure": "由 Auditor 复核：模块内不再存在「卸载时只能 list_del_rcu」的代码路径。注意 direct hook 缺失时的拒绝加载分支两台设备触发不到，仅代码审查覆盖。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-wx-14",
@@ -588,7 +623,8 @@
       "closure": "结论已入报告 1.2.5 节与代码注释；后续如确需 pin，只能在非钩子上下文使用。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "已确认"
+      "confidence": "已确认",
+      "closed_by": "Auditor"
     },
     {
       "id": "AUD-019",
@@ -597,7 +633,7 @@
       "status": "fixed",
       "title": "报告身份节停在 1.2.1，缺 1.2.3 及以后的 sha256/instance",
       "evidence": "1.2.5 报告身份节改为 1.2.5，并列出 1.2.2/1.2.3/1.2.4（并入 1.2.5）的产物哈希与 instance。",
-      "closure": "由 Auditor 复核报告身份节与 metadata 一致。",
+      "closure": "报告身份节补齐 1.2.4（标注未单独冻结、并入 1.2.5）与 1.2.5 的 sha256+instance+source_commit；1.2.4 从未冻结，故 builds[] 无其记录，报告已显式说明，不再指向 metadata 兜底。",
       "class": "product",
       "frequency": "未知",
       "confidence": "已确认"
@@ -620,8 +656,8 @@
       "owner": "Developer",
       "status": "fixed",
       "title": "可回绕写法计数三处互相矛盾（报告说 3 处/元数据说 4 处）",
-      "evidence": "1.2.5 报告统一口径：1.2.2 改 5 处、1.2.3 复核发现 wxshadow_bp.c:479 漏改、1.2.4 补上并加 offset 上界。",
-      "closure": "由 Auditor 核对报告/README/元数据三处计数一致。",
+      "evidence": "grep -n 'PAGE_SIZE -' modules/KPM/wxshadow/*.c → wxshadow.c:337/:356、wxshadow_bp.c:489/:599/:1144、wxshadow_pgtable.c:1109，共 3 文件 6 处。",
+      "closure": "报告 NX-6 行、模块 README 更新记录与 metadata evidence 三处统一为「3 文件 6 处」并列出精确行号。",
       "class": "product",
       "frequency": "未知",
       "confidence": "已确认"
@@ -680,16 +716,29 @@
       "owner": "Developer",
       "status": "fixed",
       "title": "三处自相矛盾：fork 表述、源文件个数、debug 变体理由",
-      "evidence": "1.2.5 报告 fork 段改为「只在 fork 分支保存提案，本仓 .gitmodules 与指针仍指上游 b51197a」；README 源文件计数统一为 5 个 .c + 2 个 .h；Makefile 注释补 1.2.2 起已引入 WXSHADOW_DEBUG_TASKS 宏的说明（仍不出 debug 变体，理由改为「宏开关只影响日志」）。",
-      "closure": "由 Auditor 三处逐一核对。",
+      "evidence": "复算确认：.gitmodules url 仍指 bmax121 上游、submodule 指针 b51197a、fork f0c9e72 仅存提案；README 标题段改为 5 个 .c + 2 个 .h 共 7 个源文件；Makefile 注释改为「1.2.2 起新增 WXSHADOW_DEBUG_TASKS，默认关闭、不构成独立调试用途」。",
+      "closure": "三处自相矛盾逐条改毕，与本轮 README/Makefile 改动逐字对应。",
       "class": "product",
       "frequency": "未知",
       "confidence": "已确认"
+    },
+    {
+      "id": "AUD-027",
+      "title": "报告行尾口径一节称「本仓无 .gitattributes」，与 b480fb3 新增的 -text 规则矛盾",
+      "severity": "低",
+      "class": "record",
+      "frequency": "未知",
+      "confidence": "已确认",
+      "owner": "Developer",
+      "status": "fixed",
+      "closed_by": "Auditor",
+      "evidence": "Developer/reports/2026-11-03-wxshadow-port.md 的行尾口径一节原写「core.autocrlf=true、无 .gitattributes」。",
+      "closure": "改为「模块源码工作树 CRLF / 提交 LF；本报告在 .gitattributes 里按 -text 豁免，使 report_versions 可直接复算」。"
     }
   ],
   "acceptances": [],
   "deliveries": [],
-  "updated_at": "2026-11-03T03:39:24Z",
+  "updated_at": "2026-11-03",
   "updated_by": "developer:r5",
   "report_versions": [
     {
@@ -699,6 +748,11 @@
           "sha256": "3fccb7b784681769189cc9f185d011b759dc46442f3a9144eda6437bea99f5ee",
           "commit": "340729b19c57ae01991a4c4781b7630a4913d19c",
           "note": "1.2.5 问题单收口（含 1.2.4 批次）+ 拆 register 回落 + AUD-024 工具归一；行尾口径见报告 AUD-025 一节"
+        },
+        {
+          "sha256": "44d36f2152ad93734fe2bcd261a0f72538770549377e0a40624d70b8d529676c",
+          "pending_commit": true,
+          "note": "AUD-019/020/021/022/024/025/026/027 收口：报告身份节补齐 1.2.4/1.2.5、行尾口径改写、NX-6 计数统一为 3 文件 6 处"
         }
       ]
     }

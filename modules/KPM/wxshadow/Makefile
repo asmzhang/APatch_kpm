@@ -42,8 +42,9 @@ C_FILES += wxshadow_scan.c
 
 objs := $(C_FILES:.c=.o)
 
-# 不生成 debug 变体：上游源码里没有任何 debug-only 分支（无 #ifdef 调试宏），
-# 加 -D 编出来的字节与 release 完全相同，多一个同哈希产物只会误导身份记录。
+# 不生成 debug 变体：上游源码没有 debug-only 分支；本仓 1.2.2 起新增的
+# WXSHADOW_DEBUG_TASKS 只多打几行 dmesg，默认关闭、不改变行为，也不构成独立调试用途，
+# 按流程不产出 `_debug` 件。
 all: wxshadow_$(MYKPM_VERSION).kpm
 
 wxshadow_$(MYKPM_VERSION).kpm: ${objs}

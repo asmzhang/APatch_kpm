@@ -5,7 +5,7 @@
 
 - 上游：`mkpms-stealth` 的 `kpms/wxshadow/`，上游版本串 `1.2.0-k66`；本仓自 1.2.1 起把源码里的
   `KPM_VERSION` 改成 `MYKPM_VERSION`（由 Makefile 注入），产物名与模块自报版本保持一致。
-- 本仓：`modules/KPM/wxshadow/` 只搬 KPM 侧 6 个源文件；用户态客户端在
+- 本仓：`modules/KPM/wxshadow/` 只搬 KPM 侧 5 个 `.c` + 2 个 `.h` 共 7 个源文件；用户态客户端在
   `Developer/tools/wxshadow_client/`。
 
 ## 原理
@@ -186,8 +186,8 @@ prctl 通道修好之后，两个靶子都验过：
   （拿不到合法 KVA 时退化 `ic ialluis`），11 处调用点全改。按 NX-1 撤回 1.2.1 的
   `-EBUSY` 早退（`mod_exit` 返回值无生命周期语义，早退会留下指向已释放代码的钩子），
   改为只记录超时、走完七个 phase。WX-8：`debug_print_tasks_list(10)` 用
-  `WXSHADOW_DEBUG_TASKS` 关掉（不再往 dmesg 打内核地址）。NX-6：`wxshadow.c` 两处、
-  `wxshadow_bp.c` 一处 `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`。
+  `WXSHADOW_DEBUG_TASKS` 关掉（不再往 dmesg 打内核地址）。NX-6：可回绕判定改减法式，最终 3 个文件共 6 处：`wxshadow.c:337`/`:356`、
+  `wxshadow_bp.c:489`/`:599`/`:1144`、`wxshadow_pgtable.c:1109`（详见报告 AUD-021 一节）。
 - **1.2.1（2026-11-03）**：独立复核问题单修复——WX-1 `prctl_before` 加权限门（只允许
   uid 0 / 2000）；WX-2 `wait_for_handlers_drain` 超时改为中止卸载；WX-3 两处
   `offset + len > PAGE_SIZE` 改成 `len > PAGE_SIZE - offset`（防整型回绕）；

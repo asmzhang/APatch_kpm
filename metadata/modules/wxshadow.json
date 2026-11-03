@@ -465,7 +465,7 @@
       "closure": "复审确认权限门仍覆盖 0x57580001-08 全部命令且无第二入口后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-2",
@@ -477,7 +477,7 @@
       "closure": "复审确认 wx_drain_checked 恒返回 0 且八处调用点均已去掉 return -16 后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-3",
@@ -489,7 +489,7 @@
       "closure": "复审确认四处均已改写后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-4",
@@ -501,7 +501,7 @@
       "closure": "读路径不再有「lockless get_user_pte 裸解引用 + 无 pin + 未校验 pfn」这三件事；彻底修法 pin_user_pages 见 AUD-wx-14 的评估结论。由 Auditor 复核 1.2.5 关闭。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-8",
@@ -513,7 +513,7 @@
       "closure": "复审确认宏默认未定义且加载日志无任务表后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-9",
@@ -525,7 +525,7 @@
       "closure": "复审确认 11 处调用点均改为 wxshadow_flush_icache_kva 后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-10",
@@ -540,7 +540,7 @@
       "closure": "1.2.3 已把权限门改成查 ctl0 维护的 allowlist（allow:/deny:/allowlist/status，默认 {0,2000}，root 恒放行不可 deny，上限 8）；Pixel 6 与小米 13 双形态实测 status/allow/deny/deny:0 全部符合预期，deny 后管理器身份重新收到 EPERM。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-11",
@@ -552,7 +552,7 @@
       "closure": "需要一台开 CONFIG_USER_NS 的设备复现后再决定是否采用 fork 提交 f0c9e72。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-12",
@@ -564,7 +564,7 @@
       "closure": "由维护者决定是否在 build_candidate 侧归一（属维护方工具判据）后关闭",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-13",
@@ -576,7 +576,7 @@
       "closure": "由 Auditor 复核：模块内不再存在「卸载时只能 list_del_rcu」的代码路径。注意 direct hook 缺失时的拒绝加载分支两台设备触发不到，仅代码审查覆盖。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-wx-14",
@@ -588,7 +588,7 @@
       "closure": "结论已入报告 1.2.5 节与代码注释；后续如确需 pin，只能在非钩子上下文使用。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-019",
@@ -600,7 +600,7 @@
       "closure": "由 Auditor 复核报告身份节与 metadata 一致。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-020",
@@ -612,7 +612,7 @@
       "closure": "由 Auditor 按 docs/process/04-issue-ticket.md 复核字段完整性。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-021",
@@ -624,7 +624,7 @@
       "closure": "由 Auditor 核对报告/README/元数据三处计数一致。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-022",
@@ -636,7 +636,7 @@
       "closure": "由 Auditor 核对状态与 fork 提交未采用的事实一致。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-023",
@@ -648,7 +648,7 @@
       "closure": "由 Auditor 对照 wxshadow_bp.c 权限门与 wxshadow.c 的 drain 实现复核。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-024",
@@ -660,7 +660,7 @@
       "closure": "由 Auditor 复核新归档不含盘符绝对路径，并接受历史四份的例外说明。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-025",
@@ -672,7 +672,7 @@
       "closure": "由 Auditor 按该口径复算一次 sources[] 校验。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     },
     {
       "id": "AUD-026",
@@ -684,7 +684,7 @@
       "closure": "由 Auditor 三处逐一核对。",
       "class": "product",
       "frequency": "未知",
-      "confidence": "高置信"
+      "confidence": "已确认"
     }
   ],
   "acceptances": [],
@@ -696,9 +696,9 @@
       "path": "Developer/reports/2026-11-03-wxshadow-port.md",
       "versions": [
         {
-          "sha256": "dba821305aa2e00c6581c83c2210a5c806e17590c9e0720372ff1b5c0a87da63",
-          "commit": "340729b",
-          "note": "1.2.5：复核问题单收口（含 1.2.4 批次）+ register 回落拆除 + AUD-024 工具归一"
+          "sha256": "3fccb7b784681769189cc9f185d011b759dc46442f3a9144eda6437bea99f5ee",
+          "commit": "340729b19c57ae01991a4c4781b7630a4913d19c",
+          "note": "1.2.5 问题单收口（含 1.2.4 批次）+ 拆 register 回落 + AUD-024 工具归一；行尾口径见报告 AUD-025 一节"
         }
       ]
     }

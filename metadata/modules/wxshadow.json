@@ -831,7 +831,21 @@
       "closure": "已登记为降级路径的已知残余风险；若要加固，5.10 目标需用 mmap_lock 的 raw rwsem 地址做 trylock 等价物。"
     }
   ],
-  "acceptances": [],
+  "acceptances": [
+    {
+      "instance_id": "wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125#1",
+      "source_commit": "340729b19c57ae01991a4c4781b7630a4913d19c",
+      "fingerprint_sha256": "fbb58a4a819637bcc46d8caccd547411ab22465374e66c278a3b1be3ca5ae37d",
+      "artifacts": {
+        "wxshadow_1.2.5.kpm": "fa24d9d017c416dd777e2046f10f2c2590a89a91804058afd5d9cdb95f10d4aa"
+      },
+      "accepted_by": "维护者",
+      "accepted_at": "2026-11-03T04:20:00Z",
+      "report": "docs/records/2026-11-03-wxshadow-acceptance.md",
+      "scope": "release 单变体；页级双视图 set_bp/patch/release/unload 全链路；ctl0 权限门与 allowlist。Pixel 6（6.1 kernel 形态）与小米 13（5.10 LKM）双机 load rc=0、method=1、set_bp ret=7 / patch ret=9、unload rc=0 且 uptime 连续。不覆盖：页粒度非确定性、LKM current_uid 潜伏缺陷（AUD-wx-11）、5.10 无锁走查（AUD-wx-17）、死解析与 %px 日志（AUD-wx-15）。",
+      "audit": "Auditor/reports/2026-11-03-wxshadow-125-review.md"
+    }
+  ],
   "deliveries": [],
   "updated_at": "2026-11-03",
   "updated_by": "developer:r5",

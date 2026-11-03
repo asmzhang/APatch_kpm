@@ -1636,7 +1636,23 @@
       "tested_at": "2026-11-03T06:28:00Z"
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "id": "AUD-110",
+      "class": "product",
+      "severity": "中低",
+      "frequency": "低频",
+      "confidence": "已确认",
+      "status": "fixing",
+      "owner": "Developer",
+      "opened_by": "Auditor",
+      "opened_at": "2026-11-03T06:48:31Z",
+      "title": "AUD-104（re_kernel.json 主单）侧单：kfree_skb 在 6.1 上解析为空，nlmsg_free 的 5 条错误路径静默泄漏 skb",
+      "closed_by": null,
+      "evidence": "本模块侧单：同一缺陷在本模块的镜像（re_kernel 与 re_kernel_x 共享 kfree_skb 解析与 nlmsg_free 回退修复）。主单 AUD-104 登记在 metadata/modules/re_kernel.json；2026-11-03 复核要求 re_kernel_x 补单，但门禁对 issue 编号做全局唯一查重（tools/check_repository.py:320,352-354），同号两单无法同时入库，故登记为 AUD-110 并指回主单。修复与证据口径以主单 AUD-104 为准：代码修复成立，暂不可关单（closed_by=Developer 自关违反 docs/process/04-issue-ticket.md:84-87；失败归因 extern 无定义 → SHN_UNDEF → KP 白名单查不到 → -ENOENT（KernelPatch/kernel/patch/module/module.c:222-234）；load rc=-1 实为 -ENOENT(-2)（module.c:496/522）；reason=0 语义存疑）。关单由发现方（Auditor）独立复核后执行。",
+      "closure": "退回 fixing；随主单 AUD-104 一并由发现方（Auditor）独立复核后关闭。"
+    }
+  ],
   "acceptances": [
     {
       "instance_id": "re_kernel_x-1.6-20261010+g6d0698e7dee2.r59f08e39.kpb51197a.ndk26.1.10909125#1",
@@ -1666,6 +1682,6 @@
     }
   ],
   "deliveries": [],
-  "updated_at": "2026-11-03T06:12:30Z",
+  "updated_at": "2026-11-03T06:48:31Z",
   "updated_by": "developer:r5"
 }

@@ -1,10 +1,10 @@
 {
   "module": "wxshadow",
   "status": "candidate",
-  "version_declared": "1.2.3",
+  "version_declared": "1.2.5",
   "version_sources": {
-    "makefile": "1.2.3",
-    "upstream": "1.2.0-k66"
+    "makefile": "1.2.5",
+    "upstream": "1.2.5"
   },
   "builds": [
     {
@@ -339,6 +339,117 @@
       "imported_by": "developer:r5",
       "imported_at": "2026-11-03T02:22:43Z",
       "handoff_manifest": "Developer/reports/handoffs/2026-11-03-wxshadow.json"
+    },
+    {
+      "module": "wxshadow",
+      "version": "1.2.5",
+      "kind": "candidate",
+      "build_id": "wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125",
+      "variant": "base",
+      "recorded_at": "2026-11-03T03:38:41Z",
+      "source_commit": "340729b19c57ae01991a4c4781b7630a4913d19c",
+      "source_dirty": false,
+      "source_tree_sha256": "35459c6bca0138a24edfc7840d2e814706a9a1255de500f51f4ddc5a2427ae02",
+      "source_tree_blob_sha256": "35d241060859d6bcd253aedb93de0771c6f1c190d14518c284c5a79a30f1795c",
+      "source_blob_missing": [],
+      "sources": [
+        {
+          "path": "kpm_utils.h",
+          "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+          "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+        },
+        {
+          "path": "modules/KPM/wxshadow/Makefile",
+          "sha256": "1493a0ba3fd16334e0990ad150f894b87bdf79518cf4f921c625f2e9ae1ecf70",
+          "blob_sha256": "1493a0ba3fd16334e0990ad150f894b87bdf79518cf4f921c625f2e9ae1ecf70"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow.c",
+          "sha256": "df222be7202c95c1e88f3e000d61e85aba980e0371e22f6913a374aeea87a993",
+          "blob_sha256": "917eaeecdfee6fef586c7f92d1b2d2c1be7c23e91108ecaa6d49a5b95ee98b0e"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow.h",
+          "sha256": "5770ac93cd07e317b1d1f865b727ade2b5436943bbb3847864e1da382c9853c4",
+          "blob_sha256": "af09af11b0987cd81273b040bde36b2947c65d09a88e3b3c6e006b2677c54ca4"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow_bp.c",
+          "sha256": "5a8ff473ba3d11d75ca913ce8b91ff16f1f1044e13670b0b49d14254ee7f394c",
+          "blob_sha256": "cd6f7d781b94528c2016a4e335c21e0e92fc1200bd36327f8044babbca47a270"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow_handlers.c",
+          "sha256": "9b5517b48a85920d10328afbad5a770ba86a6dee8460a012340c2f1b2416f067",
+          "blob_sha256": "d79aa4255f7c070e54771a730492759190f95ddc8bc8d3569f4609c3d6a55c27"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow_internal.h",
+          "sha256": "03587b6694d9af1218a7d758bf96f2888dd94daa10150b9cc514b9be1bdf8712",
+          "blob_sha256": "accfe212d122c9347b232f05ab160fb25278b00febe15d6aa86b13ac82077306"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow_pgtable.c",
+          "sha256": "c03636eb1c1f9be28998e7cecd7f72ed82fc39e2dee3646cbf55ce65bbe94967",
+          "blob_sha256": "f2b27977e491b228fd65d1c34e68556986eaa66b7509a6417d66a3ad8ccb16c9"
+        },
+        {
+          "path": "modules/KPM/wxshadow/wxshadow_scan.c",
+          "sha256": "440847297f075b02475d38eec60d7bf2c17978f8a3ecd200227d23b88d824f0b",
+          "blob_sha256": "20c863ac0433e4b526bdcfbb4ddb76ae5966f488595074198c22ad33d9af8d95"
+        },
+        {
+          "path": "tools/build_candidate.py",
+          "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+          "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+        },
+        {
+          "path": "tools/identity.py",
+          "sha256": "821b59caa9cf9fd38534e6301ea078e01df9d4b99aa17fe496a55ebf08b6959d",
+          "blob_sha256": "e5c4aefa9a69b6dbe9f105438d4ca27cd5ac67a4914dfe960e6fa439833ce8dd"
+        }
+      ],
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "fbb58a4a819637bcc46d8caccd547411ab22465374e66c278a3b1be3ca5ae37d",
+      "recipe": {
+        "captured": true,
+        "command": "make -C '<repo>\\modules\\KPM\\wxshadow' all",
+        "dry_run_args": "-n -B（强制重算配方）",
+        "returncode": 0,
+        "dry_run_sha256": "8fa2e99e8ea3030afc03fdd28566e53e7eb75cf8bcea1cef70779b94aad06b32",
+        "cc": "<abs>",
+        "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+        "excerpt": "make: Entering directory '<repo>/modules/KPM/wxshadow'\n<abs> -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.5\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow.o wxshadow.c\n<abs> -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.5\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow_pgtable.o wxshadow_pgtable.c\n<abs> -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"1.2.5\\\" -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include -I. -c -o wxshadow_handlers.o wxshadow_handlers.c"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "340729b19c57ae01991a4c4781b7630a4913d19c",
+        "source_tree_sha256": "35459c6bca0138a24edfc7840d2e814706a9a1255de500f51f4ddc5a2427ae02",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "8fa2e99e8ea3030afc03fdd28566e53e7eb75cf8bcea1cef70779b94aad06b32",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "wxshadow_1.2.5.kpm",
+          "sha256": "fa24d9d017c416dd777e2046f10f2c2590a89a91804058afd5d9cdb95f10d4aa",
+          "size": 162584,
+          "embedded": {
+            "name": "wxshadow",
+            "version": "1.2.5",
+            "license": "GPL v2",
+            "author": "wxshadow",
+            "description": "W^X Shadow Memory - Hidden BP/Patch (kernel 6.1+/6.6 maple-tree)"
+          },
+          "path": "artifacts/wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125/wxshadow_1.2.5.kpm"
+        }
+      ],
+      "instance_id": "wxshadow-1.2.5+g35459c6bca01.rfbb58a4a.kpb51197a.ndk26.1.10909125#1",
+      "imported_by": "developer:r5",
+      "imported_at": "2026-11-03T03:39:24Z",
+      "handoff_manifest": "Developer/reports/handoffs/2026-11-03-wxshadow.json"
     }
   ],
   "audits": [],
@@ -351,7 +462,10 @@
       "status": "fixed",
       "title": "WX-1 prctl_before 无权限校验（任意进程可跨进程打补丁）",
       "evidence": "modules/KPM/wxshadow/wxshadow_bp.c:1322-1330 权限门仅放行 uid 0/2000；小米 13 上 su 10270 被拒（dmesg prctl denied for uid 10270），root 放行",
-      "closure": "复审确认权限门仍覆盖 0x57580001-08 全部命令且无第二入口后关闭"
+      "closure": "复审确认权限门仍覆盖 0x57580001-08 全部命令且无第二入口后关闭",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-2",
@@ -360,7 +474,10 @@
       "status": "fixed",
       "title": "WX-2/NX-1 drain 超时早退会留下指向已释放代码的钩子",
       "evidence": "1.2.2 撤回早退，改为只记录超时、始终走完七个 phase；依据 KernelPatch/kernel/patch/module/module.c:540-547 不采纳 mod_exit 返回值",
-      "closure": "复审确认 wx_drain_checked 恒返回 0 且八处调用点均已去掉 return -16 后关闭"
+      "closure": "复审确认 wx_drain_checked 恒返回 0 且八处调用点均已去掉 return -16 后关闭",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-3",
@@ -369,16 +486,22 @@
       "status": "fixed",
       "title": "WX-3 长度检查可整型回绕（offset+len>PAGE_SIZE）",
       "evidence": "1.2.1/1.2.2 改为 len > PAGE_SIZE - off；wxshadow.c 两处、wxshadow_bp.c 两处",
-      "closure": "复审确认四处均已改写后关闭"
+      "closure": "复审确认四处均已改写后关闭",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-4",
-      "severity": "低",
+      "severity": "中",
       "owner": "Auditor",
-      "status": "open",
+      "status": "fixed",
       "title": "WX-4 copy_from_user_via_pte 无 mmap_lock/pin，未校验 pfn_valid",
-      "evidence": "wxshadow_bp.c:1086-1135 在 PTE walk 与 memcpy 之间页可被换出/迁移/CoW，读到旧页（非提权）",
-      "closure": "补 mmap_lock 或 pin_user_pages + pfn_valid 校验，并经真机回归后关闭"
+      "evidence": "1.2.4 改写 modules/KPM/wxshadow/wxshadow_bp.c 的 copy_from_user_via_pte()：不再调用 __split_huge_pmd()，改走 wxshadow_pgtable.c 的 wxshadow_read_user()——2MB block 用块内偏移算 pfn，pte 路径校验 PTE_VALID/PTE_TYPE_PAGE/PTE_AF，pfn_to_kaddr() 前用 pfn_valid；6.1 解析到 mmap_read_lock 时加读锁（dmesg: mm helpers: pfn_valid=1 mmap_read_lock=1）；写路径的 __split_huge_pmd() 同样加锁。1.2.5 双机复验：Pixel 6 --patch 命中 ret=9，小米 13 ret=7/9 正常",
+      "closure": "读路径不再有「lockless get_user_pte 裸解引用 + 无 pin + 未校验 pfn」这三件事；彻底修法 pin_user_pages 见 AUD-wx-14 的评估结论。由 Auditor 复核 1.2.5 关闭。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-8",
@@ -387,7 +510,10 @@
       "status": "fixed",
       "title": "WX-8 init 无条件 debug_print_tasks_list(10) 泄漏内核地址",
       "evidence": "1.2.2 用 WXSHADOW_DEBUG_TASKS 宏关闭；默认加载 dmesg 不再出现 task=/mm= 十行",
-      "closure": "复审确认宏默认未定义且加载日志无任务表后关闭"
+      "closure": "复审确认宏默认未定义且加载日志无任务表后关闭",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-9",
@@ -396,7 +522,10 @@
       "status": "fixed",
       "title": "WX-9 跨进程设断点用目标用户 VA 刷 icache，触发 EL1 translation fault → panic 重启",
       "evidence": "Pixel 6 4/4 重启；主机侧 kmsg 抓到 ESR=0x96000145 EC=0x25 FSC=0x05 at 0x6042f50000；1.2.2 改按影子页内核 VA 刷后同一场景不再重启",
-      "closure": "复审确认 11 处调用点均改为 wxshadow_flush_icache_kva 后关闭"
+      "closure": "复审确认 11 处调用点均改为 wxshadow_flush_icache_kva 后关闭",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-10",
@@ -408,29 +537,158 @@
         "modules/KPM/wxshadow/wxshadow.c（wx_uid_allowed / wxshadow_control）",
         "modules/KPM/wxshadow/wxshadow_bp.c（权限门调用点）"
       ],
-      "closure": "1.2.3 已把权限门改成查 ctl0 维护的 allowlist（allow:/deny:/allowlist/status，默认 {0,2000}，root 恒放行不可 deny，上限 8）；Pixel 6 与小米 13 双形态实测 status/allow/deny/deny:0 全部符合预期，deny 后管理器身份重新收到 EPERM。"
+      "closure": "1.2.3 已把权限门改成查 ctl0 维护的 allowlist（allow:/deny:/allowlist/status，默认 {0,2000}，root 恒放行不可 deny，上限 8）；Pixel 6 与小米 13 双形态实测 status/allow/deny/deny:0 全部符合预期，deny 后管理器身份重新收到 EPERM。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-11",
       "severity": "中",
-      "owner": "Auditor",
-    "status": "fixing",
+      "owner": "Developer",
+      "status": "open",
       "title": "NX-2 LKM 形态权限门可被 userns root 绕过（全仓既有）",
-    "evidence": "KernelPatch/lkm/kpm/symbols.c:132-134 用 from_kuid(current_user_ns()) 把 kuid 映射成 userns 视角 uid，kernel 形态 kernel/patch/common/utils.c:172-178 返回裸 kuid；fork asmzhang/KernelPatch 分支 fix/lkm-current-uid-raw-kuid 提交 f0c9e72 作为未验证提案保留。实测证不出：Pixel 6(6.1.99) 与 小米 13(5.10.149) 均 CONFIG_USER_NS not set、unshare -Ur 返回 EINVAL，from_kuid 在 init_user_ns 下恒等，两形态行为一致，本项目设备上不可复现。",
-    "closure": "等有开 CONFIG_USER_NS=y 的目标能复现「userns root 被放行」后，验证 f0c9e72 生效并提上游 PR，再按结果关闭或转为 wontfix。"
+      "evidence": "本机两台设备都没有 CONFIG_USER_NS（unshare -Ur 报 EINVAL），缺陷不可复现；模块侧 cred 偏移推导在 5.10 LKM 上扫不出（已回退）。",
+      "closure": "需要一台开 CONFIG_USER_NS 的设备复现后再决定是否采用 fork 提交 f0c9e72。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     },
     {
       "id": "AUD-wx-12",
       "severity": "低",
-      "owner": "Auditor",
+      "owner": "维护者",
       "status": "open",
       "title": "R1 归档产物 MANIFEST.json 仍含本机绝对路径（与既往所有 handoff 同模式）",
       "evidence": "artifacts/wxshadow-1.2.2+.../MANIFEST.json 的 recipe.cc/excerpt 由 build_candidate 原样写入",
-      "closure": "由维护者决定是否在 build_candidate 侧归一（属维护方工具判据）后关闭"
+      "closure": "由维护者决定是否在 build_candidate 侧归一（属维护方工具判据）后关闭",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-wx-13",
+      "severity": "中",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "卸载期 RCU 风险：register_user_*_hook 回落让钩子停在全局链表里",
+      "evidence": "1.2.5 删除回落：wxshadow.c 的 init 只接受 direct hook（hook_wrap3），符号缺失即 return -1；连带删除 wxshadow_break_hook/wxshadow_step_hook、两个桥接回调与 wx_unregister_brk_step_hooks()；wxshadow_scan.c 的可用性判定同步收紧。双机 method=1 复验通过。",
+      "closure": "由 Auditor 复核：模块内不再存在「卸载时只能 list_del_rcu」的代码路径。注意 direct hook 缺失时的拒绝加载分支两台设备触发不到，仅代码审查覆盖。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-wx-14",
+      "severity": "低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "AUD-wx-4 的 pin_user_pages 彻底修法经评估不适用",
+      "evidence": "wxshadow_read_user() 唯一调用点是 prctl direct hook，钩子上下文不能缺页；pin/gup 慢路径会取 mmap_lock 并可能触发缺页。运行期探针显示 6.1 上 page_address 不在符号面内、pin 路径整条关闭（dmesg: pin=0），故保留复核意见的 ①+② 方案，并在代码与报告写明原因。",
+      "closure": "结论已入报告 1.2.5 节与代码注释；后续如确需 pin，只能在非钩子上下文使用。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-019",
+      "severity": "中",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "报告身份节停在 1.2.1，缺 1.2.3 及以后的 sha256/instance",
+      "evidence": "1.2.5 报告身份节改为 1.2.5，并列出 1.2.2/1.2.3/1.2.4（并入 1.2.5）的产物哈希与 instance。",
+      "closure": "由 Auditor 复核报告身份节与 metadata 一致。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-020",
+      "severity": "中",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "issues[] 字段不全（缺 class/frequency/confidence、closed_by、归属方）",
+      "evidence": "1.2.5 起 issues[] 逐条补 class/frequency/confidence 与 owner=修复方；已修项写 closure 与验证实例。",
+      "closure": "由 Auditor 按 docs/process/04-issue-ticket.md 复核字段完整性。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-021",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "可回绕写法计数三处互相矛盾（报告说 3 处/元数据说 4 处）",
+      "evidence": "1.2.5 报告统一口径：1.2.2 改 5 处、1.2.3 复核发现 wxshadow_bp.c:479 漏改、1.2.4 补上并加 offset 上界。",
+      "closure": "由 Auditor 核对报告/README/元数据三处计数一致。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-022",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "AUD-wx-11 状态与实际不符（记 fixing 但其实已回退）",
+      "evidence": "1.2.5 改回 open，owner=Developer，evidence/closure 写明两台设备无 CONFIG_USER_NS、本机不可复现，待有 userns 设备再定。",
+      "closure": "由 Auditor 核对状态与 fork 提交未采用的事实一致。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-023",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "客户端 README 停在 1.2.1，权限门与卸载语义两句与实现相反",
+      "evidence": "1.2.4 起客户端 README「当前状态」整节重写：allowlist 可维护（默认 {0,2000}）、drain 超时只记录并继续卸载。",
+      "closure": "由 Auditor 对照 wxshadow_bp.c 权限门与 wxshadow.c 的 drain 实现复核。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-024",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "归档 MANIFEST 里含本机绝对路径（D:/platform、D:/work）",
+      "evidence": "1.2.5 修 tools/identity.py 的 sanitize()：同一路径的多种分隔符写法一起替换，并把 --env 传入的 NDK 变量按变量名打标签；新归档 MANIFEST 实测只剩 <repo>/<abs>。历史 1.2.0–1.2.3 的 MANIFEST 保留原样（产物不可覆盖）。",
+      "closure": "由 Auditor 复核新归档不含盘符绝对路径，并接受历史四份的例外说明。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-025",
+      "severity": "中低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "缺行尾口径说明：blob_sha256(LF) 与 sha256(CRLF) 是两份字节身份",
+      "evidence": "1.2.5 报告新增「字节身份的行尾口径（AUD-025）」小节，写明两份哈希的复算方式。",
+      "closure": "由 Auditor 按该口径复算一次 sources[] 校验。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
+    },
+    {
+      "id": "AUD-026",
+      "severity": "低",
+      "owner": "Developer",
+      "status": "fixed",
+      "title": "三处自相矛盾：fork 表述、源文件个数、debug 变体理由",
+      "evidence": "1.2.5 报告 fork 段改为「只在 fork 分支保存提案，本仓 .gitmodules 与指针仍指上游 b51197a」；README 源文件计数统一为 5 个 .c + 2 个 .h；Makefile 注释补 1.2.2 起已引入 WXSHADOW_DEBUG_TASKS 宏的说明（仍不出 debug 变体，理由改为「宏开关只影响日志」）。",
+      "closure": "由 Auditor 三处逐一核对。",
+      "class": "product",
+      "frequency": "未知",
+      "confidence": "高置信"
     }
   ],
   "acceptances": [],
   "deliveries": [],
-  "updated_at": "2026-11-03T02:22:43Z",
+  "updated_at": "2026-11-03T03:39:24Z",
   "updated_by": "developer:r5"
 }

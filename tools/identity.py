@@ -248,7 +248,7 @@ def _path_variants(path):
     return {v for v in variants if v}
 
 
-def sanitize(text):
+def sanitize(text, extra_pairs=None):
     """去掉本机绝对路径再落盘/入哈希（公开文件不写本机信息）。
 
     AUD-024：早期实现只替换 `str(REPO)` 这一种写法，而 Windows 上 REPO 是
@@ -261,6 +261,11 @@ def sanitize(text):
         value = os.environ.get(var)
         if value:
             pairs.append((value, f"<{var}>"))
+    # 调用方（如 build_candidate 的 --env）传进来的路径也要按变量名打标签，
+    # 否则 NDK 自带的绝对路径只能落到兜底的 <abs>，丢信息但不丢卫生。
+    for key, value in (extra_pairs or {}).items():
+        if value:
+            pairs.append((value, f"<{key}>"))
     # 长路径先替换，避免 <home> 之类的前缀把更长的路径截断
     expanded = []
     for path, tag in pairs:
@@ -416,7 +421,7 @@ def capture_build_recipe(build_cmd, env_extra=None):
     except Exception as exc:
         return {"captured": False, "command": sanitize(build_cmd), "note": f"make -n 失败: {exc}"}
     raw_text = out.stdout + out.stderr
-    text = sanitize(raw_text)
+    text = sanitize(raw_text, env_pairs(env_extra))
     if out.returncode != 0:
         return {"captured": False, "command": sanitize(build_cmd), "returncode": out.returncode,
                 "note": f"make -n -B 返回 {out.returncode}，参数未捕获成功；请检查 --build-cmd / --env / 目标名",

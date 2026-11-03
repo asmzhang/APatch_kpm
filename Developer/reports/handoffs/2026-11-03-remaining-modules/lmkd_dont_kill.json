@@ -1,0 +1,149 @@
+{
+  "module": "lmkd_dont_kill",
+  "version": "1.0.0",
+  "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+  "handoff_by": "Developer",
+  "handoff_at": "2026-11-03T04:28:58Z",
+  "note": "归档产物需随清单一起转移：artifacts/<instance_id>/（导入时会逐个核验哈希）",
+  "builds": [
+    {
+      "module": "lmkd_dont_kill",
+      "version": "1.0.0",
+      "kind": "candidate",
+      "build_id": "lmkd_dont_kill-1.0.0+gbe5b5897aa86.r8db087f3.kpb51197a.ndk26.1.10909125",
+      "variant": "base",
+      "recorded_at": "2026-11-03T04:28:57Z",
+      "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+      "source_dirty": false,
+      "source_tree_sha256": "be5b5897aa8697dcc694e29be5634c548c2e5bbfdbc59242e92cde09a74a5c7d",
+      "source_tree_blob_sha256": "63416380c54fef6ce7d7fc3e74d62a29e689a9026c105179fd6c17932159a176",
+      "source_blob_missing": [],
+      "sources": {
+        "data_ref": "fa621a16bdb9ef8ceb505f1134884fe627d7fab646be83234a0a2067f52412a2"
+      },
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "8db087f3c20df0e803e357a158b361258d56b08ea4c816e5d41db016919ad63a",
+      "recipe": {
+        "data_ref": "d39cf2dbd0a26bc59391b4d4eeaaaf1573f69f49045c111bfaee58cfc366a234"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+        "source_tree_sha256": "be5b5897aa8697dcc694e29be5634c548c2e5bbfdbc59242e92cde09a74a5c7d",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "07a172df6353887063835daec716ed89e28f65f0ee42f93d46798576b8719a8d",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "lmkd_dont_kill_1.0.0.kpm",
+          "sha256": "6658cd43585ebbe219a734f50ce982cc169d26fbf61ed6d77905452639d150e0",
+          "size": 5184,
+          "embedded": {
+            "name": "lmkd_dont_kill",
+            "version": "1.0.0",
+            "license": "GPL v2",
+            "author": "lzghzr",
+            "description": "lmkd_dont_kill"
+          },
+          "path": "artifacts/lmkd_dont_kill-1.0.0+gbe5b5897aa86.r8db087f3.kpb51197a.ndk26.1.10909125/lmkd_dont_kill_1.0.0.kpm"
+        }
+      ],
+      "instance_id": "lmkd_dont_kill-1.0.0+gbe5b5897aa86.r8db087f3.kpb51197a.ndk26.1.10909125#1"
+    },
+    {
+      "module": "lmkd_dont_kill",
+      "version": "1.0.0",
+      "kind": "candidate",
+      "build_id": "lmkd_dont_kill-1.0.0_debug+gbe5b5897aa86.r79e542e8.kpb51197a.ndk26.1.10909125",
+      "variant": "debug",
+      "recorded_at": "2026-11-03T04:28:57Z",
+      "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+      "source_dirty": false,
+      "source_tree_sha256": "be5b5897aa8697dcc694e29be5634c548c2e5bbfdbc59242e92cde09a74a5c7d",
+      "source_tree_blob_sha256": "63416380c54fef6ce7d7fc3e74d62a29e689a9026c105179fd6c17932159a176",
+      "source_blob_missing": [],
+      "sources": {
+        "data_ref": "fa621a16bdb9ef8ceb505f1134884fe627d7fab646be83234a0a2067f52412a2"
+      },
+      "toolchain": "ndk26.1.10909125",
+      "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+      "fingerprint_sha256": "79e542e870a04c551f4dc26a365118461df54cfb7c7bdb8a6fc38df4aa95b0f6",
+      "recipe": {
+        "data_ref": "d39cf2dbd0a26bc59391b4d4eeaaaf1573f69f49045c111bfaee58cfc366a234"
+      },
+      "recorded_by": "Developer",
+      "build_transaction": {
+        "source_commit": "36f0197e546293c51a8a37640f192d857d2f4a06",
+        "source_tree_sha256": "be5b5897aa8697dcc694e29be5634c548c2e5bbfdbc59242e92cde09a74a5c7d",
+        "kernelpatch_commit": "b51197aaba8f2272dd8a3e30c85698a29aa928c9",
+        "recipe_sha256": "07a172df6353887063835daec716ed89e28f65f0ee42f93d46798576b8719a8d",
+        "input_unchanged": true,
+        "returncode": 0
+      },
+      "artifacts": [
+        {
+          "name": "lmkd_dont_kill_1.0.0_debug.kpm",
+          "sha256": "25aa21a553108224e1f7ceb095a8a0fce555c0638f3f856e1e8c4376c8d57d27",
+          "size": 5184,
+          "embedded": {
+            "name": "lmkd_dont_kill",
+            "version": "1.0.0_d",
+            "license": "GPL v2",
+            "author": "lzghzr",
+            "description": "lmkd_dont_kill"
+          },
+          "path": "artifacts/lmkd_dont_kill-1.0.0_debug+gbe5b5897aa86.r79e542e8.kpb51197a.ndk26.1.10909125/lmkd_dont_kill_1.0.0_debug.kpm"
+        }
+      ],
+      "instance_id": "lmkd_dont_kill-1.0.0_debug+gbe5b5897aa86.r79e542e8.kpb51197a.ndk26.1.10909125#1"
+    }
+  ],
+  "handoff_schema": 2,
+  "shared_data": {
+    "d39cf2dbd0a26bc59391b4d4eeaaaf1573f69f49045c111bfaee58cfc366a234": {
+      "captured": true,
+      "command": "make -C '<repo>\\modules\\KPM\\lmkd_dont_kill' all debug",
+      "dry_run_args": "-n -B（强制重算配方）",
+      "returncode": 0,
+      "dry_run_sha256": "07a172df6353887063835daec716ed89e28f65f0ee42f93d46798576b8719a8d",
+      "cc": "<abs>",
+      "compiler_sha256": "37b43fae94610d24c33c1d1c48b311a9096315b6a052e92aba74be3a9880b1df",
+      "excerpt": "make: Entering directory '<repo>/modules/KPM/lmkd_dont_kill'\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android3<PYTHONUTF8>-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"<PYTHONUTF8>.0.0\\\"  -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include lmkd_dont_kill.c -r -o lmkd_dont_kill_<PYTHONUTF8>.0.0.kpm\n<ANDROID_NDK_LATEST_HOME>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android3<PYTHONUTF8>-clang -Wall -O2 -fno-PIC -fno-asynchronous-unwind-tables -fno-stack-protector -fno-common -DMYKPM_VERSION=\\\"<PYTHONUTF8>.0.0_d\\\" -DCONFIG_DEBUG  -I../../../KernelPatch/kernel/. -I../../../KernelPatch/kernel/include -I../../../KernelPatch/kernel/patch/include -I../../../KernelPatch/kernel/linux/include -I../../../KernelPatch/kernel/linux/arch/arm64/include -I../../../KernelPatch/kernel/linux/tools/arch/arm64/include lmkd_dont_kill.c -r -o lmkd_dont_kill_<PYTHONUTF8>.0.0_debug.kpm\nmake: Leaving directory '<repo>/modules/KPM/lmkd_dont_kill'"
+    },
+    "fa621a16bdb9ef8ceb505f1134884fe627d7fab646be83234a0a2067f52412a2": [
+      {
+        "path": "kpm_utils.h",
+        "sha256": "4eea5b5cc8b2cda0929de077c60cd6b7afc3666f45bcf513bba7ebf33feb7507",
+        "blob_sha256": "f0b7de0a69b1bf075d3bc40ebf9aefb3593b2d7233eb1de261dc09183760997c"
+      },
+      {
+        "path": "modules/KPM/lmkd_dont_kill/Makefile",
+        "sha256": "cb17cfd4996bd922e107c08676edace3098c72bd5cd4b2e9a0441c2d8de3818b",
+        "blob_sha256": "cb17cfd4996bd922e107c08676edace3098c72bd5cd4b2e9a0441c2d8de3818b"
+      },
+      {
+        "path": "modules/KPM/lmkd_dont_kill/lmkd_dont_kill.c",
+        "sha256": "614623b3258dede2692ea06f9eef21fff5b2d37f1cf278ba9442d32e7a19e5e6",
+        "blob_sha256": "614623b3258dede2692ea06f9eef21fff5b2d37f1cf278ba9442d32e7a19e5e6"
+      },
+      {
+        "path": "modules/KPM/lmkd_dont_kill/lmkd_dont_kill.h",
+        "sha256": "2e19b5c1fbfdeb7efcafcbaa390ed992bdcc0bbb0b9cb0cfa7a7abb5d0437c55",
+        "blob_sha256": "2e19b5c1fbfdeb7efcafcbaa390ed992bdcc0bbb0b9cb0cfa7a7abb5d0437c55"
+      },
+      {
+        "path": "tools/build_candidate.py",
+        "sha256": "20675551014ff2f01cdef44c7efa9e7274f99ca6937893be29d21a7767a75c74",
+        "blob_sha256": "d384dec949a11f4f4100d84945841350383781d0204160953360888714bd168c"
+      },
+      {
+        "path": "tools/identity.py",
+        "sha256": "9ebb75e26a4094e6fd199f1749b5c8f9f5050e1e4da3f47002a121deb3e20e10",
+        "blob_sha256": "d52e9f7b00894045f109779ccd4b6c61a730d1cba8d6e916ecdd5655f8894bf2"
+      }
+    ]
+  }
+}
